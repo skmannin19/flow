@@ -1,0 +1,1386 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FlowState OS — Chronotype-Aligned Time Blocking & Mono-Focus</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Theme Transition & Scrollbar Styling */
+    body {
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .dark ::-webkit-scrollbar-track { background: #0f172a; }
+    .dark ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    
+    html:not(.dark) ::-webkit-scrollbar-track { background: #f1f5f9; }
+    html:not(.dark) ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+
+    @keyframes breathe {
+      0%, 100% { transform: scale(1); opacity: 0.5; }
+      50% { transform: scale(1.35); opacity: 0.95; }
+    }
+    .breathe-circle {
+      animation: breathe 6s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white dark:bg-[#080d1a] dark:text-slate-100 bg-slate-50 text-slate-900">
+
+  <!-- QUARTERLY CHRONOTYPE RECALIBRATION BANNER -->
+  <div id="quarterlyPromptBanner" class="hidden bg-gradient-to-r from-indigo-900/80 via-slate-900 to-emerald-900/60 border-b border-indigo-500/30 px-4 py-2 text-xs text-white">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center gap-2">
+        <span class="px-2 py-0.5 rounded bg-indigo-500/30 text-indigo-200 font-mono uppercase text-[10px]">Quarterly Calibration</span>
+        <span>Routines and seasons shift! Want to take a 45-second check-in to align your schedule with your current energy wave?</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="openChronotypeModal('quiz')" class="px-3 py-1 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-white font-semibold transition">
+          Take 4-Question Assessment
+        </button>
+        <button onclick="dismissQuarterlyBanner()" class="px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 transition">
+          Keep Current Wave (Skip for Q4)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOP NAVIGATION & MULTI-HORIZON ALIGNMENT BAR -->
+  <header class="border-b dark:border-slate-800/80 border-slate-200 dark:bg-slate-900/70 bg-white/85 backdrop-blur-md sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-emerald-400 flex items-center justify-center shadow-lg shadow-indigo-500/20 font-bold text-slate-950 text-lg">
+          ⚡
+        </div>
+        <div>
+          <h1 class="font-bold text-base tracking-tight flex items-center gap-2">
+            FlowState OS
+            <span class="text-[11px] font-mono uppercase px-2 py-0.5 rounded-full dark:bg-indigo-500/10 dark:text-indigo-400 bg-indigo-50 text-indigo-600 border dark:border-indigo-500/20 border-indigo-200">v3.1 Synced</span>
+          </h1>
+          <p class="text-xs dark:text-slate-400 text-slate-500" id="currentDateDisplay">Friday, Oct 16, 2026</p>
+        </div>
+      </div>
+
+      <!-- Real-Time Energy Override Selector -->
+      <div class="flex items-center gap-1.5 dark:bg-slate-950/80 bg-slate-100 p-1.5 rounded-xl dark:border border-slate-200 dark:border-slate-800">
+        <span class="text-[11px] font-medium dark:text-slate-400 text-slate-600 px-2 hidden sm:inline">Bandwidth:</span>
+        <button onclick="setEnergy('sharp', true)" id="energy-sharp" class="energy-btn px-2.5 py-1 rounded-lg text-xs font-medium transition flex items-center gap-1.5">
+          <span>🔴</span> Sharp
+        </button>
+        <button onclick="setEnergy('steady', true)" id="energy-steady" class="energy-btn px-2.5 py-1 rounded-lg text-xs font-medium transition flex items-center gap-1.5">
+          <span>🟡</span> Steady
+        </button>
+        <button onclick="setEnergy('fried', true)" id="energy-fried" class="energy-btn px-2.5 py-1 rounded-lg text-xs font-medium transition flex items-center gap-1.5">
+          <span>🟢</span> Fried
+        </button>
+      </div>
+
+      <!-- Chronotype Pill, Theme Toggle, Audio Toggle, Data & GitHub Sync, & Horizons -->
+      <div class="flex items-center gap-2">
+        <button onclick="openChronotypeModal('overview')" class="px-3 py-1.5 rounded-xl dark:bg-slate-950 bg-slate-100 hover:dark:bg-slate-800 hover:bg-slate-200 dark:border-indigo-500/30 border-slate-300 border text-xs flex items-center gap-2 transition shadow-sm" title="Calibrate Quarterly Productivity Chronotype">
+          <span id="chronoHeaderEmoji" class="text-base">🐻</span>
+          <div class="text-left">
+            <div id="chronoHeaderName" class="font-semibold dark:text-slate-200 text-slate-800 leading-none">Solar Bear</div>
+            <div id="chronoHeaderSub" class="text-[10px] font-mono text-indigo-500 dark:text-indigo-400 mt-0.5">Peak: 9a–1p</div>
+          </div>
+        </button>
+
+        <!-- Theme Toggle Button -->
+        <button onclick="toggleTheme()" id="themeToggleBtn" class="p-2 rounded-xl dark:bg-slate-950 bg-slate-100 hover:dark:bg-slate-800 hover:bg-slate-200 dark:border-slate-800 border-slate-300 border text-xs transition" title="Toggle Light / Dark Mode">
+          <span id="themeIcon">🌙</span>
+        </button>
+
+        <!-- Sound Chime Toggle Button -->
+        <button onclick="toggleAudioMaster()" id="audioMasterBtn" class="p-2 rounded-xl dark:bg-slate-950 bg-slate-100 hover:dark:bg-slate-800 hover:bg-slate-200 dark:border-slate-800 border-slate-300 border text-xs transition" title="Enable/Disable Mindfulness Chimes">
+          <span id="audioMasterIcon">🔔</span>
+        </button>
+
+        <!-- Data Backup & Sync Modal Trigger -->
+        <button onclick="openGitHubModal()" class="text-xs px-3 py-2 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30 transition flex items-center gap-1.5 font-medium" title="Backup, sync tasks & manage GitHub repository">
+          <span id="ghSyncDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <span>💾 Data & Sync</span>
+        </button>
+
+        <button onclick="toggleHorizonModal()" class="text-xs px-3 py-2 rounded-lg dark:bg-slate-800 bg-slate-200 hover:dark:bg-slate-700 hover:bg-slate-300 dark:text-slate-200 text-slate-800 dark:border-slate-700 border-slate-300 border transition flex items-center gap-1.5">
+          <span>🎯</span> <span class="hidden sm:inline">Horizons</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Collapsible Horizon Compass -->
+    <div id="horizonBar" class="hidden dark:bg-slate-950/90 bg-slate-100 border-t dark:border-slate-800/80 border-slate-200 px-4 sm:px-6 py-2.5">
+      <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+        <div class="flex items-center gap-2.5 dark:bg-slate-900/60 bg-white px-3 py-1.5 rounded-lg border dark:border-slate-800/80 border-slate-200 shadow-sm">
+          <span class="text-indigo-500 dark:text-indigo-400 font-mono font-semibold uppercase shrink-0">Q4 North Star:</span>
+          <input id="qGoal" oninput="updateGoals()" class="bg-transparent dark:text-slate-200 text-slate-800 focus:outline-none w-full" />
+        </div>
+        <div class="flex items-center gap-2.5 dark:bg-slate-900/60 bg-white px-3 py-1.5 rounded-lg border dark:border-slate-800/80 border-slate-200 shadow-sm">
+          <span class="text-emerald-600 dark:text-emerald-400 font-mono font-semibold uppercase shrink-0">Oct Milestone:</span>
+          <input id="mGoal" oninput="updateGoals()" class="bg-transparent dark:text-slate-200 text-slate-800 focus:outline-none w-full" />
+        </div>
+        <div class="flex items-center gap-2.5 dark:bg-slate-900/60 bg-white px-3 py-1.5 rounded-lg border dark:border-slate-800/80 border-slate-200 shadow-sm">
+          <span class="text-amber-600 dark:text-amber-400 font-mono font-semibold uppercase shrink-0">Weekly Win:</span>
+          <input id="wGoal" oninput="updateGoals()" class="bg-transparent dark:text-slate-200 text-slate-800 focus:outline-none w-full" />
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- CIRCADIAN WAVE VISUALIZER & ZERO-FRICTION NEXT ACTION BANNER -->
+  <div class="max-w-7xl mx-auto w-full px-4 sm:px-6 pt-4 space-y-3">
+    
+    <!-- Daily Biological Wave Bar -->
+    <div class="dark:bg-slate-900/90 bg-white border dark:border-slate-800 border-slate-200 rounded-2xl p-3.5 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div class="flex items-center gap-3 shrink-0">
+        <span class="text-xl" id="waveCardEmoji">🐻</span>
+        <div>
+          <div class="flex items-center gap-2">
+            <h3 class="text-xs font-bold uppercase tracking-wider dark:text-slate-200 text-slate-800" id="waveCardTitle">Your Biological Productivity Wave</h3>
+            <span id="quarterlyBadge" class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">Q4 Calibrated</span>
+          </div>
+          <p class="text-[11px] dark:text-slate-400 text-slate-500 mt-0.5" id="waveCardDesc">MITs auto-lock to your Peak; LITs route to your Trough; Steady work fills your Rebound.</p>
+        </div>
+      </div>
+
+      <div id="waveSegmentsContainer" class="grid grid-cols-3 gap-2 w-full md:w-auto flex-1 max-w-2xl text-[11px]"></div>
+
+      <button onclick="openChronotypeModal('quiz')" class="text-xs font-mono text-indigo-600 dark:text-indigo-400 hover:underline shrink-0 font-medium">
+        Recalibrate Wave
+      </button>
+    </div>
+
+    <!-- Energy Match Recommendation Banner -->
+    <div id="recommendationBanner" class="bg-gradient-to-r dark:from-indigo-950/70 dark:via-slate-900 dark:to-slate-900 from-indigo-50 via-white to-white border dark:border-indigo-500/30 border-indigo-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-md">
+      <div class="flex items-start gap-3.5">
+        <div id="recIcon" class="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-lg shrink-0 mt-0.5">
+          🟡
+        </div>
+        <div>
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-[11px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 font-semibold">Zero-Friction Next Action</span>
+            <span id="recEnergyStatus" class="text-xs dark:text-slate-400 text-slate-500">Matched to your Chronotype & Bandwidth</span>
+          </div>
+          <h2 id="recTaskTitle" class="text-base font-semibold dark:text-white text-slate-900 mt-1">Draft CO Dosing & Potency Testing Compliance Matrix</h2>
+          <p id="recSubStep" class="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5 font-medium">👉 First 2-Min Micro-Step: Open state PDF & list 3 required lab potency thresholds</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
+        <button onclick="launchRecommendedFocus()" class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs shadow-lg shadow-indigo-600/30 transition flex items-center justify-center gap-2">
+          <span>▶</span> Enter Mono-Focus Session
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN WORKSPACE GRID -->
+  <main class="max-w-7xl mx-auto w-full px-4 sm:px-6 py-5 grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
+
+    <!-- LEFT COLUMN: BRAIN DUMP, PRIORITIZATION & MICRO-STEPPING (5 cols) -->
+    <section class="lg:col-span-5 flex flex-col gap-5">
+      
+      <!-- Fast Capture Card -->
+      <div class="dark:bg-slate-900/90 bg-white border dark:border-slate-800 border-slate-200 rounded-2xl p-4 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-semibold dark:text-slate-200 text-slate-800 flex items-center gap-2">
+            <span>📥</span> Rapid Task Capture
+          </h3>
+          <span class="text-[11px] text-emerald-600 dark:text-emerald-400 font-mono" id="autoSaveStatus">✓ Auto-saved</span>
+        </div>
+
+        <form onsubmit="addTask(event)" class="space-y-3">
+          <input id="taskTitleInput" type="text" required placeholder="What needs to get done? (Be specific...)" class="w-full dark:bg-slate-950 bg-slate-50 border dark:border-slate-800 border-slate-300 focus:border-indigo-500 rounded-xl px-3.5 py-2.5 text-sm dark:text-white text-slate-900 placeholder-slate-400 focus:outline-none transition" />
+          
+          <input id="taskMicroInput" type="text" placeholder="First 2-min starter step (e.g., 'Open doc & write 3 bullet headers')" class="w-full dark:bg-slate-950/60 bg-slate-50/70 border dark:border-slate-800/80 border-slate-300 focus:border-emerald-500 rounded-xl px-3.5 py-2 text-xs text-emerald-600 dark:text-emerald-300 placeholder-slate-400 focus:outline-none transition" />
+
+          <div class="grid grid-cols-3 gap-2 pt-1">
+            <div>
+              <label class="block text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500 mb-1">Priority Tier</label>
+              <select id="taskTypeInput" class="w-full dark:bg-slate-950 bg-slate-50 border dark:border-slate-800 border-slate-300 rounded-lg px-2.5 py-1.5 text-xs dark:text-slate-200 text-slate-800 focus:outline-none">
+                <option value="MIT">🔥 MIT (Max 3/day)</option>
+                <option value="LIT">📋 LIT (Batch/Admin)</option>
+                <option value="FIXED">🔒 Fixed Routine</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500 mb-1">Cognitive Load</label>
+              <select id="taskEnergyInput" class="w-full dark:bg-slate-950 bg-slate-50 border dark:border-slate-800 border-slate-300 rounded-lg px-2.5 py-1.5 text-xs dark:text-slate-200 text-slate-800 focus:outline-none">
+                <option value="sharp">🔴 Deep (Peak Wave)</option>
+                <option value="steady">🟡 Steady (Rebound)</option>
+                <option value="fried">🟢 Low Drain (Trough)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500 mb-1">Realistic Est.</label>
+              <select id="taskDurationInput" class="w-full dark:bg-slate-950 bg-slate-50 border dark:border-slate-800 border-slate-300 rounded-lg px-2.5 py-1.5 text-xs dark:text-slate-200 text-slate-800 focus:outline-none">
+                <option value="25">25m (1 Pom)</option>
+                <option value="45" selected>45m (Focused)</option>
+                <option value="60">60m (Deep Block)</option>
+                <option value="90">90m (Ultradian)</option>
+                <option value="15">15m (Quick Win)</option>
+              </select>
+            </div>
+          </div>
+
+          <button type="submit" class="w-full py-2.5 rounded-xl dark:bg-slate-800 bg-slate-200 hover:bg-indigo-600 hover:text-white dark:text-slate-200 text-slate-800 text-xs font-semibold border dark:border-slate-700 border-slate-300 hover:border-indigo-500 transition flex items-center justify-center gap-2">
+            <span>+</span> Capture & Match to Chronotype Wave
+          </button>
+        </form>
+      </div>
+
+      <!-- MITs Card -->
+      <div class="dark:bg-slate-900/90 bg-white border dark:border-slate-800 border-slate-200 rounded-2xl p-4 shadow-sm">
+        <div class="flex items-center justify-between mb-2">
+          <div>
+            <h3 class="text-sm font-semibold dark:text-white text-slate-900 flex items-center gap-2">
+              <span>🔥</span> Today's MITs (Peak Wave Priority)
+            </h3>
+            <p class="text-[11px] dark:text-slate-400 text-slate-500">Hard-capped at 3. Auto-slotted into your biological peak hours.</p>
+          </div>
+          <span id="mitCountBadge" class="px-2.5 py-1 rounded-full text-xs font-mono font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">2 / 3</span>
+        </div>
+        <div id="mitList" class="space-y-2.5 mt-3"></div>
+      </div>
+
+      <!-- LITs Card -->
+      <div class="dark:bg-slate-900/90 bg-white border dark:border-slate-800 border-slate-200 rounded-2xl p-4 shadow-sm flex-1">
+        <div class="flex items-center justify-between mb-2">
+          <div>
+            <h3 class="text-sm font-semibold dark:text-slate-200 text-slate-800 flex items-center gap-2">
+              <span>📋</span> LITs & Trough-Window Batch
+            </h3>
+            <p class="text-[11px] dark:text-slate-400 text-slate-500">Low-cognitive tasks ideal for your post-lunch circadian dip.</p>
+          </div>
+          <span id="litCountBadge" class="px-2 py-0.5 rounded text-xs font-mono dark:bg-slate-800 bg-slate-100 dark:text-slate-400 text-slate-600">0</span>
+        </div>
+        <div id="litList" class="space-y-2 mt-3"></div>
+      </div>
+
+    </section>
+
+    <!-- RIGHT COLUMN: TIME-BLOCK TIMELINE & AUTO-RESCHEDULER (7 cols) -->
+    <section class="lg:col-span-7 flex flex-col gap-5">
+      <div class="dark:bg-slate-900/90 bg-white border dark:border-slate-800 border-slate-200 rounded-2xl p-5 shadow-sm flex-1 flex flex-col">
+        
+        <!-- Schedule Controls Header -->
+        <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b dark:border-slate-800 border-slate-200">
+          <div>
+            <h3 class="text-base font-bold dark:text-white text-slate-900 flex items-center gap-2">
+              <span>🗓️</span> Chronotype-Synced Time Blocks
+            </h3>
+            <p class="text-xs dark:text-slate-400 text-slate-500 mt-0.5">Matches MITs to Peak windows, injects Trough rest breaks, & ripples on overrun.</p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <label class="flex items-center gap-1.5 text-xs dark:text-slate-300 text-slate-700 dark:bg-slate-950 bg-slate-100 px-2.5 py-1.5 rounded-lg border dark:border-slate-800 border-slate-300 cursor-pointer">
+              <input type="checkbox" id="bufferToggle" checked onchange="recalculateSchedule()" class="accent-indigo-500 rounded" />
+              <span>Circadian Breaks & Buffers</span>
+            </label>
+            <button onclick="optimizeByChronotype()" class="px-3 py-1.5 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 text-xs font-semibold transition">
+              🧬 Align to Wave
+            </button>
+            <button onclick="resetDefaultData()" class="px-2.5 py-1.5 rounded-lg dark:bg-slate-800 bg-slate-200 hover:dark:bg-slate-700 hover:bg-slate-300 dark:text-slate-400 text-slate-700 text-xs transition" title="Restore default sample tasks">
+              ↺
+            </button>
+          </div>
+        </div>
+
+        <div id="rippleAlert" class="hidden my-3 px-3.5 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs flex items-center justify-between">
+          <span id="rippleAlertText">⚡ Schedule dynamically adjusted around your fixed anchors.</span>
+          <button onclick="document.getElementById('rippleAlert').classList.add('hidden')" class="text-amber-700 dark:text-amber-400 font-bold ml-3">✕</button>
+        </div>
+
+        <!-- Capacity Bar -->
+        <div class="my-2 flex items-center justify-between gap-3 text-[11px] text-slate-500 dark:text-slate-400">
+          <span>Focus Load: <span id="capacityText" class="font-mono font-semibold text-slate-800 dark:text-slate-200">0.0 / 6.0 hrs</span></span>
+          <div class="flex-1 max-w-xs bg-slate-200 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
+            <div id="capacityBar" class="bg-indigo-500 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <!-- Timeline Stream -->
+        <div id="timelineContainer" class="mt-2 space-y-2.5 flex-1 overflow-y-auto pr-1"></div>
+
+        <!-- Deferred Queue -->
+        <div id="overflowContainer" class="mt-6 pt-4 border-t dark:border-slate-800 border-slate-200 hidden">
+          <div class="flex items-center justify-between mb-2">
+            <h4 class="text-xs font-mono uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+              <span>🛡️</span> Auto-Deferred to Tomorrow (Realistic Workload Protection)
+            </h4>
+            <span class="text-[11px] dark:text-slate-400 text-slate-500">Prevents late-night burnout</span>
+          </div>
+          <div id="overflowList" class="space-y-2"></div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- DATA PERSISTENCE & GITHUB CLOUD SYNC MODAL -->
+  <div id="githubModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden items-center justify-center p-4 overflow-y-auto">
+    <div class="dark:bg-slate-900 bg-white border dark:border-slate-800 border-slate-200 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl space-y-5 my-8">
+      <div class="flex items-start justify-between gap-4 border-b dark:border-slate-800 border-slate-200 pb-4">
+        <div>
+          <span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30">Connected Target: skmannin19/flow (main)</span>
+          <h2 class="text-xl font-bold dark:text-white text-slate-900 mt-1.5">💾 Data Persistence & GitHub Sync</h2>
+          <p class="text-xs dark:text-slate-400 text-slate-500 mt-0.5">Your edits are safely preserved in browser storage. You can also export/import backup files anytime or sync directly with GitHub.</p>
+        </div>
+        <button onclick="closeGitHubModal()" class="text-slate-400 hover:text-white text-sm px-2.5 py-1 rounded-lg bg-slate-200 dark:bg-slate-800">✕</button>
+      </div>
+
+      <!-- Quick Local Export & Import (Instant 100% Persistence Guarantee) -->
+      <div class="p-4 rounded-2xl dark:bg-slate-950 bg-slate-50 border dark:border-slate-800 border-slate-200 space-y-3">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">🛡️ Local Data Backup & Restore</h3>
+        <p class="text-xs dark:text-slate-400 text-slate-600">Export your current tasks, goals, and schedule as a JSON backup file or restore from a previous backup file instantly.</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <button onclick="exportDataBackup()" class="py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition flex items-center justify-center gap-2 shadow-sm">
+            <span>📥</span> Export Backup JSON
+          </button>
+          <label class="py-2.5 px-4 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 hover:dark:bg-slate-700 dark:text-slate-200 text-slate-800 font-semibold text-xs border dark:border-slate-700 border-slate-300 transition flex items-center justify-center gap-2 cursor-pointer">
+            <span>📤</span> Import Backup JSON
+            <input type="file" id="importFileInput" accept=".json" onchange="importDataBackup(event)" class="hidden" />
+          </label>
+        </div>
+      </div>
+
+      <!-- GitHub API Sync & Credentials -->
+      <div class="p-4 rounded-2xl dark:bg-slate-950 bg-slate-50 border dark:border-slate-800 border-slate-200 space-y-3">
+        <div class="flex items-center justify-between">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">☁️ GitHub Cloud Sync (<code class="font-mono">flow-data.json</code>)</h3>
+          <span class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">Optional</span>
+        </div>
+        
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+          <div>
+            <label class="block text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500 mb-1">GitHub Owner</label>
+            <input id="ghOwnerInput" type="text" value="skmannin19" class="w-full dark:bg-slate-900 bg-white border dark:border-slate-700 border-slate-300 rounded-lg px-3 py-1.5 dark:text-slate-200 text-slate-800 font-mono" />
+          </div>
+          <div>
+            <label class="block text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500 mb-1">Repository Name</label>
+            <input id="ghRepoInput" type="text" value="flow" class="w-full dark:bg-slate-900 bg-white border dark:border-slate-700 border-slate-300 rounded-lg px-3 py-1.5 dark:text-slate-200 text-slate-800 font-mono" />
+          </div>
+          <div>
+            <label class="block text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500 mb-1">Branch</label>
+            <input id="ghBranchInput" type="text" value="main" class="w-full dark:bg-slate-900 bg-white border dark:border-slate-700 border-slate-300 rounded-lg px-3 py-1.5 dark:text-slate-200 text-slate-800 font-mono" />
+          </div>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500">GitHub Personal Access Token (Optional: only needed to push data to GitHub via browser)</label>
+            <a href="https://github.com/settings/tokens?type=beta" target="_blank" rel="noopener" class="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline">Generate Token ↗</a>
+          </div>
+          <input id="ghTokenInput" type="password" placeholder="github_pat_..." class="w-full dark:bg-slate-900 bg-white border dark:border-slate-700 border-slate-300 rounded-lg px-3 py-2 text-xs text-emerald-600 dark:text-emerald-300 font-mono focus:outline-none focus:border-indigo-500" />
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+          <label class="flex items-center gap-2 text-xs dark:text-slate-300 text-slate-700 cursor-pointer">
+            <input type="checkbox" id="ghAutoSyncToggle" onchange="saveGitHubConfig()" class="accent-emerald-500 rounded" />
+            <span>Auto-sync my tasks to <code class="text-emerald-600 dark:text-emerald-300">flow-data.json</code></span>
+          </label>
+          <button onclick="saveGitHubConfig(true)" class="px-3.5 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 hover:dark:bg-slate-700 text-xs dark:text-white text-slate-800 font-semibold border dark:border-slate-700 border-slate-300 transition">
+            Save Settings
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
+          <button onclick="pushStateToGitHub()" class="py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition flex items-center justify-center gap-2 shadow-sm">
+            <span>⬆️</span> Push Current Tasks to GitHub
+          </button>
+          <button onclick="pullStateFromGitHub()" class="py-2.5 px-4 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 hover:dark:bg-slate-700 dark:text-slate-200 text-slate-800 font-semibold text-xs border dark:border-slate-700 border-slate-300 transition flex items-center justify-center gap-2">
+            <span>⬇️</span> Pull Saved Tasks from GitHub
+          </button>
+        </div>
+      </div>
+
+      <div id="ghStatusBanner" class="hidden px-3.5 py-2.5 rounded-xl dark:bg-slate-950 bg-slate-100 border dark:border-slate-700 border-slate-300 text-xs font-mono text-emerald-600 dark:text-emerald-300"></div>
+    </div>
+  </div>
+
+  <!-- CHRONOTYPE MODAL -->
+  <div id="chronotypeModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden items-center justify-center p-4 overflow-y-auto">
+    <div class="dark:bg-slate-900 bg-white border dark:border-slate-800 border-slate-200 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl space-y-6 my-8">
+      
+      <div class="flex items-start justify-between gap-4 border-b dark:border-slate-800 border-slate-200 pb-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 border border-indigo-500/30">Optional Quarterly Check-In</span>
+            <span id="lastCalibratedText" class="text-xs dark:text-slate-400 text-slate-500 font-mono">Last calibrated: Oct 16, 2026</span>
+          </div>
+          <h2 class="text-xl font-bold dark:text-white text-slate-900 mt-1.5">🧬 Calibrate Your Productivity Chronotype</h2>
+          <p class="text-xs dark:text-slate-400 text-slate-500 mt-0.5">Your natural circadian peaks shift with seasons and habits. Take the 4-question diagnostic or pick your wave directly.</p>
+        </div>
+        <button onclick="closeChronotypeModal()" class="text-slate-400 hover:text-white text-sm px-2.5 py-1 rounded-lg bg-slate-200 dark:bg-slate-800">✕</button>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2 dark:bg-slate-950 bg-slate-100 p-1 rounded-xl border dark:border-slate-800 border-slate-300 text-xs">
+        <button onclick="switchChronoTab('quiz')" id="tabBtnQuiz" class="py-2 rounded-lg font-semibold bg-indigo-600 text-white transition">
+          📋 4-Question Diagnostic Quiz
+        </button>
+        <button onclick="switchChronoTab('direct')" id="tabBtnDirect" class="py-2 rounded-lg font-semibold dark:text-slate-400 text-slate-600 hover:text-white transition">
+          🎛️ Select Wave / Custom Hours
+        </button>
+      </div>
+
+      <div id="chronoQuizView" class="space-y-4">
+        <div class="space-y-3">
+          <div class="p-3.5 rounded-2xl dark:bg-slate-950/80 bg-slate-50 border dark:border-slate-800 border-slate-200">
+            <label class="block text-xs font-semibold dark:text-slate-200 text-slate-800 mb-2">1. If you had a completely free day with no alarm, when would you naturally wake up and feel alert?</label>
+            <select id="q1Input" class="w-full dark:bg-slate-900 bg-white border dark:border-slate-700 border-slate-300 rounded-xl px-3 py-2 text-xs dark:text-slate-200 text-slate-800 focus:outline-none">
+              <option value="lion">Before 6:30 AM — I wake up ready to go immediately</option>
+              <option value="bear" selected>7:00 AM – 8:15 AM — I rise with the sun and warm up after coffee</option>
+              <option value="wolf">After 8:45 AM — Mornings are groggy; my brain wakes up later</option>
+              <option value="dolphin">Light/irregular sleeper — I wake up wired but tired until mid-morning</option>
+            </select>
+          </div>
+
+          <div class="p-3.5 rounded-2xl dark:bg-slate-950/80 bg-slate-50 border dark:border-slate-800 border-slate-200">
+            <label class="block text-xs font-semibold dark:text-slate-200 text-slate-800 mb-2">2. When does heavy analytical or creative work feel most effortless?</label>
+            <select id="q2Input" class="w-full dark:bg-slate-900 bg-white border dark:border-slate-700 border-slate-300 rounded-xl px-3 py-2 text-xs dark:text-slate-200 text-slate-800 focus:outline-none">
+              <option value="lion">7:00 AM – 11:00 AM (Early Morning Golden Hours)</option>
+              <option value="bear" selected>9:00 AM – 1:00 PM (Mid-Morning to Early Afternoon)</option>
+              <option value="wolf">12:30 PM – 4:30 PM or Late Evening (Afternoon/Night Surge)</option>
+              <option value="dolphin">Short intense bursts around 10:00 AM – 12:00 PM & 4:00 PM – 6:00 PM</option>
+            </select>
+          </div>
+
+          <div class="p-3.5 rounded-2xl dark:bg-slate-950/80 bg-slate-50 border dark:border-slate-800 border-slate-200">
+            <label class="block text-xs font-semibold dark:text-slate-200 text-slate-800 mb-2">3. When do you reliably hit an energy wall where you should only do low-drain LITs or take a rest walk?</label>
+            <select id="q3Input" class="w-full dark:bg-slate-900 bg-white border dark:border-slate-700 border-slate-300 rounded-xl px-3 py-2 text-xs dark:text-slate-200 text-slate-800 focus:outline-none">
+              <option value="lion">1:00 PM – 3:00 PM (Early afternoon slump)</option>
+              <option value="bear" selected>2:00 PM – 3:30 PM (Classic post-lunch dip window)</option>
+              <option value="wolf">8:00 AM – 11:00 AM (Morning fog)</option>
+              <option value="dolphin">1:30 PM – 3:30 PM (Midday nervous system fatigue)</option>
+            </select>
+          </div>
+
+          <div class="p-3.5 rounded-2xl dark:bg-slate-950/80 bg-slate-50 border dark:border-slate-800 border-slate-200">
+            <label class="block text-xs font-semibold dark:text-slate-200 text-slate-800 mb-2">4. Has your routine shifted this quarter (e.g., winter ski mornings, new training blocks, or venture sprints)?</label>
+            <select id="q4Input" class="w-full dark:bg-slate-900 bg-white border dark:border-slate-700 border-slate-300 rounded-xl px-3 py-2 text-xs dark:text-slate-200 text-slate-800 focus:outline-none">
+              <option value="standard" selected>Keep standard quarterly tracking (Remind me in 90 days)</option>
+              <option value="early_shift">Shift windows 30 mins earlier for early morning commitments</option>
+              <option value="late_shift">Shift windows 30 mins later for slower mornings</option>
+            </select>
+          </div>
+        </div>
+
+        <button onclick="scoreChronotypeQuiz()" class="w-full py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs shadow-lg shadow-indigo-600/30 transition">
+          ✨ Calculate My Chronotype & Auto-Align Schedule
+        </button>
+      </div>
+
+      <div id="chronoDirectView" class="hidden space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="presetCardsContainer"></div>
+
+        <div class="p-4 rounded-2xl dark:bg-slate-950 bg-slate-50 border dark:border-slate-800 border-slate-200 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold dark:text-slate-200 text-slate-800">Fine-Tune Your Biological Windows</span>
+            <span class="text-[11px] font-mono text-indigo-600 dark:text-indigo-400">Used by Auto-Scheduler</span>
+          </div>
+          <div class="grid grid-cols-3 gap-3 text-xs">
+            <div>
+              <label class="block text-[10px] font-mono uppercase text-rose-600 dark:text-rose-400 mb-1">🔥 Peak Start</label>
+              <select id="customPeakStart" class="w-full dark:bg-slate-900 bg-white border dark:border-slate-700 border-slate-300 rounded-lg px-2 py-1.5 dark:text-slate-200 text-slate-800">
+                <option value="420">7:00 AM</option>
+                <option value="480">8:00 AM</option>
+                <option value="540" selected>9:00 AM</option>
+                <option value="600">10:00 AM</option>
+                <option value="660">11:00 AM</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[10px] font-mono uppercase text-emerald-600 dark:text-emerald-400 mb-1">🌊 Trough Start</label>
+              <select id="customDipStart" class="w-full dark:bg-slate-900 bg-white border dark:border-slate-700 border-slate-300 rounded-lg px-2 py-1.5 dark:text-slate-200 text-slate-800">
+                <option value="720">12:00 PM</option>
+                <option value="780">1:00 PM</option>
+                <option value="840" selected>2:00 PM</option>
+                <option value="900">3:00 PM</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[10px] font-mono uppercase text-amber-600 dark:text-amber-400 mb-1">🔋 Rebound Start</label>
+              <select id="customReboundStart" class="w-full dark:bg-slate-900 bg-white border dark:border-slate-700 border-slate-300 rounded-lg px-2 py-1.5 dark:text-slate-200 text-slate-800">
+                <option value="870">2:30 PM</option>
+                <option value="930" selected>3:30 PM</option>
+                <option value="990">4:30 PM</option>
+                <option value="1050">5:30 PM</option>
+              </select>
+            </div>
+          </div>
+          <button onclick="saveCustomChronoWindows()" class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition">
+            Save Custom Circadian Windows & Re-Slot Tasks
+          </button>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between pt-2 border-t dark:border-slate-800 border-slate-200 text-[11px] dark:text-slate-400 text-slate-500">
+        <span id="nextQuarterlyReviewText">Next optional quarterly review: Jan 14, 2027</span>
+        <button onclick="closeChronotypeModal()" class="dark:text-slate-300 text-slate-700 hover:underline">Skip / Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MONO-FOCUS SANCTUM -->
+  <div id="focusModal" class="fixed inset-0 z-50 dark:bg-slate-950/95 bg-white/98 backdrop-blur-xl hidden flex-col justify-between p-6 sm:p-10 select-none">
+    <div class="max-w-4xl w-full mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span class="w-3 h-3 rounded-full bg-emerald-400 animate-ping"></span>
+        <span class="text-xs font-mono uppercase tracking-widest dark:text-slate-400 text-slate-500">SESSION MONO-FOCUS SANCTUM</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <button onclick="toggleBrownNoise()" id="noiseBtn" class="px-3.5 py-1.5 rounded-full dark:bg-slate-900 bg-slate-100 border dark:border-slate-700 border-slate-300 text-xs dark:text-slate-300 text-slate-700 hover:border-indigo-400 transition flex items-center gap-2">
+          <span id="noiseIndicator">🔇</span> <span>Warm Brown Noise</span>
+        </button>
+        <button onclick="closeFocusModal()" class="px-3.5 py-1.5 rounded-full dark:bg-slate-900 bg-slate-100 hover:bg-rose-950 dark:border-slate-800 border-slate-300 text-xs dark:text-slate-400 text-slate-700 hover:text-rose-300 transition">
+          Exit Sanctum (Esc)
+        </button>
+      </div>
+    </div>
+
+    <div class="max-w-2xl w-full mx-auto my-auto text-center space-y-6">
+      <div id="breathingCue" class="flex flex-col items-center justify-center py-2">
+        <div class="w-12 h-12 rounded-full bg-indigo-500/20 border border-indigo-400/40 breathe-circle flex items-center justify-center text-xs text-indigo-300">
+          Inhale
+        </div>
+        <p class="text-[11px] dark:text-slate-400 text-slate-500 mt-3 font-mono">Close unrelated tabs. Lock onto one single objective.</p>
+      </div>
+
+      <div>
+        <span id="focusTaskBadge" class="px-3 py-1 rounded-full text-xs font-mono uppercase bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30">🔥 MIT • DEEP WORK</span>
+        <h2 id="focusTaskTitle" class="text-2xl sm:text-3xl font-bold dark:text-white text-slate-900 mt-3 tracking-tight">Task Title</h2>
+        <p id="focusTaskStep" class="text-sm text-emerald-600 dark:text-emerald-400 mt-2 font-medium">👉 Immediate Micro-Step: ...</p>
+      </div>
+
+      <div class="relative py-4">
+        <div id="timerDisplay" class="text-7xl sm:text-8xl font-mono font-bold tracking-tighter dark:text-white text-slate-900">
+          25:00
+        </div>
+        <p id="overflowSubtext" class="text-xs font-mono text-amber-600 dark:text-amber-400 mt-2 hidden">
+          🌊 FLOW STATE OVERFLOW ACTIVE — Counting extra time & auto-shifting later blocks
+        </p>
+      </div>
+
+      <div class="flex flex-wrap items-center justify-center gap-3">
+        <button onclick="toggleTimer()" id="startPauseBtn" class="px-8 py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm shadow-xl shadow-indigo-600/30 transition">
+          Start Focus Session
+        </button>
+        <button onclick="addFocusMinutes(10)" class="px-4 py-3.5 rounded-2xl dark:bg-slate-900 bg-slate-100 hover:dark:bg-slate-800 hover:bg-slate-200 dark:text-slate-200 text-slate-800 border dark:border-slate-700 border-slate-300 text-xs font-mono transition">
+          +10m (Ripple Schedule)
+        </button>
+        <button onclick="completeFromFocus()" class="px-5 py-3.5 rounded-2xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 text-xs font-semibold transition">
+          ✓ Complete Early & Reclaim Time
+        </button>
+      </div>
+
+      <div class="flex items-center justify-center gap-2 pt-2">
+        <span class="text-xs dark:text-slate-500 text-slate-400">Interval:</span>
+        <button onclick="setFocusMode(10)" class="text-xs px-2.5 py-1 rounded dark:bg-slate-900 bg-slate-100 dark:text-slate-400 text-slate-700 hover:text-indigo-600 dark:hover:text-white border dark:border-slate-800 border-slate-300">10m Starter</button>
+        <button onclick="setFocusMode(25)" class="text-xs px-2.5 py-1 rounded dark:bg-slate-900 bg-slate-100 dark:text-slate-400 text-slate-700 hover:text-indigo-600 dark:hover:text-white border dark:border-slate-800 border-slate-300">25m Pomodoro</button>
+        <button onclick="setFocusMode(45)" class="text-xs px-2.5 py-1 rounded dark:bg-slate-900 bg-slate-100 dark:text-slate-400 text-slate-700 hover:text-indigo-600 dark:hover:text-white border dark:border-slate-800 border-slate-300">45m Deep Wave</button>
+      </div>
+    </div>
+
+    <div class="max-w-2xl w-full mx-auto dark:bg-slate-900/90 bg-slate-100 border dark:border-slate-800 border-slate-300 rounded-2xl p-4">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-xs font-semibold dark:text-slate-300 text-slate-800 flex items-center gap-1.5">
+          <span>🧠</span> Impulse & Distraction Parking Lot
+        </span>
+        <span class="text-[11px] dark:text-slate-400 text-slate-500">Random urge to check something? Dump it here and stay in flow.</span>
+      </div>
+      <div class="flex gap-2">
+        <input id="distractionInput" onkeydown="if(event.key==='Enter') captureDistraction()" type="text" placeholder="e.g., Check vendor email..." class="flex-1 dark:bg-slate-950 bg-white border dark:border-slate-800 border-slate-300 rounded-xl px-3 py-2 text-xs dark:text-slate-200 text-slate-800 focus:outline-none focus:border-indigo-500" />
+        <button onclick="captureDistraction()" class="px-3.5 py-2 rounded-xl dark:bg-slate-800 bg-slate-200 hover:dark:bg-slate-700 hover:bg-slate-300 text-xs dark:text-slate-300 text-slate-800 font-medium shrink-0">
+          Park as LIT
+        </button>
+      </div>
+      <div id="parkedCount" class="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1.5 hidden">✓ Parked safely in your LIT queue.</div>
+    </div>
+  </div>
+
+  <script>
+    const MASTER_STORAGE_KEY = 'flowstate_os_master_state';
+    const GH_CONFIG_KEY = 'flowstate_os_github_config';
+
+    const CHRONOTYPES = {
+      lion: { id: 'lion', name: 'Early Lion', emoji: '🦁', tagline: 'Dawn Analytical Peak • Early Afternoon Trough', peakStart: 450, peakEnd: 690, dipStart: 780, dipEnd: 900, reboundStart: 900, reboundEnd: 1050 },
+      bear: { id: 'bear', name: 'Solar Bear', emoji: '🐻', tagline: 'Mid-Morning Peak • Classic 2:00 PM Trough • Late-Day Rebound', peakStart: 540, peakEnd: 780, dipStart: 840, dipEnd: 930, reboundStart: 930, reboundEnd: 1080 },
+      wolf: { id: 'wolf', name: 'Evening Wolf', emoji: '🐺', tagline: 'Slow Morning Ramp • Afternoon & Evening Creative Surge', peakStart: 690, peakEnd: 930, dipStart: 510, dipEnd: 660, reboundStart: 960, reboundEnd: 1140 },
+      dolphin: { id: 'dolphin', name: 'Burst Dolphin', emoji: '🐬', tagline: 'Late-Morning Precision Burst • Midday Recovery • Late Rebound', peakStart: 570, peakEnd: 750, dipStart: 810, dipEnd: 930, reboundStart: 930, reboundEnd: 1080 }
+    };
+
+    const DEFAULT_TASKS = [
+      { id: 't1', title: 'Morning Routine, Meditation & Leo Park Walk', microStep: 'Leash up & head out for 20-min low-impact walk', type: 'FIXED', energy: 'steady', duration: 45, fixedStartMin: 450, completed: true, subtasks: [] },
+      { id: 't2', title: 'Draft CO Natural Medicine Potency & Packaging Compliance Matrix', microStep: 'Open state DOR compliance rules PDF and extract Section 4 table', type: 'MIT', energy: 'sharp', duration: 60, fixedStartMin: null, completed: false, subtasks: [{ text: 'Define standardized capsule homogenizing SOP requirements', done: true }, { text: 'Map third-party lab stability & microbial testing intervals', done: false }] },
+      { id: 't3', title: 'Outreach to 3 Denver Extraction & Formulation Lab Directors', microStep: 'Draft concise 4-sentence intro note to first founder on LinkedIn', type: 'MIT', energy: 'sharp', duration: 45, fixedStartMin: null, completed: false, subtasks: [] },
+      { id: 't4', title: 'Evaluate Cleanroom Equipment & Commercial Facility Layouts', microStep: 'Compare square footage & HVAC specs on top 2 saved industrial listings', type: 'MIT', energy: 'steady', duration: 45, fixedStartMin: null, completed: false, subtasks: [] },
+      { id: 't5', title: 'Midday Reset, Lunch & Quick Mobility Break', microStep: 'Step away from screens for 45 mins', type: 'FIXED', energy: 'fried', duration: 45, fixedStartMin: 750, completed: false, subtasks: [] },
+      { id: 't6', title: 'Follow up with LiveWell Animal Hospital on Leo Radiographs', microStep: 'Reply to Patsy Mitch email confirming next mobility check-in', type: 'LIT', energy: 'fried', duration: 20, fixedStartMin: null, completed: false, subtasks: [] },
+      { id: 't7', title: 'Inbox Zero & Weekly Sunday Planning Prep', microStep: 'Clear starred emails and archive newsletters', type: 'LIT', energy: 'fried', duration: 25, fixedStartMin: null, completed: false, subtasks: [] },
+      { id: 't8', title: 'Review West Denver / Lakewood Real Estate Comps & Inspection Notes', microStep: 'Archive non-matching listings & flag top main-floor primary contender', type: 'LIT', energy: 'steady', duration: 30, fixedStartMin: null, completed: false, subtasks: [] },
+      { id: 't9', title: 'Late Afternoon Workout / Pickleball Court Session', microStep: 'Change gear & head out on time', type: 'FIXED', energy: 'steady', duration: 60, fixedStartMin: 1020, completed: false, subtasks: [] }
+    ];
+
+    let state = {
+      energy: 'steady',
+      manualEnergyOverride: false,
+      maxFocusMinutes: 360,
+      theme: 'system', // 'dark', 'light', or 'system'
+      soundEnabled: true, // Master auditory switch
+      goals: {
+        qGoal: 'Launch Downstream Formulation Venture & Compliance Framework',
+        mGoal: 'Complete CO Natural Medicine Lab Standards & 8 Founder Coffee Chats',
+        wGoal: 'Finalize Precision Dosing Matrix & Tour 2 Lakewood Properties'
+      },
+      chronotype: {
+        id: 'bear', name: 'Solar Bear', emoji: '🐻',
+        tagline: 'Mid-Morning Peak • Classic 2:00 PM Trough • Late-Day Rebound',
+        peakStart: 540, peakEnd: 780, dipStart: 840, dipEnd: 930,
+        reboundStart: 930, reboundEnd: 1080,
+        lastCalibratedISO: null, quarterlyPromptDismissed: false
+      },
+      tasks: []
+    };
+
+    let ghConfig = { owner: 'skmannin19', repo: 'flow', branch: 'main', token: '', autoSync: false };
+    let ghSyncTimeout = null;
+    let activeFocusTaskId = null;
+    let timerSeconds = 25 * 60;
+    let initialTimerSeconds = 25 * 60;
+    let timerInterval = null;
+    let isTimerRunning = false;
+    let isOverflow = false;
+    let audioCtx = null;
+    let noiseNode = null;
+    let isNoisePlaying = false;
+
+    async function init() {
+      // 1. Load GitHub Config
+      const savedGh = localStorage.getItem(GH_CONFIG_KEY);
+      if (savedGh) { try { ghConfig = { ...ghConfig, ...JSON.parse(savedGh) }; } catch (e) {} }
+      populateGitHubModalInputs();
+
+      // 2. Safe State Loading: Ensures user modifications in localStorage ALWAYS persist
+      // across page reloads and code deployments without ever wiping existing tasks.
+      const masterSaved = localStorage.getItem(MASTER_STORAGE_KEY);
+      if (masterSaved) {
+        try {
+          const parsed = JSON.parse(masterSaved);
+          state = {
+            ...state,
+            ...parsed,
+            goals: { ...state.goals, ...(parsed.goals || {}) },
+            chronotype: { ...state.chronotype, ...(parsed.chronotype || {}) },
+            tasks: (Array.isArray(parsed.tasks) && parsed.tasks.length > 0) ? parsed.tasks : JSON.parse(JSON.stringify(DEFAULT_TASKS))
+          };
+        } catch (e) {
+          console.error('Error loading master saved state:', e);
+          state.tasks = JSON.parse(JSON.stringify(DEFAULT_TASKS));
+        }
+      } else {
+        // If first time visit with no localStorage, attempt to fetch committed flow-data.json if present
+        try {
+          const resp = await fetch('./flow-data.json', { cache: 'no-cache' });
+          if (resp.ok) {
+            const remoteData = await resp.json();
+            if (remoteData && remoteData.tasks) {
+              state = { ...state, ...remoteData };
+              localStorage.setItem(MASTER_STORAGE_KEY, JSON.stringify(state));
+            } else {
+              state.tasks = JSON.parse(JSON.stringify(DEFAULT_TASKS));
+            }
+          } else {
+            state.tasks = JSON.parse(JSON.stringify(DEFAULT_TASKS));
+          }
+        } catch (e) {
+          state.tasks = JSON.parse(JSON.stringify(DEFAULT_TASKS));
+        }
+      }
+
+      // Initialize Theme (matches OS preference by default or user toggle)
+      applyTheme(state.theme || 'system');
+      updateAudioMasterUI();
+
+      document.getElementById('qGoal').value = state.goals?.qGoal || '';
+      document.getElementById('mGoal').value = state.goals?.mGoal || '';
+      document.getElementById('wGoal').value = state.goals?.wGoal || '';
+
+      if (ghConfig.token && ghConfig.autoSync) {
+        await pullStateFromGitHub(true);
+      }
+
+      checkQuarterlyCalibrationStatus();
+      inferRealtimeEnergyFromChronotype();
+      renderChronotypeUI();
+      recalculateSchedule();
+    }
+
+    // --- THEME ENGINE (Light/Dark + OS Shift Detection) ---
+    function applyTheme(mode) {
+      state.theme = mode;
+      saveState();
+
+      const htmlEl = document.documentElement;
+      const iconEl = document.getElementById('themeIcon');
+
+      let isDark = false;
+      if (mode === 'dark') {
+        isDark = true;
+      } else if (mode === 'light') {
+        isDark = false;
+      } else {
+        // System preference matching
+        isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      }
+
+      if (isDark) {
+        htmlEl.classList.add('dark');
+        iconEl.textContent = '🌙';
+      } else {
+        htmlEl.classList.remove('dark');
+        iconEl.textContent = '☀️';
+      }
+    }
+
+    function toggleTheme() {
+      if (state.theme === 'dark') {
+        applyTheme('light');
+      } else if (state.theme === 'light') {
+        applyTheme('system');
+      } else {
+        applyTheme('dark');
+      }
+    }
+
+    // Listen to real-time OS light/dark shifts if set to 'system'
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+      if (state.theme === 'system') {
+        applyTheme('system');
+      }
+    });
+
+    // --- AUDITORY & CHIME CONTROLS ---
+    function toggleAudioMaster() {
+      state.soundEnabled = !state.soundEnabled;
+      saveState();
+      updateAudioMasterUI();
+      if (!state.soundEnabled && isNoisePlaying) {
+        toggleBrownNoise();
+      }
+    }
+
+    function updateAudioMasterUI() {
+      const icon = document.getElementById('audioMasterIcon');
+      const btn = document.getElementById('audioMasterBtn');
+      if (state.soundEnabled) {
+        icon.textContent = '🔔';
+        btn.title = 'Mindful Chimes Enabled (Click to Mute)';
+        btn.classList.remove('opacity-50');
+      } else {
+        icon.textContent = '🔕';
+        btn.title = 'Mindful Chimes Muted (Click to Enable)';
+        btn.classList.add('opacity-50');
+      }
+    }
+
+    function playGentleChime(freq = 528, volume = 0.25) {
+      if (!state.soundEnabled) return;
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+
+        gain.gain.setValueAtTime(0.001, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(volume, audioCtx.currentTime + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 2.4);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 2.5);
+      } catch (e) {}
+    }
+
+    function toggleBrownNoise() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const indicator = document.getElementById('noiseIndicator');
+      const btn = document.getElementById('noiseBtn');
+
+      if (isNoisePlaying) {
+        if (noiseNode) { noiseNode.disconnect(); noiseNode = null; }
+        isNoisePlaying = false;
+        indicator.textContent = '🔇';
+        btn.classList.remove('border-indigo-400', 'text-indigo-300');
+      } else {
+        const bufferSize = 2 * audioCtx.sampleRate;
+        const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        let lastOut = 0.0;
+        for (let i = 0; i < bufferSize; i++) {
+          const white = Math.random() * 2 - 1;
+          output[i] = (lastOut + (0.02 * white)) / 1.02;
+          lastOut = output[i];
+          output[i] *= 0.12;
+        }
+
+        const whiteNoise = audioCtx.createBufferSource();
+        whiteNoise.buffer = noiseBuffer;
+        whiteNoise.loop = true;
+
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = 420;
+
+        whiteNoise.connect(filter);
+        filter.connect(audioCtx.destination);
+        whiteNoise.start(0);
+
+        noiseNode = filter;
+        isNoisePlaying = true;
+        indicator.textContent = '🔊';
+        btn.classList.add('border-indigo-400', 'text-indigo-300');
+      }
+    }
+
+    // --- DATA EXPORT & IMPORT (FAIL-SAFE PERSISTENCE) ---
+    function exportDataBackup() {
+      const jsonStr = JSON.stringify(state, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const dateStr = new Date().toISOString().split('T')[0];
+      a.href = url;
+      a.download = `flowstate-os-backup-${dateStr}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showGhStatus('✓ Backup downloaded successfully!');
+    }
+
+    function importDataBackup(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const imported = JSON.parse(e.target.result);
+          if (imported && (imported.tasks || imported.goals)) {
+            state = { ...state, ...imported };
+            saveState();
+            document.getElementById('qGoal').value = state.goals?.qGoal || '';
+            document.getElementById('mGoal').value = state.goals?.mGoal || '';
+            document.getElementById('wGoal').value = state.goals?.wGoal || '';
+            renderChronotypeUI();
+            recalculateSchedule();
+            showGhStatus('✓ Backup successfully restored!');
+          } else {
+            showGhStatus('⚠️ Invalid backup file format.', true);
+          }
+        } catch (err) {
+          showGhStatus('❌ Error reading backup: ' + err.message, true);
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // --- GITHUB & CORE LOGIC FUNCTIONS ---
+    function updateGoals() {
+      state.goals = {
+        qGoal: document.getElementById('qGoal').value,
+        mGoal: document.getElementById('mGoal').value,
+        wGoal: document.getElementById('wGoal').value
+      };
+      saveState();
+    }
+
+    function saveState() {
+      localStorage.setItem(MASTER_STORAGE_KEY, JSON.stringify(state));
+      const statusEl = document.getElementById('autoSaveStatus');
+      if (statusEl) {
+        statusEl.textContent = '✓ Auto-saved (' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ')';
+      }
+      if (ghConfig.token && ghConfig.autoSync) {
+        clearTimeout(ghSyncTimeout);
+        ghSyncTimeout = setTimeout(() => { pushStateToGitHub(true); }, 2500);
+      }
+    }
+
+    function openGitHubModal() { populateGitHubModalInputs(); document.getElementById('githubModal').classList.remove('hidden'); document.getElementById('githubModal').classList.add('flex'); }
+    function closeGitHubModal() { document.getElementById('githubModal').classList.add('hidden'); document.getElementById('githubModal').classList.remove('flex'); }
+    function populateGitHubModalInputs() {
+      document.getElementById('ghOwnerInput').value = ghConfig.owner || 'skmannin19';
+      document.getElementById('ghRepoInput').value = ghConfig.repo || 'flow';
+      document.getElementById('ghBranchInput').value = ghConfig.branch || 'main';
+      document.getElementById('ghTokenInput').value = ghConfig.token || '';
+      document.getElementById('ghAutoSyncToggle').checked = !!ghConfig.autoSync;
+    }
+    function saveGitHubConfig(showFeedback = false) {
+      ghConfig = {
+        owner: document.getElementById('ghOwnerInput').value.trim() || 'skmannin19',
+        repo: document.getElementById('ghRepoInput').value.trim() || 'flow',
+        branch: document.getElementById('ghBranchInput').value.trim() || 'main',
+        token: document.getElementById('ghTokenInput').value.trim(),
+        autoSync: document.getElementById('ghAutoSyncToggle').checked
+      };
+      localStorage.setItem(GH_CONFIG_KEY, JSON.stringify(ghConfig));
+      if (showFeedback) showGhStatus('✓ Settings saved.');
+    }
+    function showGhStatus(msg, isError = false) {
+      const banner = document.getElementById('ghStatusBanner');
+      banner.classList.remove('hidden');
+      banner.textContent = msg;
+      banner.className = `px-3.5 py-2.5 rounded-xl dark:bg-slate-950 bg-slate-100 border text-xs font-mono ${isError ? 'border-rose-500/40 text-rose-600 dark:text-rose-300' : 'border-emerald-500/40 text-emerald-600 dark:text-emerald-300'}`;
+    }
+    function utf8ToBase64(str) { return btoa(unescape(encodeURIComponent(str))); }
+    function base64ToUtf8(b64) { return decodeURIComponent(escape(atob(b64.replace(/\s/g, '')))); }
+
+    async function getGitHubFileSha(path) {
+      const url = `https://api.github.com/repos/${ghConfig.owner}/${ghConfig.repo}/contents/${path}?ref=${ghConfig.branch}`;
+      const res = await fetch(url, { headers: { 'Authorization': `Bearer ${ghConfig.token}`, 'Accept': 'application/vnd.github+json' } });
+      if (res.status === 200) { const data = await res.json(); return { sha: data.sha, content: data.content }; }
+      return { sha: null, content: null };
+    }
+
+    async function pushStateToGitHub(silent = false) {
+      saveGitHubConfig(false);
+      if (!ghConfig.token) { if (!silent) showGhStatus('⚠️ Please enter your GitHub Personal Access Token first.', true); return; }
+      try {
+        if (!silent) showGhStatus('⏳ Pushing flow-data.json...');
+        const existing = await getGitHubFileSha('flow-data.json');
+        const url = `https://api.github.com/repos/${ghConfig.owner}/${ghConfig.repo}/contents/flow-data.json`;
+        const body = { message: `Sync FlowState OS state`, content: utf8ToBase64(JSON.stringify(state, null, 2)), branch: ghConfig.branch };
+        if (existing.sha) body.sha = existing.sha;
+        const res = await fetch(url, { method: 'PUT', headers: { 'Authorization': `Bearer ${ghConfig.token}`, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        if (!res.ok) throw new Error(`GitHub API ${res.status}`);
+        if (!silent) showGhStatus('✓ Synced successfully to flow-data.json!');
+      } catch (err) { if (!silent) showGhStatus(`❌ Push Failed: ${err.message}`, true); }
+    }
+
+    async function pullStateFromGitHub(silent = false) {
+      saveGitHubConfig(false);
+      if (!ghConfig.token) { if (!silent) showGhStatus('⚠️ Please enter your token first.', true); return; }
+      try {
+        const existing = await getGitHubFileSha('flow-data.json');
+        if (!existing.content) return;
+        const remoteState = JSON.parse(base64ToUtf8(existing.content));
+        state = { ...state, ...remoteState };
+        localStorage.setItem(MASTER_STORAGE_KEY, JSON.stringify(state));
+        document.getElementById('qGoal').value = state.goals?.qGoal || '';
+        document.getElementById('mGoal').value = state.goals?.mGoal || '';
+        document.getElementById('wGoal').value = state.goals?.wGoal || '';
+        renderChronotypeUI();
+        recalculateSchedule();
+        if (!silent) showGhStatus('✓ Pulled latest tasks from GitHub!');
+      } catch (err) { if (!silent) showGhStatus(`❌ Pull Failed: ${err.message}`, true); }
+    }
+
+    function resetDefaultData() {
+      if (!confirm("Are you sure you want to reset all tasks to the sample template? This will replace your current tasks. (Tip: You can export a backup first in '💾 Data & Sync').")) {
+        return;
+      }
+      state.tasks = JSON.parse(JSON.stringify(DEFAULT_TASKS));
+      saveState();
+      recalculateSchedule();
+      showRippleNotice('↺ Reset to baseline day template.');
+    }
+
+    function checkQuarterlyCalibrationStatus() {
+      const banner = document.getElementById('quarterlyPromptBanner');
+      if (!state.chronotype.lastCalibratedISO && !state.chronotype.quarterlyPromptDismissed) { banner.classList.remove('hidden'); return; }
+      if (state.chronotype.lastCalibratedISO) {
+        const lastDate = new Date(state.chronotype.lastCalibratedISO);
+        const diffDays = Math.floor((new Date() - lastDate) / (1000 * 60 * 60 * 24));
+        if (diffDays >= 90 && !state.chronotype.quarterlyPromptDismissed) banner.classList.remove('hidden');
+        else banner.classList.add('hidden');
+      }
+    }
+
+    function dismissQuarterlyBanner() {
+      state.chronotype.quarterlyPromptDismissed = true;
+      if (!state.chronotype.lastCalibratedISO) state.chronotype.lastCalibratedISO = new Date().toISOString().split('T')[0];
+      document.getElementById('quarterlyPromptBanner').classList.add('hidden');
+      saveState();
+      renderChronotypeUI();
+    }
+
+    function inferRealtimeEnergyFromChronotype() {
+      if (state.manualEnergyOverride) { setEnergy(state.energy, false); return; }
+      const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
+      const c = state.chronotype;
+      let inferred = 'steady';
+      if (nowMins >= c.peakStart && nowMins < c.peakEnd) inferred = 'sharp';
+      else if (nowMins >= c.dipStart && nowMins < c.dipEnd) inferred = 'fried';
+      else if (nowMins >= c.reboundStart && nowMins < c.reboundEnd) inferred = 'steady';
+      setEnergy(inferred, false);
+    }
+
+    function getCircadianPhaseForMinute(min) {
+      const c = state.chronotype;
+      if (min >= c.peakStart && min < c.peakEnd) return { zone: 'PEAK', label: '🔥 Peak Wave', color: 'text-rose-600 dark:text-rose-300 bg-rose-500/15 border-rose-500/30' };
+      if (min >= c.dipStart && min < c.dipEnd) return { zone: 'DIP', label: '🌊 Trough Window', color: 'text-emerald-600 dark:text-emerald-300 bg-emerald-500/15 border-emerald-500/30' };
+      if (min >= c.reboundStart && min < c.reboundEnd) return { zone: 'REBOUND', label: '🔋 Rebound Wave', color: 'text-amber-600 dark:text-amber-300 bg-amber-500/15 border-amber-500/30' };
+      return { zone: 'RAMP', label: '☀️ Transition', color: 'text-slate-500 dark:text-slate-400 bg-slate-200 dark:bg-slate-800 border-slate-300 dark:border-slate-700' };
+    }
+
+    function renderChronotypeUI() {
+      const c = state.chronotype;
+      document.getElementById('chronoHeaderEmoji').textContent = c.emoji;
+      document.getElementById('chronoHeaderName').textContent = c.name;
+      document.getElementById('chronoHeaderSub').textContent = `Peak: ${formatMinShort(c.peakStart)}–${formatMinShort(c.peakEnd)}`;
+
+      document.getElementById('waveCardEmoji').textContent = c.emoji;
+      document.getElementById('waveCardTitle').textContent = `${c.name} Chronotype Wave`;
+      document.getElementById('waveCardDesc').textContent = c.tagline;
+
+      const calDate = c.lastCalibratedISO ? new Date(c.lastCalibratedISO + 'T12:00:00') : new Date();
+      const nextDate = new Date(calDate); nextDate.setDate(nextDate.getDate() + 90);
+      document.getElementById('lastCalibratedText').textContent = `Last calibrated: ${calDate.toLocaleDateString()}`;
+      document.getElementById('nextQuarterlyReviewText').textContent = `Next review: ${nextDate.toLocaleDateString()}`;
+
+      document.getElementById('waveSegmentsContainer').innerHTML = `
+        <div class="px-3 py-2 rounded-xl bg-rose-500/10 border border-rose-500/30 flex flex-col justify-between">
+          <div class="flex items-center justify-between"><span class="font-semibold text-rose-600 dark:text-rose-300">🔥 Peak Wave</span><span class="font-mono text-[10px] text-rose-500 dark:text-rose-200">${formatMinShort(c.peakStart)}–${formatMinShort(c.peakEnd)}</span></div>
+          <span class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Schedule: Deep MITs</span>
+        </div>
+        <div class="px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex flex-col justify-between">
+          <div class="flex items-center justify-between"><span class="font-semibold text-emerald-600 dark:text-emerald-300">🌊 Trough Window</span><span class="font-mono text-[10px] text-emerald-500 dark:text-emerald-200">${formatMinShort(c.dipStart)}–${formatMinShort(c.dipEnd)}</span></div>
+          <span class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Schedule: Rest & LITs</span>
+        </div>
+        <div class="px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 flex flex-col justify-between">
+          <div class="flex items-center justify-between"><span class="font-semibold text-amber-600 dark:text-amber-300">🔋 Rebound Wave</span><span class="font-mono text-[10px] text-amber-500 dark:text-amber-200">${formatMinShort(c.reboundStart)}–${formatMinShort(c.reboundEnd)}</span></div>
+          <span class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Schedule: Steady</span>
+        </div>
+      `;
+
+      document.getElementById('presetCardsContainer').innerHTML = Object.values(CHRONOTYPES).map(arch => `
+        <div onclick="applyChronotypePreset('${arch.id}')" class="p-3.5 rounded-2xl border ${c.id === arch.id ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30' : 'dark:border-slate-800 border-slate-200 dark:bg-slate-950/80 bg-slate-50 hover:border-slate-400'} cursor-pointer transition">
+          <div class="flex items-center justify-between"><span class="text-sm font-bold dark:text-white text-slate-900 flex items-center gap-2"><span>${arch.emoji}</span> ${arch.name}</span>${c.id === arch.id ? `<span class="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-700 dark:text-indigo-300">Active</span>` : ''}</div>
+          <p class="text-[11px] dark:text-slate-400 text-slate-500 mt-1">${arch.tagline}</p>
+        </div>
+      `).join('');
+    }
+
+    function openChronotypeModal(defaultTab = 'quiz') { document.getElementById('chronotypeModal').classList.remove('hidden'); document.getElementById('chronotypeModal').classList.add('flex'); switchChronoTab(defaultTab === 'overview' ? 'direct' : 'quiz'); }
+    function closeChronotypeModal() { document.getElementById('chronotypeModal').classList.add('hidden'); document.getElementById('chronotypeModal').classList.remove('flex'); }
+    function switchChronoTab(tab) {
+      const q = document.getElementById('chronoQuizView'), d = document.getElementById('chronoDirectView'), bq = document.getElementById('tabBtnQuiz'), bd = document.getElementById('tabBtnDirect');
+      if (tab === 'quiz') { q.classList.remove('hidden'); d.classList.add('hidden'); bq.className = 'py-2 rounded-lg font-semibold bg-indigo-600 text-white transition'; bd.className = 'py-2 rounded-lg font-semibold dark:text-slate-400 text-slate-600 hover:text-white transition'; }
+      else { q.classList.add('hidden'); d.classList.remove('hidden'); bd.className = 'py-2 rounded-lg font-semibold bg-indigo-600 text-white transition'; bq.className = 'py-2 rounded-lg font-semibold dark:text-slate-400 text-slate-600 hover:text-white transition'; }
+    }
+
+    function scoreChronotypeQuiz() {
+      const votes = [document.getElementById('q1Input').value, document.getElementById('q2Input').value, document.getElementById('q3Input').value];
+      const shiftMod = document.getElementById('q4Input').value;
+      const tally = { lion: 0, bear: 0, wolf: 0, dolphin: 0 };
+      votes.forEach(v => tally[v]++);
+      let winner = 'bear', max = -1;
+      Object.entries(tally).forEach(([k, s]) => { if (s > max) { max = s; winner = k; } });
+      const base = JSON.parse(JSON.stringify(CHRONOTYPES[winner]));
+      let offset = shiftMod === 'early_shift' ? -30 : (shiftMod === 'late_shift' ? 30 : 0);
+      state.chronotype = { ...base, peakStart: base.peakStart + offset, peakEnd: base.peakEnd + offset, dipStart: base.dipStart + offset, dipEnd: base.dipEnd + offset, reboundStart: base.reboundStart + offset, reboundEnd: base.reboundEnd + offset, lastCalibratedISO: new Date().toISOString().split('T')[0], quarterlyPromptDismissed: true };
+      document.getElementById('quarterlyPromptBanner').classList.add('hidden');
+      saveState(); renderChronotypeUI(); optimizeByChronotype(); closeChronotypeModal();
+    }
+
+    function applyChronotypePreset(presetId) {
+      const base = JSON.parse(JSON.stringify(CHRONOTYPES[presetId]));
+      state.chronotype = { ...base, lastCalibratedISO: new Date().toISOString().split('T')[0], quarterlyPromptDismissed: true };
+      saveState(); renderChronotypeUI(); optimizeByChronotype();
+    }
+
+    function saveCustomChronoWindows() {
+      const ps = parseInt(document.getElementById('customPeakStart').value, 10);
+      const ds = parseInt(document.getElementById('customDipStart').value, 10);
+      const rs = parseInt(document.getElementById('customReboundStart').value, 10);
+      state.chronotype.peakStart = ps; state.chronotype.peakEnd = Math.max(ps + 180, ds - 30);
+      state.chronotype.dipStart = ds; state.chronotype.dipEnd = rs;
+      state.chronotype.reboundStart = rs; state.chronotype.reboundEnd = rs + 150;
+      state.chronotype.lastCalibratedISO = new Date().toISOString().split('T')[0];
+      state.chronotype.quarterlyPromptDismissed = true;
+      saveState(); renderChronotypeUI(); optimizeByChronotype(); closeChronotypeModal();
+    }
+
+    function setEnergy(level, isManual = false) {
+      state.energy = level; if (isManual) state.manualEnergyOverride = true; saveState();
+      const styles = { sharp: 'bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-500/40', steady: 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/40', fried: 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40' };
+      ['sharp', 'steady', 'fried'].forEach(l => {
+        const btn = document.getElementById(`energy-${l}`);
+        btn.className = 'energy-btn px-2.5 py-1 rounded-lg text-xs font-medium transition flex items-center gap-1.5 ' + (l === level ? styles[l] : 'dark:text-slate-400 text-slate-600 hover:dark:text-slate-200 hover:text-slate-900');
+      });
+      updateRecommendationBanner(); renderPriorityLists();
+    }
+
+    function getRecommendedTask() {
+      const incomplete = state.tasks.filter(t => !t.completed && t.type !== 'FIXED');
+      if (incomplete.length === 0) return null;
+      return incomplete.find(t => t.type === 'MIT' && t.energy === state.energy) || incomplete.find(t => t.energy === state.energy) || incomplete.find(t => t.type === 'MIT') || incomplete[0];
+    }
+
+    function updateRecommendationBanner() {
+      const rec = getRecommendedTask();
+      const icons = { sharp: '🔴', steady: '🟡', fried: '🟢' };
+      const c = state.chronotype;
+      const labels = {
+        sharp: `${c.emoji} ${c.name} Peak Wave (${formatMinShort(c.peakStart)}–${formatMinShort(c.peakEnd)})`,
+        steady: `${c.emoji} ${c.name} Rebound Wave (${formatMinShort(c.reboundStart)}–${formatMinShort(c.reboundEnd)})`,
+        fried: `${c.emoji} ${c.name} Trough Window (${formatMinShort(c.dipStart)}–${formatMinShort(c.dipEnd)})`
+      };
+      document.getElementById('recIcon').textContent = icons[state.energy];
+      document.getElementById('recEnergyStatus').textContent = labels[state.energy];
+      if (!rec) { document.getElementById('recTaskTitle').textContent = '🎉 All scheduled work blocks complete!'; document.getElementById('recSubStep').textContent = 'Enjoy your evening wind-down.'; return; }
+      document.getElementById('recTaskTitle').textContent = rec.title;
+      document.getElementById('recSubStep').textContent = `👉 2-Min Starter Step: ${rec.microStep || 'Open workspace & set 10m timer'}`;
+    }
+
+    function launchRecommendedFocus() { const rec = getRecommendedTask(); if (rec) openFocusModal(rec.id); }
+
+    function addTask(e) {
+      e.preventDefault();
+      const title = document.getElementById('taskTitleInput').value.trim();
+      const micro = document.getElementById('taskMicroInput').value.trim();
+      let type = document.getElementById('taskTypeInput').value;
+      const energy = document.getElementById('taskEnergyInput').value;
+      const duration = parseInt(document.getElementById('taskDurationInput').value, 10);
+      if (!title) return;
+
+      if (type === 'MIT' && state.tasks.filter(t => t.type === 'MIT' && !t.completed).length >= 3) {
+        type = 'LIT'; showRippleNotice('🛡️ MIT Cap Reached (Max 3/day). Added as LIT.');
+      }
+
+      state.tasks.push({ id: 't_' + Date.now(), title, microStep: micro || `Draft rough framework`, type, energy, duration, fixedStartMin: type === 'FIXED' ? 840 : null, completed: false, subtasks: [] });
+      document.getElementById('taskTitleInput').value = ''; document.getElementById('taskMicroInput').value = '';
+      saveState(); optimizeByChronotype(false);
+    }
+
+    function autoBreakdownTask(taskId) {
+      const task = state.tasks.find(t => t.id === taskId);
+      if (!task) return;
+      task.subtasks = [{ text: '2-Min Setup & browser tab cleanup', done: false }, { text: 'Core 15-min rough sprint', done: false }, { text: '10-min review & polish', done: false }];
+      saveState(); renderPriorityLists();
+    }
+
+    function toggleSubtask(taskId, idx) { const t = state.tasks.find(x => x.id === taskId); if (t && t.subtasks[idx]) { t.subtasks[idx].done = !t.subtasks[idx].done; saveState(); renderPriorityLists(); } }
+    function toggleTaskComplete(taskId) { const t = state.tasks.find(x => x.id === taskId); if (t) { t.completed = !t.completed; saveState(); recalculateSchedule(); updateRecommendationBanner(); } }
+    function promoteDemoteTask(taskId) {
+      const t = state.tasks.find(x => x.id === taskId);
+      if (!t || t.type === 'FIXED') return;
+      if (t.type === 'LIT') {
+        if (state.tasks.filter(x => x.type === 'MIT' && !x.completed).length >= 3) { showRippleNotice('⚠️ Max 3 MITs reached.'); return; }
+        t.type = 'MIT';
+      } else t.type = 'LIT';
+      saveState(); recalculateSchedule();
+    }
+    function deleteTask(taskId) { state.tasks = state.tasks.filter(x => x.id !== taskId); saveState(); recalculateSchedule(); }
+
+    function adjustTaskDuration(taskId, delta) {
+      const t = state.tasks.find(x => x.id === taskId);
+      if (!t) return;
+      t.duration = Math.max(10, t.duration + delta);
+      saveState(); recalculateSchedule();
+    }
+
+    function optimizeByChronotype(showNotice = true) {
+      const c = state.chronotype;
+      state.tasks.sort((a, b) => {
+        if (a.type === 'FIXED' || b.type === 'FIXED') return 0;
+        const score = (t) => (t.type === 'MIT' && t.energy === 'sharp' ? 1 : (t.type === 'MIT' ? 2 : (t.energy === 'fried' ? 3 : 4)));
+        return score(a) - score(b);
+      });
+      saveState(); recalculateSchedule();
+      if (showNotice) showRippleNotice(`🧬 Aligned to ${c.emoji} ${c.name} wave.`);
+    }
+
+    function formatMinToTime(mins) {
+      const h24 = Math.floor(mins / 60), m = mins % 60;
+      return `${h24 % 12 === 0 ? 12 : h24 % 12}:${m.toString().padStart(2, '0')} ${h24 >= 12 ? 'PM' : 'AM'}`;
+    }
+    function formatMinShort(mins) {
+      const h24 = Math.floor(mins / 60), m = mins % 60;
+      return m === 0 ? `${h24 % 12 || 12}${h24 >= 12 ? 'p' : 'a'}` : `${h24 % 12 || 12}:${m.toString().padStart(2, '0')}${h24 >= 12 ? 'p' : 'a'}`;
+    }
+
+    function recalculateSchedule() {
+      const includeBuffers = document.getElementById('bufferToggle').checked;
+      const c = state.chronotype;
+      const fixed = state.tasks.filter(t => t.type === 'FIXED').sort((a, b) => (a.fixedStartMin || 540) - (b.fixedStartMin || 540));
+      const flexible = state.tasks.filter(t => t.type !== 'FIXED');
+
+      let cursor = Math.min(c.peakStart, 510), focusMins = 0, restInserted = false;
+      const blocks = [], overflow = [];
+
+      fixed.forEach(ft => { ft.startMin = ft.fixedStartMin; ft.endMin = ft.fixedStartMin + ft.duration; });
+
+      flexible.forEach(t => {
+        if (focusMins + t.duration > state.maxFocusMinutes && !t.completed) { overflow.push(t); return; }
+        let placed = false;
+        while (!placed) {
+          if (includeBuffers && !restInserted && cursor >= c.dipStart && cursor <= c.dipStart + 45) {
+            const conflict = fixed.find(ft => cursor < ft.endMin && cursor + 20 > ft.startMin);
+            if (!conflict) {
+              blocks.push({ kind: 'circadian_rest', startMin: cursor, endMin: cursor + 20, label: `🌊 ${c.name} Trough Reset: 20m NSDR & Walk` });
+              cursor += 20; restInserted = true;
+            }
+          }
+          const conflict = fixed.find(ft => cursor < ft.endMin && cursor + t.duration > ft.startMin);
+          if (conflict) { cursor = conflict.endMin + (includeBuffers ? 10 : 0); }
+          else {
+            t.startMin = cursor; t.endMin = cursor + t.duration; cursor = t.endMin; focusMins += t.duration;
+            blocks.push({ kind: 'task', task: t });
+            if (includeBuffers && (t.energy === 'sharp' || t.duration >= 45)) {
+              blocks.push({ kind: 'buffer', startMin: cursor, endMin: cursor + 15, label: '15m Decompression Buffer' });
+              cursor += 15;
+            }
+            placed = true;
+          }
+        }
+      });
+
+      fixed.forEach(ft => blocks.push({ kind: 'task', task: ft }));
+      blocks.sort((a, b) => (a.kind === 'task' ? a.task.startMin : a.startMin) - (b.kind === 'task' ? b.task.startMin : b.startMin));
+
+      renderPriorityLists(); renderTimeline(blocks, overflow); updateCapacityBar(focusMins); updateRecommendationBanner();
+    }
+
+    function updateCapacityBar(focusMins) {
+      const max = state.maxFocusMinutes;
+      const pct = Math.min(100, Math.round((focusMins / max) * 100));
+      const capText = document.getElementById('capacityText');
+      const capBar = document.getElementById('capacityBar');
+      if (capText) capText.textContent = `${(focusMins / 60).toFixed(1)} / ${(max / 60).toFixed(1)} hrs`;
+      if (capBar) capBar.style.width = `${pct}%`;
+    }
+
+    function renderPriorityLists() {
+      const mits = state.tasks.filter(t => t.type === 'MIT'), lits = state.tasks.filter(t => t.type === 'LIT');
+      document.getElementById('mitCountBadge').textContent = `${mits.filter(t => !t.completed).length} / 3 Active`;
+      document.getElementById('litCountBadge').textContent = `${lits.filter(t => !t.completed).length} Pending`;
+
+      document.getElementById('mitList').innerHTML = mits.map(t => renderCard(t)).join('') || `<div class="text-xs text-slate-400 py-3 text-center border border-dashed rounded-xl">No MITs selected.</div>`;
+      document.getElementById('litList').innerHTML = lits.map(t => renderCard(t)).join('') || `<div class="text-xs text-slate-400 py-3 text-center border border-dashed rounded-xl">All LITs cleared!</div>`;
+    }
+
+    function renderCard(t) {
+      const badges = { sharp: '🔴 Peak', steady: '🟡 Rebound', fried: '🟢 Trough' }[t.energy];
+      const subs = t.subtasks?.map((st, i) => `<label class="flex items-center gap-2 text-xs ${st.done ? 'line-through text-slate-400' : 'dark:text-slate-300 text-slate-700'} cursor-pointer"><input type="checkbox" ${st.done ? 'checked' : ''} onchange="toggleSubtask('${t.id}', ${i})" class="accent-emerald-500 rounded" /><span>${st.text}</span></label>`).join('') || '';
+      return `
+        <div class="p-3 rounded-xl dark:bg-slate-950/90 bg-white border dark:border-slate-800 border-slate-200 shadow-sm transition">
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex items-start gap-2.5">
+              <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTaskComplete('${t.id}')" class="mt-1 accent-indigo-500 w-4 h-4 rounded cursor-pointer" />
+              <div>
+                <div class="flex flex-wrap items-center gap-1.5"><span class="text-xs font-semibold ${t.completed ? 'line-through text-slate-400' : 'dark:text-slate-100 text-slate-900'}">${t.title}</span><span class="text-[10px] px-1.5 py-0.5 rounded border">${badges}</span><span class="text-[10px] font-mono dark:text-slate-400 text-slate-500">${t.duration}m</span></div>
+                <p class="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1">↳ 2m Starter: ${t.microStep}</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-1">
+              ${!t.completed ? `<button onclick="openFocusModal('${t.id}')" class="px-2 py-1 rounded bg-indigo-600 text-white text-[10px] font-semibold">Focus</button>` : ''}
+              <button onclick="autoBreakdownTask('${t.id}')" class="p-1 hover:text-emerald-500 text-xs">🪄</button>
+              <button onclick="promoteDemoteTask('${t.id}')" class="p-1 hover:text-amber-500 text-xs">⇅</button>
+              <button onclick="deleteTask('${t.id}')" class="p-1 hover:text-rose-500 text-xs">✕</button>
+            </div>
+          </div>
+          ${subs ? `<div class="mt-2.5 pt-2 border-t dark:border-slate-800 border-slate-100 space-y-1.5">${subs}</div>` : ''}
+        </div>`;
+    }
+
+    function renderTimeline(blocks, overflow) {
+      document.getElementById('timelineContainer').innerHTML = blocks.map(item => {
+        if (item.kind === 'circadian_rest') return `<div class="flex items-center justify-between px-3.5 py-2 rounded-xl bg-emerald-950/20 border border-emerald-500/40 text-xs text-emerald-700 dark:text-emerald-200"><span class="font-mono">${formatMinToTime(item.startMin)} – ${formatMinToTime(item.endMin)}</span><span>${item.label}</span></div>`;
+        if (item.kind === 'buffer') return `<div class="flex items-center gap-3 px-3 py-1.5 rounded-xl border border-dashed dark:border-slate-800 border-slate-200 text-[11px] text-slate-500"><span class="font-mono">${formatMinToTime(item.startMin)}</span><span>☕ ${item.label}</span></div>`;
+        const t = item.task, p = getCircadianPhaseForMinute(t.startMin);
+        return `
+          <div class="p-3 rounded-xl border dark:border-slate-800 border-slate-200 dark:bg-slate-950/90 bg-white flex items-center justify-between gap-3 ${t.completed ? 'opacity-50' : ''}">
+            <div class="flex items-center gap-3">
+              <div class="font-mono text-xs dark:text-slate-300 text-slate-700 w-32 shrink-0">${formatMinToTime(t.startMin)} – ${formatMinToTime(t.endMin)}</div>
+              <div>
+                <div class="flex items-center gap-1.5"><span class="text-xs font-semibold dark:text-white text-slate-900 ${t.completed ? 'line-through' : ''}">${t.title}</span><span class="text-[10px] font-mono px-1 rounded border ${p.color}">${p.label}</span></div>
+                <p class="text-[11px] dark:text-slate-400 text-slate-500">${t.microStep}</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-1 shrink-0">
+              ${!t.completed ? `<button onclick="adjustTaskDuration('${t.id}', -15)" class="px-2 py-1 rounded bg-slate-100 dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 text-[10px] font-mono">-15m</button><button onclick="adjustTaskDuration('${t.id}', 15)" class="px-2 py-1 rounded bg-slate-100 dark:bg-slate-900 text-amber-600 dark:text-amber-400 text-[10px] font-mono">+15m</button><button onclick="openFocusModal('${t.id}')" class="px-2.5 py-1 rounded bg-indigo-600 text-white text-xs">▶ Focus</button>` : '<span class="text-xs text-emerald-500 font-mono">✓ Done</span>'}
+            </div>
+          </div>`;
+      }).join('');
+
+      const ow = document.getElementById('overflowContainer');
+      if (overflow.length > 0) {
+        ow.classList.remove('hidden');
+        document.getElementById('overflowList').innerHTML = overflow.map(ot => `<div class="flex items-center justify-between px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs"><span class="font-semibold text-amber-700 dark:text-amber-200">${ot.title} (${ot.duration}m)</span><button onclick="adjustTaskDuration('${ot.id}', -15)" class="underline text-amber-600 dark:text-amber-300">Shrink to fit</button></div>`).join('');
+      } else ow.classList.add('hidden');
+    }
+
+    function showRippleNotice(msg) { const b = document.getElementById('rippleAlert'); document.getElementById('rippleAlertText').textContent = msg; b.classList.remove('hidden'); }
+    function toggleHorizonModal() { document.getElementById('horizonBar').classList.toggle('hidden'); }
+
+    // Focus Timer
+    function openFocusModal(taskId) {
+      const t = state.tasks.find(x => x.id === taskId); if (!t) return;
+      activeFocusTaskId = taskId; isOverflow = false; clearInterval(timerInterval); isTimerRunning = false;
+      timerSeconds = (t.duration <= 25 ? t.duration : 25) * 60; initialTimerSeconds = timerSeconds;
+      document.getElementById('focusTaskBadge').textContent = `${t.type} • ${t.energy.toUpperCase()}`;
+      document.getElementById('focusTaskTitle').textContent = t.title;
+      document.getElementById('focusTaskStep').textContent = `👉 Starter Step: ${t.microStep}`;
+      document.getElementById('startPauseBtn').textContent = 'Start Focus Session';
+      document.getElementById('overflowSubtext').classList.add('hidden');
+      updateTimerUI(); document.getElementById('focusModal').classList.remove('hidden'); document.getElementById('focusModal').classList.add('flex');
+    }
+    function closeFocusModal() { clearInterval(timerInterval); isTimerRunning = false; if (isNoisePlaying) toggleBrownNoise(); document.getElementById('focusModal').classList.add('hidden'); document.getElementById('focusModal').classList.remove('flex'); }
+    function setFocusMode(mins) { clearInterval(timerInterval); isTimerRunning = false; isOverflow = false; timerSeconds = mins * 60; initialTimerSeconds = timerSeconds; updateTimerUI(); }
+    
+    function toggleTimer() {
+      const btn = document.getElementById('startPauseBtn');
+      if (isTimerRunning) { clearInterval(timerInterval); isTimerRunning = false; btn.textContent = 'Resume Focus'; }
+      else {
+        isTimerRunning = true; btn.textContent = 'Pause Session';
+        playGentleChime(528, 0.3);
+        timerInterval = setInterval(() => {
+          if (!isOverflow) {
+            timerSeconds--;
+            if (timerSeconds > 0 && (initialTimerSeconds - timerSeconds) % 600 === 0) playGentleChime(432, 0.2);
+            if (timerSeconds <= 0) { isOverflow = true; timerSeconds = 0; playGentleChime(660, 0.5); document.getElementById('overflowSubtext').classList.remove('hidden'); }
+          } else timerSeconds++;
+          updateTimerUI();
+        }, 1000);
+      }
+    }
+
+    function updateTimerUI() {
+      const m = Math.floor(timerSeconds / 60), s = timerSeconds % 60;
+      document.getElementById('timerDisplay').textContent = `${isOverflow ? '+' : ''}${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    }
+
+    function addFocusMinutes(mins) { if (activeFocusTaskId) adjustTaskDuration(activeFocusTaskId, mins); if (!isOverflow) { timerSeconds += mins * 60; updateTimerUI(); } }
+    function completeFromFocus() { if (activeFocusTaskId) { const t = state.tasks.find(x => x.id === activeFocusTaskId); if (t) t.completed = true; saveState(); recalculateSchedule(); } playGentleChime(880, 0.4); closeFocusModal(); }
+    function captureDistraction() {
+      const inp = document.getElementById('distractionInput'), val = inp.value.trim(); if (!val) return;
+      state.tasks.push({ id: 't_' + Date.now(), title: val, microStep: 'Review during trough', type: 'LIT', energy: 'fried', duration: 15, fixedStartMin: null, completed: false, subtasks: [] });
+      inp.value = ''; saveState(); recalculateSchedule();
+      const p = document.getElementById('parkedCount'); p.classList.remove('hidden'); setTimeout(() => p.classList.add('hidden'), 3000);
+    }
+
+    window.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeFocusModal(); closeChronotypeModal(); closeGitHubModal(); } });
+    window.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>

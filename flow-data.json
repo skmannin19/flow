@@ -1,0 +1,136 @@
+{
+  "energy": "steady",
+  "manualEnergyOverride": false,
+  "maxFocusMinutes": 360,
+  "theme": "system",
+  "soundEnabled": true,
+  "goals": {
+    "qGoal": "Launch Downstream Formulation Venture & Compliance Framework",
+    "mGoal": "Complete CO Natural Medicine Lab Standards & 8 Founder Coffee Chats",
+    "wGoal": "Finalize Precision Dosing Matrix & Tour 2 Lakewood Properties"
+  },
+  "chronotype": {
+    "id": "bear",
+    "name": "Solar Bear",
+    "emoji": "🐻",
+    "tagline": "Mid-Morning Peak • Classic 2:00 PM Trough • Late-Day Rebound",
+    "peakStart": 540,
+    "peakEnd": 780,
+    "dipStart": 840,
+    "dipEnd": 930,
+    "reboundStart": 930,
+    "reboundEnd": 1080,
+    "lastCalibratedISO": null,
+    "quarterlyPromptDismissed": false
+  },
+  "tasks": [
+    {
+      "id": "t1",
+      "title": "Morning Routine, Meditation & Leo Park Walk",
+      "microStep": "Leash up & head out for 20-min low-impact walk",
+      "type": "FIXED",
+      "energy": "steady",
+      "duration": 45,
+      "fixedStartMin": 450,
+      "completed": true,
+      "subtasks": []
+    },
+    {
+      "id": "t2",
+      "title": "Draft CO Natural Medicine Potency & Packaging Compliance Matrix",
+      "microStep": "Open state DOR compliance rules PDF and extract Section 4 table",
+      "type": "MIT",
+      "energy": "sharp",
+      "duration": 60,
+      "fixedStartMin": null,
+      "completed": false,
+      "subtasks": [
+        {
+          "text": "Define standardized capsule homogenizing SOP requirements",
+          "done": true
+        },
+        {
+          "text": "Map third-party lab stability & microbial testing intervals",
+          "done": false
+        }
+      ]
+    },
+    {
+      "id": "t3",
+      "title": "Outreach to 3 Denver Extraction & Formulation Lab Directors",
+      "microStep": "Draft concise 4-sentence intro note to first founder on LinkedIn",
+      "type": "MIT",
+      "energy": "sharp",
+      "duration": 45,
+      "fixedStartMin": null,
+      "completed": false,
+      "subtasks": []
+    },
+    {
+      "id": "t4",
+      "title": "Evaluate Cleanroom Equipment & Commercial Facility Layouts",
+      "microStep": "Compare square footage & HVAC specs on top 2 saved industrial listings",
+      "type": "MIT",
+      "energy": "steady",
+      "duration": 45,
+      "fixedStartMin": null,
+      "completed": false,
+      "subtasks": []
+    },
+    {
+      "id": "t5",
+      "title": "Midday Reset, Lunch & Quick Mobility Break",
+      "microStep": "Step away from screens for 45 mins",
+      "type": "FIXED",
+      "energy": "fried",
+      "duration": 45,
+      "fixedStartMin": 750,
+      "completed": false,
+      "subtasks": []
+    },
+    {
+      "id": "t6",
+      "title": "Follow up with LiveWell Animal Hospital on Leo Radiographs",
+      "microStep": "Reply to Patsy Mitch email confirming next mobility check-in",
+      "type": "LIT",
+      "energy": "fried",
+      "duration": 20,
+      "fixedStartMin": null,
+      "completed": false,
+      "subtasks": []
+    },
+    {
+      "id": "t7",
+      "title": "Inbox Zero & Weekly Sunday Planning Prep",
+      "microStep": "Clear starred emails and archive newsletters",
+      "type": "LIT",
+      "energy": "fried",
+      "duration": 25,
+      "fixedStartMin": null,
+      "completed": false,
+      "subtasks": []
+    },
+    {
+      "id": "t8",
+      "title": "Review West Denver / Lakewood Real Estate Comps & Inspection Notes",
+      "microStep": "Archive non-matching listings & flag top main-floor primary contender",
+      "type": "LIT",
+      "energy": "steady",
+      "duration": 30,
+      "fixedStartMin": null,
+      "completed": false,
+      "subtasks": []
+    },
+    {
+      "id": "t9",
+      "title": "Late Afternoon Workout / Pickleball Court Session",
+      "microStep": "Change gear & head out on time",
+      "type": "FIXED",
+      "energy": "steady",
+      "duration": 60,
+      "fixedStartMin": 1020,
+      "completed": false,
+      "subtasks": []
+    }
+  ]
+}
