@@ -96,7 +96,7 @@
         <div>
           <h1 class="font-bold text-base tracking-tight flex items-center gap-2">
             FlowState OS
-            <span class="text-[11px] font-mono uppercase px-2 py-0.5 rounded-full dark:bg-indigo-500/10 dark:text-indigo-400 bg-indigo-50 text-indigo-600 border dark:border-indigo-500/20 border-indigo-200">v3.9 Live</span>
+            <span class="text-[11px] font-mono uppercase px-2 py-0.5 rounded-full dark:bg-indigo-500/10 dark:text-indigo-400 bg-indigo-50 text-indigo-600 border dark:border-indigo-500/20 border-indigo-200">v4.0 Live</span>
           </h1>
           <div class="flex items-center gap-2">
             <p class="text-xs dark:text-slate-400 text-slate-500" id="currentDateDisplay">Loading today's date...</p>
@@ -1406,11 +1406,11 @@
 
     // --- COMPREHENSIVE PROCEDURAL SOUNDSCAPE ENGINE ---
     const SOUNDSCAPES = [
-      // Brainwave Binaural Beats
-      { id: 'alpha', name: 'Alpha Waves (10 Hz)', cat: 'brainwaves', emoji: '🧠', tag: 'Flow State & Relaxed Calm', desc: '10 Hz binaural beat with soothing pink noise bed for effortless concentration.' },
-      { id: 'beta', name: 'Beta Waves (18 Hz)', cat: 'brainwaves', emoji: '⚡', tag: 'High Analytical Focus', desc: '18 Hz binaural beat for active problem solving, logical programming, and intense focus.' },
-      { id: 'gamma', name: 'Gamma Waves (40 Hz)', cat: 'brainwaves', emoji: '🔮', tag: 'Peak Cognitive Insight', desc: '40 Hz binaural beat for complex idea synthesis, creative breakthroughs, and high-speed memory.' },
-      { id: 'theta', name: 'Theta Waves (6 Hz)', cat: 'brainwaves', emoji: '🌙', tag: 'Deep Creativity & NSDR', desc: '6 Hz binaural beat for intuitive incubation, mind-wandering breakthroughs, and recovery.' },
+      // Brainwave Binaural Beats (with Generative Musicality & Ambient Pads)
+      { id: 'alpha', name: 'Alpha Waves (10 Hz)', cat: 'brainwaves', emoji: '🧠', tag: 'Flow State & Relaxed Calm', desc: 'Lush ambient Fmaj9 synth pad & felt piano melody with gentle 10 Hz binaural pulse.' },
+      { id: 'beta', name: 'Beta Waves (18 Hz)', cat: 'brainwaves', emoji: '⚡', tag: 'High Analytical Focus', desc: 'Inspiring Am9 focus pad & warm marimba plucks with 18 Hz cognitive clarity beat.' },
+      { id: 'gamma', name: 'Gamma Waves (40 Hz)', cat: 'brainwaves', emoji: '🔮', tag: 'Peak Cognitive Insight', desc: 'Ethereal celestial shimmer chords & crystal bells with 40 Hz peak insight beats.' },
+      { id: 'theta', name: 'Theta Waves (6 Hz)', cat: 'brainwaves', emoji: '🌙', tag: 'Deep Creativity & NSDR', desc: 'Deep 136.1 Hz Om drone, meditative cello tones, and 6 Hz restorative dreamscape.' },
 
       // Nature Focus Soundscapes
       { id: 'stream', name: 'Babbling Mountain Stream', cat: 'nature', emoji: '🌊', tag: 'Flowing Alpine Brook', desc: 'Dynamic flowing mountain brook with rippling currents and liquid water splashes.' },
@@ -1421,6 +1421,7 @@
       { id: 'brown', name: 'Warm Brown Noise', cat: 'nature', emoji: '🍂', tag: 'Deep Grounding Static', desc: 'Classic low-frequency analog brown noise (1/f²) that masks outside distraction.' },
 
       // Ambient Body-Double & Lo-Fi Beats
+      { id: 'monks', name: 'Tibetan Monk Meditation', cat: 'spaces', emoji: '🧘', tag: 'Outdoor Group Presence', desc: 'Alpine mountain breeze, deep throat-chant drones, singing bowls, temple wind chimes, and group breathing.' },
       { id: 'lofi', name: 'Lo-Fi Study Beats', cat: 'spaces', emoji: '🎧', tag: 'Chillhop & Vinyl Rhythm', desc: 'Mellow electric piano chords, tape flutter & vinyl dust, and steady relaxed ~72 BPM boom-bap rhythm.' },
       { id: 'coffee', name: 'Cozy Coffee Shop & Music', cat: 'spaces', emoji: '☕', tag: 'Ambient Cafe & Jazz', desc: 'Warm cafe room murmur, espresso steam, porcelain clinks, and soft distant jazz chords playing from the ceiling.' },
       { id: 'coworking', name: 'Co-Working Loft & Keyboard', cat: 'spaces', emoji: '💻', tag: 'Tactile Focus Presence', desc: 'Tactile mechanical keyboard typing bursts, subtle mouse clicks, and quiet focus presence across the table.' },
@@ -1530,55 +1531,238 @@
 
       const targetGain = soundscapeMasterGain;
 
-      // 1. BRAINWAVES (Binaural Beats)
+      // 1. BRAINWAVES (Generative Ambient Pads, Soft Binaural Beats & Minimalist Melodies)
       if (['alpha', 'beta', 'gamma', 'theta'].includes(id)) {
         const specs = {
-          alpha: { carrier: 208, beat: 10, noiseGain: 0.16 },
-          beta: { carrier: 240, beat: 18, noiseGain: 0.12 },
-          gamma: { carrier: 280, beat: 40, noiseGain: 0.10 },
-          theta: { carrier: 194, beat: 6, noiseGain: 0.18 }
+          alpha: {
+            carrier: 196, // G3
+            beat: 10,
+            padNotes: [174.61, 220.00, 261.63, 329.63, 392.00], // F3, A3, C4, E4, G4 (Fmaj9)
+            filterBase: 540,
+            filterMod: 220,
+            melodyNotes: [349.23, 392.00, 440.00, 523.25, 587.33, 659.25], // F4, G4, A4, C5, D5, E5
+            instrument: 'piano',
+            melodyInterval: 4800,
+            noiseType: 'pink',
+            noiseGain: 0.05
+          },
+          beta: {
+            carrier: 220, // A3
+            beat: 18,
+            padNotes: [110.00, 164.81, 220.00, 261.63, 392.00], // A2, E3, A3, C4, G4 (Am7)
+            filterBase: 680,
+            filterMod: 180,
+            melodyNotes: [440.00, 523.25, 587.33, 659.25, 783.99], // A4, C5, D5, E5, G5
+            instrument: 'marimba',
+            melodyInterval: 3800,
+            noiseType: 'pink',
+            noiseGain: 0.04
+          },
+          gamma: {
+            carrier: 256, // C4
+            beat: 40,
+            padNotes: [164.81, 246.94, 392.00, 587.33, 739.99], // E3, B3, G4, D5, F#5 (Em9 shimmer)
+            filterBase: 920,
+            filterMod: 320,
+            melodyNotes: [659.25, 783.99, 987.77, 1174.66, 1479.98], // E5, G5, B5, D6, F#6
+            instrument: 'bell',
+            melodyInterval: 5200,
+            noiseType: 'pink',
+            noiseGain: 0.035
+          },
+          theta: {
+            carrier: 136.1, // Earth Om fundamental
+            beat: 6,
+            padNotes: [65.41, 98.00, 130.81, 164.81, 246.94], // C2, G2, C3, E3, B3 (Cmaj7/9 deep drone)
+            filterBase: 380,
+            filterMod: 140,
+            melodyNotes: [261.63, 329.63, 392.00, 440.00, 523.25], // C4, E4, G4, A4, C5
+            instrument: 'flute',
+            melodyInterval: 6500,
+            noiseType: 'brown',
+            noiseGain: 0.07
+          }
         }[id];
 
-        // Left ear sine
+        // A. Subtle, non-intrusive binaural beats embedded in harmonic root
         const oscL = audioCtx.createOscillator();
-        const pannerL = createSafePanner(-1.0);
+        const pannerL = createSafePanner(-0.95);
         const gainL = audioCtx.createGain();
         oscL.type = 'sine';
         oscL.frequency.value = specs.carrier;
-        gainL.gain.value = 0.28;
+        gainL.gain.value = 0.05; // soft, fatigue-free level
         oscL.connect(pannerL);
         pannerL.connect(gainL);
         gainL.connect(targetGain);
         oscL.start();
         soundscapeNodes.push(oscL, pannerL, gainL);
 
-        // Right ear sine
         const oscR = audioCtx.createOscillator();
-        const pannerR = createSafePanner(1.0);
+        const pannerR = createSafePanner(0.95);
         const gainR = audioCtx.createGain();
         oscR.type = 'sine';
         oscR.frequency.value = specs.carrier + specs.beat;
-        gainR.gain.value = 0.28;
+        gainR.gain.value = 0.05; // soft, fatigue-free level
         oscR.connect(pannerR);
         pannerR.connect(gainR);
         gainR.connect(targetGain);
         oscR.start();
         soundscapeNodes.push(oscR, pannerR, gainR);
 
-        // Soft pink noise bed
-        const pinkSrc = audioCtx.createBufferSource();
-        pinkSrc.buffer = getNoiseBuffer('pink', 3);
-        pinkSrc.loop = true;
-        const pinkFilter = audioCtx.createBiquadFilter();
-        pinkFilter.type = 'lowpass';
-        pinkFilter.frequency.value = 350;
-        const pinkGain = audioCtx.createGain();
-        pinkGain.gain.value = specs.noiseGain;
-        pinkSrc.connect(pinkFilter);
-        pinkFilter.connect(pinkGain);
-        pinkGain.connect(targetGain);
-        pinkSrc.start();
-        soundscapeNodes.push(pinkSrc, pinkFilter, pinkGain);
+        // B. Lush Multi-Voice Ambient Synth Pad with Slow Breathing Filter
+        const padFilter = audioCtx.createBiquadFilter();
+        padFilter.type = 'lowpass';
+        padFilter.frequency.value = specs.filterBase;
+        padFilter.Q.value = 1.8;
+
+        const padGain = audioCtx.createGain();
+        padGain.gain.value = 0.17;
+        padFilter.connect(padGain);
+        padGain.connect(targetGain);
+        soundscapeNodes.push(padFilter, padGain);
+
+        // Slow breathing LFO on pad filter
+        const padLfo = audioCtx.createOscillator();
+        const padLfoGain = audioCtx.createGain();
+        padLfo.frequency.value = 0.07; // ~14s slow breath cycle
+        padLfoGain.gain.value = specs.filterMod;
+        padLfo.connect(padLfoGain);
+        padLfoGain.connect(padFilter.frequency);
+        padLfo.start();
+        soundscapeNodes.push(padLfo, padLfoGain);
+
+        // Voice oscillators with gentle micro-detuning
+        specs.padNotes.forEach((freq, idx) => {
+          [-1.5, 1.5].forEach(detune => {
+            const osc = audioCtx.createOscillator();
+            const vGain = audioCtx.createGain();
+            osc.type = (id === 'gamma') ? 'sine' : ((id === 'theta') ? 'triangle' : ((idx % 2 === 0) ? 'triangle' : 'sine'));
+            osc.frequency.value = freq;
+            osc.detune.value = detune;
+            vGain.gain.value = 0.045 / (specs.padNotes.length * 0.7);
+            osc.connect(vGain);
+            vGain.connect(padFilter);
+            osc.start();
+            soundscapeNodes.push(osc, vGain);
+          });
+        });
+
+        // C. Generative Melodic Element (Felt Piano, Marimba, Celestial Bells, or Flute)
+        function playBrainwaveMelody() {
+          if (!isSoundscapePlaying || !audioCtx) return;
+          try {
+            const now = audioCtx.currentTime;
+            const noteCount = (Math.random() > 0.65) ? 2 : 1;
+            for (let n = 0; n < noteCount; n++) {
+              const noteTime = now + (n * 0.28);
+              const freq = specs.melodyNotes[Math.floor(Math.random() * specs.melodyNotes.length)];
+              const pan = (Math.random() * 0.8) - 0.4;
+              const panner = createSafePanner(pan);
+
+              const osc = audioCtx.createOscillator();
+              const osc2 = audioCtx.createOscillator();
+              const mFilter = audioCtx.createBiquadFilter();
+              const mGain = audioCtx.createGain();
+
+              if (specs.instrument === 'piano') {
+                osc.type = 'triangle';
+                osc2.type = 'sine';
+                mFilter.type = 'lowpass';
+                mFilter.frequency.value = 1100;
+                osc.frequency.setValueAtTime(freq, noteTime);
+                osc2.frequency.setValueAtTime(freq, noteTime);
+                osc2.detune.value = 2.0;
+
+                mGain.gain.setValueAtTime(0.0001, noteTime);
+                mGain.gain.exponentialRampToValueAtTime(0.12, noteTime + 0.02);
+                mGain.gain.exponentialRampToValueAtTime(0.0001, noteTime + 3.2);
+
+                osc.connect(mFilter);
+                osc2.connect(mFilter);
+                mFilter.connect(mGain);
+                mGain.connect(panner);
+                panner.connect(targetGain);
+
+                osc.start(noteTime);
+                osc2.start(noteTime);
+                osc.stop(noteTime + 3.4);
+                osc2.stop(noteTime + 3.4);
+              } else if (specs.instrument === 'marimba') {
+                osc.type = 'sine';
+                osc2.type = 'triangle';
+                mFilter.type = 'lowpass';
+                mFilter.frequency.value = 1800;
+                osc.frequency.setValueAtTime(freq, noteTime);
+                osc2.frequency.setValueAtTime(freq * 2, noteTime);
+
+                mGain.gain.setValueAtTime(0.0001, noteTime);
+                mGain.gain.exponentialRampToValueAtTime(0.09, noteTime + 0.008);
+                mGain.gain.exponentialRampToValueAtTime(0.0001, noteTime + 1.6);
+
+                osc.connect(mFilter);
+                osc2.connect(mFilter);
+                mFilter.connect(mGain);
+                mGain.connect(panner);
+                panner.connect(targetGain);
+
+                osc.start(noteTime);
+                osc2.start(noteTime);
+                osc.stop(noteTime + 1.8);
+                osc2.stop(noteTime + 1.8);
+              } else if (specs.instrument === 'bell') {
+                osc.type = 'sine';
+                osc2.type = 'sine';
+                osc.frequency.setValueAtTime(freq, noteTime);
+                osc2.frequency.setValueAtTime(freq * 2.76, noteTime);
+
+                mGain.gain.setValueAtTime(0.0001, noteTime);
+                mGain.gain.exponentialRampToValueAtTime(0.07, noteTime + 0.006);
+                mGain.gain.exponentialRampToValueAtTime(0.0001, noteTime + 3.8);
+
+                osc.connect(mGain);
+                osc2.connect(mGain);
+                mGain.connect(panner);
+                panner.connect(targetGain);
+
+                osc.start(noteTime);
+                osc2.start(noteTime);
+                osc.stop(noteTime + 4.0);
+                osc2.stop(noteTime + 4.0);
+              } else {
+                // Theta meditative drone note
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, noteTime);
+                mGain.gain.setValueAtTime(0.0001, noteTime);
+                mGain.gain.linearRampToValueAtTime(0.065, noteTime + 0.6);
+                mGain.gain.exponentialRampToValueAtTime(0.0001, noteTime + 4.5);
+                osc.connect(mGain);
+                mGain.connect(panner);
+                panner.connect(targetGain);
+                osc.start(noteTime);
+                osc.stop(noteTime + 4.8);
+              }
+            }
+          } catch (e) {}
+        }
+
+        setTimeout(playBrainwaveMelody, 800);
+        const melodyTimer = setInterval(playBrainwaveMelody, specs.melodyInterval);
+        soundscapeIntervals.push(melodyTimer);
+
+        // D. Soft warm atmospheric noise bed
+        const noiseSrc = audioCtx.createBufferSource();
+        noiseSrc.buffer = getNoiseBuffer(specs.noiseType, 3);
+        noiseSrc.loop = true;
+        const noiseFilter = audioCtx.createBiquadFilter();
+        noiseFilter.type = 'lowpass';
+        noiseFilter.frequency.value = 320;
+        const noiseGain = audioCtx.createGain();
+        noiseGain.gain.value = specs.noiseGain;
+        noiseSrc.connect(noiseFilter);
+        noiseFilter.connect(noiseGain);
+        noiseGain.connect(targetGain);
+        noiseSrc.start();
+        soundscapeNodes.push(noiseSrc, noiseFilter, noiseGain);
       }
 
       // 2. BABBLING MOUNTAIN STREAM
@@ -3016,6 +3200,242 @@
           } catch (e) {}
         }, 11000);
         soundscapeIntervals.push(pageTimer);
+      }
+
+      // 15. TIBETAN MONK MEDITATION (Himalayan Wind, Deep Throat Chanting Drones, Singing Bowls, Temple Chimes, Group Breathing, Mala Beads)
+      else if (id === 'monks') {
+        // 1. High-Altitude Himalayan Breeze (Outdoor Air Atmosphere)
+        const windSrc = audioCtx.createBufferSource();
+        windSrc.buffer = getNoiseBuffer('pink', 3);
+        windSrc.loop = true;
+
+        const windBp = audioCtx.createBiquadFilter();
+        windBp.type = 'bandpass';
+        windBp.frequency.value = 380;
+        windBp.Q.value = 1.8;
+
+        const windLfo = audioCtx.createOscillator();
+        const windLfoGain = audioCtx.createGain();
+        windLfo.frequency.value = 0.09; // slow mountain gusts
+        windLfoGain.gain.value = 160;
+        windLfo.connect(windLfoGain);
+        windLfoGain.connect(windBp.frequency);
+        windLfo.start();
+
+        const windGain = audioCtx.createGain();
+        windGain.gain.value = 0.12;
+        windSrc.connect(windBp);
+        windBp.connect(windGain);
+        windGain.connect(targetGain);
+        windSrc.start();
+        soundscapeNodes.push(windSrc, windBp, windLfo, windLfoGain, windGain);
+
+        // 2. Deep Tibetan Monk Throat Chanting Drones (Fundamental + Formant Resonance)
+        const chantGain = audioCtx.createGain();
+        chantGain.gain.value = 0.13;
+        chantGain.connect(targetGain);
+        soundscapeNodes.push(chantGain);
+
+        // Slow organic breath volume swell on the chanting
+        const chantVolLfo = audioCtx.createOscillator();
+        const chantVolGain = audioCtx.createGain();
+        chantVolLfo.frequency.value = 0.10; // ~10s chanting breath
+        chantVolGain.gain.value = 0.04;
+        chantVolLfo.connect(chantVolGain);
+        chantVolGain.connect(chantGain.gain);
+        chantVolLfo.start();
+        soundscapeNodes.push(chantVolLfo, chantVolGain);
+
+        // Fundamental pitches: 64.8 Hz (C2 deep sub-bass), 108 Hz (sacred overtone), 129.6 Hz (fifth)
+        [64.8, 108.0, 129.6].forEach((f, i) => {
+          const osc = audioCtx.createOscillator();
+          osc.type = (i === 0) ? 'sawtooth' : 'triangle';
+          osc.frequency.value = f;
+
+          // Vocal tract "Om" vowel formant filter (420 Hz throat cavity + 840 Hz mouth cavity)
+          const f1 = audioCtx.createBiquadFilter();
+          f1.type = 'bandpass';
+          f1.frequency.value = 420;
+          f1.Q.value = 4.2;
+
+          const f2 = audioCtx.createBiquadFilter();
+          f2.type = 'bandpass';
+          f2.frequency.value = 840;
+          f2.Q.value = 5.0;
+
+          // Subtle natural vocal pitch drift / vibrato
+          const vib = audioCtx.createOscillator();
+          const vibG = audioCtx.createGain();
+          vib.frequency.value = 0.18 + (i * 0.05);
+          vibG.gain.value = 0.8;
+          vib.connect(vibG);
+          vibG.connect(osc.frequency);
+          vib.start();
+
+          const vGain = audioCtx.createGain();
+          vGain.gain.value = (i === 0) ? 0.08 : 0.04;
+
+          osc.connect(f1);
+          osc.connect(f2);
+          f1.connect(vGain);
+          f2.connect(vGain);
+          vGain.connect(chantGain);
+
+          osc.start();
+          soundscapeNodes.push(osc, f1, f2, vib, vibG, vGain);
+        });
+
+        // 3. Resonant Tibetan Singing Bowls (Periodic strike with authentic non-harmonic modes)
+        function strikeSingingBowl() {
+          if (!isSoundscapePlaying || !audioCtx) return;
+          try {
+            const now = audioCtx.currentTime;
+            const baseFreqs = [216, 272, 324, 432];
+            const base = baseFreqs[Math.floor(Math.random() * baseFreqs.length)];
+            const pan = (Math.random() * 0.8) - 0.4;
+            const panner = createSafePanner(pan);
+
+            const bowlMasterGain = audioCtx.createGain();
+            bowlMasterGain.gain.setValueAtTime(0.001, now);
+            bowlMasterGain.gain.exponentialRampToValueAtTime(0.22, now + 0.08); // soft felt mallet strike
+            bowlMasterGain.gain.exponentialRampToValueAtTime(0.0001, now + 9.5); // long 9.5s sustain
+            bowlMasterGain.connect(panner);
+            panner.connect(targetGain);
+
+            // True metallic bowl partial ratios [1.0, 2.76, 5.40]
+            const partials = [
+              { ratio: 1.0, gain: 0.22, decay: 9.5 },
+              { ratio: 2.76, gain: 0.12, decay: 6.5 },
+              { ratio: 5.40, gain: 0.05, decay: 4.2 }
+            ];
+
+            partials.forEach(p => {
+              [-0.8, 0.8].forEach(detune => {
+                const osc = audioCtx.createOscillator();
+                const g = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(base * p.ratio, now);
+                osc.detune.value = detune;
+
+                g.gain.setValueAtTime(p.gain, now);
+                g.gain.exponentialRampToValueAtTime(0.0001, now + p.decay);
+
+                osc.connect(g);
+                g.connect(bowlMasterGain);
+                osc.start(now);
+                osc.stop(now + 10.0);
+              });
+            });
+          } catch (e) {}
+        }
+
+        setTimeout(strikeSingingBowl, 1200);
+        const bowlTimer = setInterval(strikeSingingBowl, 16000);
+        soundscapeIntervals.push(bowlTimer);
+
+        // 4. Temple Wind Chimes & Tingsha (High celestial sparkling metallic bells)
+        const chimeTimer = setInterval(() => {
+          if (!isSoundscapePlaying || !audioCtx) return;
+          if (Math.random() > 0.45) return;
+          try {
+            const now = audioCtx.currentTime;
+            const chimeNotes = [1046.50, 1318.51, 1567.98, 2093.00, 2637.02];
+            const count = Math.floor(Math.random() * 2) + 1;
+
+            for (let c = 0; c < count; c++) {
+              const noteTime = now + (c * 0.15);
+              const freq = chimeNotes[Math.floor(Math.random() * chimeNotes.length)];
+              const panner = createSafePanner((Math.random() * 1.2) - 0.6);
+
+              const osc = audioCtx.createOscillator();
+              const g = audioCtx.createGain();
+              osc.type = 'sine';
+              osc.frequency.setValueAtTime(freq, noteTime);
+
+              g.gain.setValueAtTime(0.001, noteTime);
+              g.gain.exponentialRampToValueAtTime(0.045, noteTime + 0.005);
+              g.gain.exponentialRampToValueAtTime(0.0001, noteTime + 2.8);
+
+              osc.connect(g);
+              g.connect(panner);
+              panner.connect(targetGain);
+
+              osc.start(noteTime);
+              osc.stop(noteTime + 3.0);
+            }
+          } catch (e) {}
+        }, 8500);
+        soundscapeIntervals.push(chimeTimer);
+
+        // 5. Group Meditation Deep Breathing Pacer (Synchronized slow inhalation and exhalation)
+        function triggerGroupBreath() {
+          if (!isSoundscapePlaying || !audioCtx) return;
+          try {
+            const now = audioCtx.currentTime;
+            const bSrc = audioCtx.createBufferSource();
+            bSrc.buffer = getNoiseBuffer('pink', 4.5);
+            const bFilt = audioCtx.createBiquadFilter();
+            bFilt.type = 'bandpass';
+            bFilt.Q.value = 2.5;
+
+            const bGain = audioCtx.createGain();
+            // Inhale (4.5s)
+            bFilt.frequency.setValueAtTime(260, now);
+            bFilt.frequency.linearRampToValueAtTime(440, now + 4.2);
+            bGain.gain.setValueAtTime(0.0001, now);
+            bGain.gain.linearRampToValueAtTime(0.038, now + 4.0);
+            bGain.gain.linearRampToValueAtTime(0.015, now + 4.5);
+
+            // Exhale (5.5s)
+            bFilt.frequency.linearRampToValueAtTime(200, now + 9.5);
+            bGain.gain.linearRampToValueAtTime(0.035, now + 5.2);
+            bGain.gain.exponentialRampToValueAtTime(0.0001, now + 9.8);
+
+            bSrc.connect(bFilt);
+            bFilt.connect(bGain);
+            bGain.connect(targetGain);
+
+            bSrc.start(now);
+            bSrc.stop(now + 10.0);
+          } catch (e) {}
+        }
+        setTimeout(triggerGroupBreath, 2000);
+        const breathTimer = setInterval(triggerGroupBreath, 11000);
+        soundscapeIntervals.push(breathTimer);
+
+        // 6. Wooden Mala Prayer Beads & Subtle Meditation Movement
+        const malaTimer = setInterval(() => {
+          if (!isSoundscapePlaying || !audioCtx) return;
+          if (Math.random() > 0.4) return;
+          try {
+            const now = audioCtx.currentTime;
+            const panner = createSafePanner((Math.random() * 0.8) - 0.4);
+            const clicks = Math.floor(Math.random() * 3) + 1;
+            for (let k = 0; k < clicks; k++) {
+              const cTime = now + (k * 0.18);
+              const mSrc = audioCtx.createBufferSource();
+              mSrc.buffer = getNoiseBuffer('white', 0.2);
+              const mFilt = audioCtx.createBiquadFilter();
+              mFilt.type = 'bandpass';
+              mFilt.frequency.value = 1600 + (Math.random() * 400);
+              mFilt.Q.value = 5.0;
+
+              const mGain = audioCtx.createGain();
+              mGain.gain.setValueAtTime(0.001, cTime);
+              mGain.gain.exponentialRampToValueAtTime(0.025, cTime + 0.004);
+              mGain.gain.exponentialRampToValueAtTime(0.0001, cTime + 0.06);
+
+              mSrc.connect(mFilt);
+              mFilt.connect(mGain);
+              mGain.connect(panner);
+              panner.connect(targetGain);
+
+              mSrc.start(cTime);
+              mSrc.stop(cTime + 0.08);
+            }
+          } catch (e) {}
+        }, 9000);
+        soundscapeIntervals.push(malaTimer);
       }
 
       isSoundscapePlaying = true;
