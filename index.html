@@ -3820,7 +3820,9 @@
     function onTimelineDragEnd(e) {
       e.currentTarget.classList.remove('opacity-50', 'ring-2', 'ring-indigo-500');
       document.querySelectorAll('.timeline-card').forEach(el => {
-        el.classList.remove('ring-2', 'ring-indigo-400', 'bg-indigo-500/10', 'border-indigo-500');
+        el.classList.remove('ring-2', 'ring-indigo-500', 'ring-indigo-400', 'bg-indigo-500/10', 'border-indigo-500');
+        el.style.borderTop = '';
+        el.style.borderBottom = '';
       });
       draggedTaskId = null;
     }
@@ -3829,42 +3831,121 @@
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
       const el = e.currentTarget;
-      if (!el.classList.contains('ring-2')) {
-        el.classList.add('ring-2', 'ring-indigo-400', 'bg-indigo-500/10');
+      const rect = el.getBoundingClientRect();
+      const dropBefore = (e.clientY - rect.top) < (rect.height / 2);
+
+      el.classList.add('ring-2', 'ring-indigo-500', 'bg-indigo-500/10');
+      if (dropBefore) {
+        el.style.borderTop = '3px solid #6366f1';
+        el.style.borderBottom = '';
+      } else {
+        el.style.borderTop = '';
+        el.style.borderBottom = '3px solid #6366f1';
       }
     }
 
     function onTimelineDragLeave(e) {
       const el = e.currentTarget;
-      el.classList.remove('ring-2', 'ring-indigo-400', 'bg-indigo-500/10');
+      el.classList.remove('ring-2', 'ring-indigo-500', 'bg-indigo-500/10');
+      el.style.borderTop = '';
+      el.style.borderBottom = '';
     }
 
     function onTimelineDrop(e, targetTaskId) {
       e.preventDefault();
       e.stopPropagation();
       const el = e.currentTarget;
-      el.classList.remove('ring-2', 'ring-indigo-400', 'bg-indigo-500/10');
+      el.classList.remove('ring-2', 'ring-indigo-500', 'bg-indigo-500/10');
+      el.style.borderTop = '';
+      el.style.borderBottom = '';
 
       const sourceId = draggedTaskId || e.dataTransfer.getData('text/plain');
       if (!sourceId || sourceId === targetTaskId) return;
 
+      const rect = el.getBoundingClientRect();
+      const dropBefore = (e.clientY - rect.top) < (rect.height / 2);
+
+      rippleRescheduleFrom(sourceId, targetTaskId, dropBefore);
+    }
+
+    function rippleRescheduleFrom(sourceId, targetId, dropBefore = true) {
       const sourceTask = state.tasks.find(t => t.id === sourceId);
-      const targetTask = state.tasks.find(t => t.id === targetTaskId);
-      if (!sourceTask || !targetTask) return;
+      const targetTask = state.tasks.find(t => t.id === targetId);
+      if (!sourceTask || !targetTask || sourceId === targetId) return;
 
-      // Swap their scheduled start positions
-      const tempStart = sourceTask.startMin;
-      sourceTask.startMin = targetTask.startMin;
-      sourceTask.endMin = sourceTask.startMin + (sourceTask.duration || 30);
-      if (sourceTask.type === 'FIXED') sourceTask.fixedStartMin = sourceTask.startMin;
+      const today = new Date();
+      const includeBuffers = document.getElementById('bufferToggle')?.checked || false;
+      const bufferMin = includeBuffers ? 10 : 0;
 
-      targetTask.startMin = tempStart;
-      targetTask.endMin = targetTask.startMin + (targetTask.duration || 30);
-      if (targetTask.type === 'FIXED') targetTask.fixedStartMin = targetTask.startMin;
+      // 1. Get all active tasks for today
+      const activeTasks = state.tasks.filter(t => isTaskScheduledForDate(t, today));
+      const fixedEvents = activeTasks
+        .filter(t => t.type === 'FIXED')
+        .sort((a, b) => (a.fixedStartMin || 540) - (b.fixedStartMin || 540));
+      fixedEvents.forEach(ft => {
+        ft.startMin = ft.fixedStartMin;
+        ft.endMin = ft.fixedStartMin + ft.duration;
+      });
+
+      // 2. Separate flexible tasks that have a scheduled start time
+      const flexibleTasks = activeTasks
+        .filter(t => t.type !== 'FIXED')
+        .sort((a, b) => (a.startMin || 0) - (b.startMin || 0));
+
+      // Remove sourceTask from its previous position in the order
+      const reorderedFlexible = flexibleTasks.filter(t => t.id !== sourceId);
+
+      // Determine insertion index relative to targetTask
+      let targetIdx = reorderedFlexible.findIndex(t => t.id === targetId);
+      if (targetIdx === -1) {
+        reorderedFlexible.push(sourceTask);
+      } else {
+        const insertIdx = dropBefore ? targetIdx : targetIdx + 1;
+        reorderedFlexible.splice(insertIdx, 0, sourceTask);
+      }
+
+      // 3. Determine starting slot for the newly inserted task
+      let targetSlotStart = targetTask.startMin != null ? targetTask.startMin : 540;
+      if (!dropBefore && targetTask.startMin != null) {
+        targetSlotStart = targetTask.startMin + (targetTask.duration || 30) + bufferMin;
+      }
+
+      // Collect occupied slots from fixed calendar events
+      const fixedIntervals = fixedEvents.map(f => ({ start: f.startMin, end: f.endMin }));
+
+      // Find the index of sourceTask in reorderedFlexible
+      const rippleStartIdx = reorderedFlexible.findIndex(t => t.id === sourceId);
+
+      let cursor = targetSlotStart;
+
+      // Ripple sourceTask and all subsequent tasks forward
+      for (let i = rippleStartIdx; i < reorderedFlexible.length; i++) {
+        const t = reorderedFlexible[i];
+        if (t.completed && t.startMin < 720) {
+          // Keep morning completed tasks anchored in place
+          continue;
+        }
+
+        const duration = t.duration || 30;
+
+        // Advance cursor past any fixed calendar event conflict
+        let placed = false;
+        while (!placed) {
+          const conflict = fixedIntervals.find(f => Math.max(cursor, f.start) < Math.min(cursor + duration, f.end));
+          if (conflict) {
+            cursor = conflict.end + bufferMin;
+          } else {
+            t.startMin = cursor;
+            t.endMin = cursor + duration;
+            cursor = t.endMin + bufferMin;
+            placed = true;
+          }
+        }
+      }
 
       saveState();
       recalculateSchedule();
-      showRippleNotice(`↔ Reordered schedule: "${sourceTask.title}" and "${targetTask.title}" swapped.`);
+      showRippleNotice(`⚡ Moved "${sourceTask.title}" to ${formatMinToTime(sourceTask.startMin)} and rippled remaining tasks down.`);
     }
 
     function slideTaskTime(taskId, deltaMin) {
@@ -3875,6 +3956,38 @@
       t.startMin = newStart;
       t.endMin = newStart + (t.duration || 30);
       if (t.type === 'FIXED') t.fixedStartMin = t.startMin;
+
+      // Ripple any subsequent overlapping flexible tasks
+      const today = new Date();
+      const includeBuffers = document.getElementById('bufferToggle')?.checked || false;
+      const bufferMin = includeBuffers ? 10 : 0;
+      const activeTasks = state.tasks.filter(x => isTaskScheduledForDate(x, today));
+      const fixedIntervals = activeTasks.filter(x => x.type === 'FIXED').map(f => ({ start: f.fixedStartMin, end: f.fixedStartMin + f.duration }));
+
+      const subsequentFlexible = activeTasks
+        .filter(x => x.type !== 'FIXED' && x.id !== taskId && x.startMin != null && x.startMin >= newStart && !x.completed)
+        .sort((a, b) => a.startMin - b.startMin);
+
+      let cursor = t.endMin + bufferMin;
+      subsequentFlexible.forEach(st => {
+        if (st.startMin < cursor) {
+          let placed = false;
+          while (!placed) {
+            const conflict = fixedIntervals.find(f => Math.max(cursor, f.start) < Math.min(cursor + (st.duration || 30), f.end));
+            if (conflict) {
+              cursor = conflict.end + bufferMin;
+            } else {
+              st.startMin = cursor;
+              st.endMin = cursor + (st.duration || 30);
+              cursor = st.endMin + bufferMin;
+              placed = true;
+            }
+          }
+        } else {
+          cursor = Math.max(cursor, st.endMin + bufferMin);
+        }
+      });
+
       saveState();
       recalculateSchedule();
     }
