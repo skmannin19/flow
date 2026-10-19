@@ -96,7 +96,7 @@
         <div>
           <h1 class="font-bold text-base tracking-tight flex items-center gap-2">
             FlowState OS
-            <span class="text-[11px] font-mono uppercase px-2 py-0.5 rounded-full dark:bg-indigo-500/10 dark:text-indigo-400 bg-indigo-50 text-indigo-600 border dark:border-indigo-500/20 border-indigo-200">v3.8 Live</span>
+            <span class="text-[11px] font-mono uppercase px-2 py-0.5 rounded-full dark:bg-indigo-500/10 dark:text-indigo-400 bg-indigo-50 text-indigo-600 border dark:border-indigo-500/20 border-indigo-200">v3.9 Live</span>
           </h1>
           <div class="flex items-center gap-2">
             <p class="text-xs dark:text-slate-400 text-slate-500" id="currentDateDisplay">Loading today's date...</p>
@@ -3933,7 +3933,59 @@
     function adjustTaskDuration(taskId, delta) {
       const t = state.tasks.find(x => String(x.id) === String(taskId));
       if (!t) return;
-      t.duration = Math.max(10, t.duration + delta);
+      t.duration = Math.max(10, (t.duration || 30) + delta);
+      t.manuallyPositioned = true;
+      if (t.startMin != null) {
+        t.endMin = t.startMin + t.duration;
+      }
+      if (t.type === 'FIXED' && t.fixedStartMin != null) {
+        t.endMin = t.fixedStartMin + t.duration;
+      }
+
+      // If duration expanded, ripple any subsequent overlapping flexible tasks
+      if (delta > 0 && t.startMin != null) {
+        const today = new Date();
+        const includeBuffers = document.getElementById('bufferToggle')?.checked || false;
+        const bufferMin = includeBuffers ? 10 : 0;
+        const tEnd = t.endMin || (t.startMin + t.duration);
+
+        const activeTasks = state.tasks.filter(x => isTaskScheduledForDate(x, today));
+        const fixedIntervals = activeTasks
+          .filter(x => x.type === 'FIXED' && String(x.id) !== String(taskId))
+          .map(f => ({
+            start: f.fixedStartMin || f.startMin || 540,
+            end: (f.fixedStartMin || f.startMin || 540) + (f.duration || 30)
+          }))
+          .sort((a, b) => a.start - b.start);
+
+        const downstreamFlexible = activeTasks
+          .filter(x => String(x.id) !== String(taskId) && x.type !== 'FIXED' && x.startMin != null && !x.completed)
+          .sort((a, b) => a.startMin - b.startMin);
+
+        let rippleCursor = tEnd + bufferMin;
+        downstreamFlexible.forEach(st => {
+          if (st.startMin < rippleCursor && st.startMin >= t.startMin) {
+            let stPlaced = false;
+            let stCur = rippleCursor;
+            const stDur = st.duration || 30;
+            while (!stPlaced) {
+              const conflict = fixedIntervals.find(f => Math.max(stCur, f.start) < Math.min(stCur + stDur, f.end));
+              if (conflict) {
+                stCur = conflict.end + bufferMin;
+              } else {
+                st.startMin = stCur;
+                st.endMin = stCur + stDur;
+                st.manuallyPositioned = true;
+                rippleCursor = st.endMin + bufferMin;
+                stPlaced = true;
+              }
+            }
+          } else if (st.startMin >= rippleCursor) {
+            rippleCursor = Math.max(rippleCursor, (st.endMin || (st.startMin + (st.duration || 30))) + bufferMin);
+          }
+        });
+      }
+
       saveState(); recalculateSchedule();
     }
 
@@ -4653,11 +4705,9 @@
             </div>
             <div class="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
               ${!t.completed ? `
-                ${t.type !== 'FIXED' ? `
-                  <button onclick="adjustTaskDuration('${t.id}', -15)" class="px-1.5 py-0.5 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 text-emerald-600 dark:text-emerald-400 text-[10px] font-mono" title="Shorten by 15m">-15m</button>
-                  <button onclick="adjustTaskDuration('${t.id}', 15)" class="px-1.5 py-0.5 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 text-amber-600 dark:text-amber-400 text-[10px] font-mono" title="Extend by 15m">+15m</button>
-                  <button onclick="openFocusModal('${t.id}')" class="px-2.5 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-sm transition">▶ Focus</button>
-                ` : `<button onclick="toggleTaskComplete('${t.id}')" class="px-2.5 py-1 rounded bg-emerald-600/15 hover:bg-emerald-600/25 border border-emerald-500/30 text-emerald-600 dark:text-emerald-300 text-xs font-semibold transition">✓ Mark Done</button>`}
+                <button onclick="adjustTaskDuration('${t.id}', -15)" class="px-1.5 py-0.5 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 text-emerald-600 dark:text-emerald-400 text-[10px] font-mono" title="Shorten by 15m">-15m</button>
+                <button onclick="adjustTaskDuration('${t.id}', 15)" class="px-1.5 py-0.5 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 text-amber-600 dark:text-amber-400 text-[10px] font-mono" title="Extend by 15m">+15m</button>
+                <button onclick="openFocusModal('${t.id}')" class="px-2.5 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-sm transition">▶ Focus</button>
               ` : `
                 <button onclick="toggleTaskComplete('${t.id}')" class="text-xs text-emerald-500 font-mono hover:underline">✓ Completed</button>
               `}
