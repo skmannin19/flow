@@ -96,7 +96,7 @@
         <div>
           <h1 class="font-bold text-base tracking-tight flex items-center gap-2">
             FlowState OS
-            <span class="text-[11px] font-mono uppercase px-2 py-0.5 rounded-full dark:bg-indigo-500/10 dark:text-indigo-400 bg-indigo-50 text-indigo-600 border dark:border-indigo-500/20 border-indigo-200">v3.7 Live</span>
+            <span class="text-[11px] font-mono uppercase px-2 py-0.5 rounded-full dark:bg-indigo-500/10 dark:text-indigo-400 bg-indigo-50 text-indigo-600 border dark:border-indigo-500/20 border-indigo-200">v3.8 Live</span>
           </h1>
           <div class="flex items-center gap-2">
             <p class="text-xs dark:text-slate-400 text-slate-500" id="currentDateDisplay">Loading today's date...</p>
@@ -402,7 +402,7 @@
         </div>
 
         <!-- Timeline Stream -->
-        <div id="timelineContainer" class="mt-2 space-y-2.5 flex-1 overflow-y-auto pr-1"></div>
+        <div id="timelineContainer" ondragover="onTimelineContainerDragOver(event)" ondrop="onTimelineContainerDrop(event)" class="mt-2 space-y-2.5 flex-1 overflow-y-auto pr-1"></div>
 
         <!-- Deferred Queue -->
         <div id="overflowContainer" class="mt-6 pt-4 border-t dark:border-slate-800 border-slate-200 hidden">
@@ -3693,7 +3693,7 @@
 
     // Recurrence Modal UI Helpers
     function openRecurrenceModal(taskId) {
-      const t = state.tasks.find(x => x.id === taskId);
+      const t = state.tasks.find(x => String(x.id) === String(taskId));
       if (!t) return;
       editingRecurrenceTaskId = taskId;
       document.getElementById('recurrenceModalTaskTitle').textContent = t.title;
@@ -3911,16 +3911,16 @@
     }
 
     function autoBreakdownTask(taskId) {
-      const task = state.tasks.find(t => t.id === taskId);
+      const task = state.tasks.find(t => String(t.id) === String(taskId));
       if (!task) return;
       task.subtasks = [{ text: '2-Min Setup & browser tab cleanup', done: false }, { text: 'Core 15-min rough sprint', done: false }, { text: '10-min review & polish', done: false }];
       saveState(); renderPriorityLists();
     }
 
-    function toggleSubtask(taskId, idx) { const t = state.tasks.find(x => x.id === taskId); if (t && t.subtasks[idx]) { t.subtasks[idx].done = !t.subtasks[idx].done; saveState(); renderPriorityLists(); } }
-    function toggleTaskComplete(taskId) { const t = state.tasks.find(x => x.id === taskId); if (t) { t.completed = !t.completed; saveState(); recalculateSchedule(); updateRecommendationBanner(); } }
+    function toggleSubtask(taskId, idx) { const t = state.tasks.find(x => String(x.id) === String(taskId)); if (t && t.subtasks[idx]) { t.subtasks[idx].done = !t.subtasks[idx].done; saveState(); renderPriorityLists(); } }
+    function toggleTaskComplete(taskId) { const t = state.tasks.find(x => String(x.id) === String(taskId)); if (t) { t.completed = !t.completed; saveState(); recalculateSchedule(); updateRecommendationBanner(); } }
     function promoteDemoteTask(taskId) {
-      const t = state.tasks.find(x => x.id === taskId);
+      const t = state.tasks.find(x => String(x.id) === String(taskId));
       if (!t || t.type === 'FIXED') return;
       if (t.type === 'LIT') {
         if (state.tasks.filter(x => x.type === 'MIT' && !x.completed && isTaskScheduledForDate(x, new Date())).length >= 3) { showRippleNotice('⚠️ Max 3 MITs reached.'); return; }
@@ -3928,10 +3928,10 @@
       } else t.type = 'LIT';
       saveState(); recalculateSchedule();
     }
-    function deleteTask(taskId) { state.tasks = state.tasks.filter(x => x.id !== taskId); saveState(); recalculateSchedule(); }
+    function deleteTask(taskId) { state.tasks = state.tasks.filter(x => String(x.id) !== String(taskId)); saveState(); recalculateSchedule(); }
 
     function adjustTaskDuration(taskId, delta) {
-      const t = state.tasks.find(x => x.id === taskId);
+      const t = state.tasks.find(x => String(x.id) === String(taskId));
       if (!t) return;
       t.duration = Math.max(10, t.duration + delta);
       saveState(); recalculateSchedule();
@@ -3956,7 +3956,7 @@
     }
 
     function openEditTaskModal(taskId) {
-      const t = state.tasks.find(x => x.id === taskId);
+      const t = state.tasks.find(x => String(x.id) === String(taskId));
       if (!t) return;
       editingTaskId = taskId;
 
@@ -3993,7 +3993,7 @@
     function renderEditModalSubtasks() {
       const container = document.getElementById('editTaskSubtasksList');
       if (!container) return;
-      const t = state.tasks.find(x => x.id === editingTaskId);
+      const t = state.tasks.find(x => String(x.id) === String(editingTaskId));
       if (!t || !t.subtasks || t.subtasks.length === 0) {
         container.innerHTML = '<p class="text-[11px] text-slate-400 italic py-1">No sub-steps yet. Add one below or click 🪄 on the card.</p>';
         return;
@@ -4010,7 +4010,7 @@
       const input = document.getElementById('newSubtaskInput');
       const text = input ? input.value.trim() : '';
       if (!text || !editingTaskId) return;
-      const t = state.tasks.find(x => x.id === editingTaskId);
+      const t = state.tasks.find(x => String(x.id) === String(editingTaskId));
       if (!t) return;
       if (!t.subtasks) t.subtasks = [];
       t.subtasks.push({ text, done: false });
@@ -4019,7 +4019,7 @@
     }
 
     function removeEditModalSubtask(idx) {
-      const t = state.tasks.find(x => x.id === editingTaskId);
+      const t = state.tasks.find(x => String(x.id) === String(editingTaskId));
       if (!t || !t.subtasks) return;
       t.subtasks.splice(idx, 1);
       renderEditModalSubtasks();
@@ -4027,7 +4027,7 @@
 
     function deleteFromEditModal() {
       if (!editingTaskId) return;
-      const t = state.tasks.find(x => x.id === editingTaskId);
+      const t = state.tasks.find(x => String(x.id) === String(editingTaskId));
       const title = t ? t.title : 'this task';
       if (confirm(`Are you sure you want to delete "${title}"?`)) {
         deleteTask(editingTaskId);
@@ -4038,7 +4038,7 @@
 
     function saveEditTask() {
       if (!editingTaskId) return;
-      const t = state.tasks.find(x => x.id === editingTaskId);
+      const t = state.tasks.find(x => String(x.id) === String(editingTaskId));
       if (!t) return;
 
       const newTitle = document.getElementById('editTaskTitle').value.trim();
@@ -4177,8 +4177,8 @@
         }
       });
 
-      // 3. Repair completed tasks that were erroneously pushed into afternoon/evening (startMin >= 720)
-      const mislocatedCompleted = state.tasks.filter(t => t.completed && t.startMin != null && t.startMin >= 720);
+      // 3. Repair completed tasks only if erroneously pushed into late night overflow (startMin >= 1350)
+      const mislocatedCompleted = state.tasks.filter(t => t.completed && t.startMin != null && t.startMin >= 1350 && !t.manuallyPositioned);
       if (mislocatedCompleted.length > 0) {
         let repairCursor = Math.max(480, Math.min(c.peakStart - 60, 510));
         mislocatedCompleted.forEach(ct => {
@@ -4340,9 +4340,11 @@
     }
 
     let draggedTaskId = null;
+    let lastHoveredDropTarget = null;
 
     function onTimelineDragStart(e, taskId) {
       draggedTaskId = taskId;
+      window.currentDraggedTaskId = taskId;
       document.body.classList.add('is-dragging-card');
       e.dataTransfer.effectAllowed = 'move';
       e.dataTransfer.setData('text/plain', taskId);
@@ -4351,38 +4353,54 @@
 
     function onTimelineDragEnd(e) {
       document.body.classList.remove('is-dragging-card');
-      e.currentTarget.classList.remove('opacity-50', 'ring-2', 'ring-indigo-500');
+      if (e.currentTarget) {
+        e.currentTarget.classList.remove('opacity-50', 'ring-2', 'ring-indigo-500');
+      }
       document.querySelectorAll('.timeline-card').forEach(el => {
         el.classList.remove('drop-before', 'drop-after', 'ring-2', 'ring-indigo-500', 'ring-indigo-400', 'bg-indigo-500/10', 'border-indigo-500');
         el.style.borderTop = '';
         el.style.borderBottom = '';
       });
-      draggedTaskId = null;
+      setTimeout(() => {
+        draggedTaskId = null;
+        window.currentDraggedTaskId = null;
+        lastHoveredDropTarget = null;
+      }, 400);
     }
 
     function onTimelineDragOver(e) {
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
       const el = e.currentTarget;
-      const rect = el.getBoundingClientRect();
+      const card = (el && el.closest) ? (el.closest('.timeline-card') || el) : el;
+      if (!card) return;
+      const rect = card.getBoundingClientRect();
       const dropBefore = (e.clientY - rect.top) < (rect.height / 2);
+      const taskId = card.getAttribute('data-task-id');
 
-      el.classList.add('ring-2', 'ring-indigo-500', 'bg-indigo-500/10');
+      if (taskId) {
+        lastHoveredDropTarget = { taskId, dropBefore };
+      }
+
+      card.classList.add('ring-2', 'ring-indigo-500', 'bg-indigo-500/10');
       if (dropBefore) {
-        el.classList.add('drop-before');
-        el.classList.remove('drop-after');
+        card.classList.add('drop-before');
+        card.classList.remove('drop-after');
       } else {
-        el.classList.add('drop-after');
-        el.classList.remove('drop-before');
+        card.classList.add('drop-after');
+        card.classList.remove('drop-before');
       }
     }
 
     function onTimelineDragLeave(e) {
       const el = e.currentTarget;
-      if (e.relatedTarget && el.contains(e.relatedTarget)) return;
-      el.classList.remove('drop-before', 'drop-after', 'ring-2', 'ring-indigo-500', 'bg-indigo-500/10');
-      el.style.borderTop = '';
-      el.style.borderBottom = '';
+      const card = (el && el.closest) ? (el.closest('.timeline-card') || el) : el;
+      if (card && e.relatedTarget && card.contains(e.relatedTarget)) return;
+      if (card) {
+        card.classList.remove('drop-before', 'drop-after', 'ring-2', 'ring-indigo-500', 'bg-indigo-500/10');
+        card.style.borderTop = '';
+        card.style.borderBottom = '';
+      }
     }
 
     function onTimelineDrop(e, targetTaskId) {
@@ -4390,106 +4408,146 @@
       e.stopPropagation();
       document.body.classList.remove('is-dragging-card');
       const el = e.currentTarget;
-      el.classList.remove('drop-before', 'drop-after', 'ring-2', 'ring-indigo-500', 'bg-indigo-500/10');
-      el.style.borderTop = '';
-      el.style.borderBottom = '';
+      const card = (el && el.closest) ? (el.closest('.timeline-card') || el) : el;
+      if (card) {
+        card.classList.remove('drop-before', 'drop-after', 'ring-2', 'ring-indigo-500', 'bg-indigo-500/10');
+        card.style.borderTop = '';
+        card.style.borderBottom = '';
+      }
+      document.querySelectorAll('.timeline-card').forEach(c => {
+        c.classList.remove('drop-before', 'drop-after', 'ring-2', 'ring-indigo-500', 'ring-indigo-400', 'bg-indigo-500/10', 'border-indigo-500');
+        c.style.borderTop = '';
+        c.style.borderBottom = '';
+      });
 
-      const sourceId = draggedTaskId || e.dataTransfer.getData('text/plain');
-      if (!sourceId || sourceId === targetTaskId) return;
+      const sourceId = draggedTaskId || window.currentDraggedTaskId || e.dataTransfer.getData('text/plain');
+      const finalTargetId = targetTaskId || (card ? card.getAttribute('data-task-id') : null) || (lastHoveredDropTarget ? lastHoveredDropTarget.taskId : null);
+      if (!sourceId || !finalTargetId || String(sourceId) === String(finalTargetId)) return;
 
-      const rect = el.getBoundingClientRect();
-      const dropBefore = (e.clientY - rect.top) < (rect.height / 2);
+      const rect = card ? card.getBoundingClientRect() : null;
+      const dropBefore = rect ? ((e.clientY - rect.top) < (rect.height / 2)) : (lastHoveredDropTarget ? lastHoveredDropTarget.dropBefore : true);
 
-      rippleRescheduleFrom(sourceId, targetTaskId, dropBefore);
+      rippleRescheduleFrom(sourceId, finalTargetId, dropBefore);
+    }
+
+    function onTimelineContainerDragOver(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+    }
+
+    function onTimelineContainerDrop(e) {
+      e.preventDefault();
+      document.body.classList.remove('is-dragging-card');
+      document.querySelectorAll('.timeline-card').forEach(c => {
+        c.classList.remove('drop-before', 'drop-after', 'ring-2', 'ring-indigo-500', 'ring-indigo-400', 'bg-indigo-500/10', 'border-indigo-500');
+        c.style.borderTop = '';
+        c.style.borderBottom = '';
+      });
+      if (lastHoveredDropTarget) {
+        const sourceId = draggedTaskId || window.currentDraggedTaskId || e.dataTransfer.getData('text/plain');
+        if (sourceId && String(sourceId) !== String(lastHoveredDropTarget.taskId)) {
+          rippleRescheduleFrom(sourceId, lastHoveredDropTarget.taskId, lastHoveredDropTarget.dropBefore);
+        }
+      }
     }
 
     function rippleRescheduleFrom(sourceId, targetId, dropBefore = true) {
-      const sourceTask = state.tasks.find(t => t.id === sourceId);
-      const targetTask = state.tasks.find(t => t.id === targetId);
-      if (!sourceTask || !targetTask || sourceId === targetId) return;
+      const sourceTask = state.tasks.find(t => String(t.id) === String(sourceId));
+      const targetTask = state.tasks.find(t => String(t.id) === String(targetId));
+      if (!sourceTask || !targetTask || String(sourceId) === String(targetId)) return;
 
       const today = new Date();
       const includeBuffers = document.getElementById('bufferToggle')?.checked || false;
       const bufferMin = includeBuffers ? 10 : 0;
 
-      // 1. Get all active tasks for today
-      const activeTasks = state.tasks.filter(t => isTaskScheduledForDate(t, today));
-      const fixedEvents = activeTasks
-        .filter(t => t.type === 'FIXED')
-        .sort((a, b) => (a.fixedStartMin || 540) - (b.fixedStartMin || 540));
-      fixedEvents.forEach(ft => {
-        ft.startMin = ft.fixedStartMin;
-        ft.endMin = ft.fixedStartMin + ft.duration;
-      });
+      // 1. Determine intended new start time for sourceTask
+      let desiredStart;
+      const targetStart = targetTask.type === 'FIXED' ? (targetTask.fixedStartMin || targetTask.startMin || 540) : (targetTask.startMin != null ? targetTask.startMin : 540);
+      const targetEnd = targetTask.type === 'FIXED' ? (targetStart + (targetTask.duration || 30)) : (targetTask.endMin != null ? targetTask.endMin : (targetStart + (targetTask.duration || 30)));
 
-      // 2. Separate flexible tasks that have a scheduled start time
-      const flexibleTasks = activeTasks
-        .filter(t => t.type !== 'FIXED')
-        .sort((a, b) => (a.startMin || 0) - (b.startMin || 0));
-
-      // Remove sourceTask from its previous position in the order
-      const reorderedFlexible = flexibleTasks.filter(t => t.id !== sourceId);
-
-      // Determine insertion index relative to targetTask
-      let targetIdx = reorderedFlexible.findIndex(t => t.id === targetId);
-      if (targetIdx === -1) {
-        reorderedFlexible.push(sourceTask);
+      if (dropBefore) {
+        if (targetTask.type === 'FIXED') {
+          desiredStart = Math.max(360, targetStart - (sourceTask.duration || 30) - bufferMin);
+        } else {
+          desiredStart = targetStart;
+        }
       } else {
-        const insertIdx = dropBefore ? targetIdx : targetIdx + 1;
-        reorderedFlexible.splice(insertIdx, 0, sourceTask);
+        desiredStart = targetEnd + bufferMin;
       }
 
-      // 3. Determine starting slot for the newly inserted task
-      let targetSlotStart = targetTask.startMin != null ? targetTask.startMin : 540;
-      if (!dropBefore && targetTask.startMin != null) {
-        targetSlotStart = targetTask.startMin + (targetTask.duration || 30) + bufferMin;
-      }
+      // 2. Fixed events (anchors that cannot move unless sourceTask itself is fixed)
+      const activeTasks = state.tasks.filter(t => isTaskScheduledForDate(t, today));
+      const fixedIntervals = activeTasks
+        .filter(t => t.type === 'FIXED' && String(t.id) !== String(sourceId))
+        .map(f => ({
+          start: f.fixedStartMin || f.startMin || 540,
+          end: (f.fixedStartMin || f.startMin || 540) + (f.duration || 30)
+        }))
+        .sort((a, b) => a.start - b.start);
 
-      // Collect occupied slots from fixed calendar events
-      const fixedIntervals = fixedEvents.map(f => ({ start: f.startMin, end: f.endMin }));
+      // 3. Place sourceTask at or as close as possible to desiredStart without colliding with fixed calendar meetings
+      let cursor = Math.max(360, Math.min(1320, desiredStart));
+      const sDuration = sourceTask.duration || 30;
 
-      // Find the index of sourceTask in reorderedFlexible
-      const rippleStartIdx = reorderedFlexible.findIndex(t => t.id === sourceId);
-
-      let cursor = targetSlotStart;
-
-      // Ripple sourceTask and all subsequent tasks forward
-      for (let i = rippleStartIdx; i < reorderedFlexible.length; i++) {
-        const t = reorderedFlexible[i];
-        if (t.completed && t.startMin < 720) {
-          // Keep morning completed tasks anchored in place
-          continue;
+      let placed = false;
+      while (!placed) {
+        const conflict = fixedIntervals.find(f => Math.max(cursor, f.start) < Math.min(cursor + sDuration, f.end));
+        if (conflict) {
+          cursor = conflict.end + bufferMin;
+        } else {
+          placed = true;
         }
+      }
 
-        const duration = t.duration || 30;
+      sourceTask.startMin = cursor;
+      sourceTask.endMin = cursor + sDuration;
+      sourceTask.manuallyPositioned = true;
+      if (sourceTask.type === 'FIXED') {
+        sourceTask.fixedStartMin = cursor;
+      }
 
-        // Advance cursor past any fixed calendar event conflict
-        let placed = false;
-        while (!placed) {
-          const conflict = fixedIntervals.find(f => Math.max(cursor, f.start) < Math.min(cursor + duration, f.end));
-          if (conflict) {
-            cursor = conflict.end + bufferMin;
-          } else {
-            t.startMin = cursor;
-            t.endMin = cursor + duration;
-            cursor = t.endMin + bufferMin;
-            placed = true;
+      // 4. Ripple only SUBSEQUENT flexible tasks that collide
+      const otherFlexible = activeTasks
+        .filter(t => String(t.id) !== String(sourceId) && t.type !== 'FIXED' && t.startMin != null && !t.completed)
+        .sort((a, b) => a.startMin - b.startMin);
+
+      let rippleCursor = sourceTask.endMin + bufferMin;
+
+      otherFlexible.forEach(st => {
+        if (st.startMin < rippleCursor && st.startMin >= (desiredStart - bufferMin)) {
+          let stPlaced = false;
+          let stCur = rippleCursor;
+          const stDur = st.duration || 30;
+          while (!stPlaced) {
+            const conflict = fixedIntervals.find(f => Math.max(stCur, f.start) < Math.min(stCur + stDur, f.end));
+            if (conflict) {
+              stCur = conflict.end + bufferMin;
+            } else {
+              st.startMin = stCur;
+              st.endMin = stCur + stDur;
+              st.manuallyPositioned = true;
+              rippleCursor = st.endMin + bufferMin;
+              stPlaced = true;
+            }
           }
+        } else if (st.startMin >= rippleCursor) {
+          rippleCursor = Math.max(rippleCursor, (st.endMin || (st.startMin + (st.duration || 30))) + bufferMin);
         }
-      }
+      });
 
       saveState();
       recalculateSchedule();
-      showRippleNotice(`⚡ Moved "${sourceTask.title}" to ${formatMinToTime(sourceTask.startMin)} and rippled remaining tasks down.`);
+      showRippleNotice(`⚡ Moved "${sourceTask.title}" to ${formatMinToTime(sourceTask.startMin)}`);
     }
 
     function slideTaskTime(taskId, deltaMin) {
-      const t = state.tasks.find(x => x.id === taskId);
+      const t = state.tasks.find(x => String(x.id) === String(taskId));
       if (!t) return;
       if (t.startMin == null) t.startMin = 540;
       const newStart = Math.max(360, Math.min(1380 - (t.duration || 30), t.startMin + deltaMin));
       t.startMin = newStart;
       t.endMin = newStart + (t.duration || 30);
+      t.manuallyPositioned = true;
       if (t.type === 'FIXED') t.fixedStartMin = t.startMin;
 
       // Ripple any subsequent overlapping flexible tasks
@@ -4565,6 +4623,7 @@
 
         htmlItems.push(`
           <div draggable="true" 
+               data-task-id="${t.id}"
                ondragstart="onTimelineDragStart(event, '${t.id}')" 
                ondragend="onTimelineDragEnd(event)" 
                ondragover="onTimelineDragOver(event)" 
@@ -4638,7 +4697,7 @@
 
     // Focus Timer
     function openFocusModal(taskId) {
-      const t = state.tasks.find(x => x.id === taskId); if (!t) return;
+      const t = state.tasks.find(x => String(x.id) === String(taskId)); if (!t) return;
       activeFocusTaskId = taskId; isOverflow = false; clearInterval(timerInterval); isTimerRunning = false;
       timerSeconds = (t.duration <= 25 ? t.duration : 25) * 60; initialTimerSeconds = timerSeconds;
       document.getElementById('focusTaskBadge').textContent = `${t.type} • ${t.energy.toUpperCase()}`;
@@ -4684,7 +4743,7 @@
     }
 
     function addFocusMinutes(mins) { if (activeFocusTaskId) adjustTaskDuration(activeFocusTaskId, mins); if (!isOverflow) { timerSeconds += mins * 60; updateTimerUI(); } }
-    function completeFromFocus() { if (activeFocusTaskId) { const t = state.tasks.find(x => x.id === activeFocusTaskId); if (t) t.completed = true; saveState(); recalculateSchedule(); } playGentleChime(880, 0.4); closeFocusModal(); }
+    function completeFromFocus() { if (activeFocusTaskId) { const t = state.tasks.find(x => String(x.id) === String(activeFocusTaskId)); if (t) t.completed = true; saveState(); recalculateSchedule(); } playGentleChime(880, 0.4); closeFocusModal(); }
     function captureDistraction() {
       const inp = document.getElementById('distractionInput'), val = inp.value.trim(); if (!val) return;
       state.tasks.push({ id: 't_' + Date.now(), title: val, microStep: 'Review during trough', type: 'LIT', energy: 'fried', duration: 15, fixedStartMin: null, completed: false, subtasks: [] });
