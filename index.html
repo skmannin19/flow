@@ -8,6 +8,7 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link rel="alternate icon" href="favicon.ico" />
   <link rel="apple-touch-icon" href="app-icon.png" />
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <script>
@@ -252,14 +253,52 @@
             </div>
           </div>
 
-          <div class="flex items-center justify-between pt-1">
-            <label class="flex items-center gap-1.5 text-xs dark:text-slate-300 text-slate-700 cursor-pointer select-none">
-              <input type="checkbox" id="taskRecurringInput" class="accent-indigo-500 rounded" />
-              <span>🔁 Daily Routine (repeats daily)</span>
-            </label>
-            <button type="button" onclick="openGeminiModal()" class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1">
-              <span>✨</span> AI Task Assistant
-            </button>
+          <div class="pt-1 space-y-2">
+            <div class="flex items-center justify-between">
+              <label class="flex items-center gap-1.5 text-xs dark:text-slate-300 text-slate-700 cursor-pointer select-none">
+                <input type="checkbox" id="taskRecurringInput" onchange="toggleCaptureRecurrenceOptions(this.checked)" class="accent-indigo-500 rounded" />
+                <span>🔁 Recurring Schedule</span>
+              </label>
+              <button type="button" onclick="openGeminiModal('google')" class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1">
+                <span>☁️</span> Google Suite Sync
+              </button>
+            </div>
+
+            <!-- Expandable Recurrence Rules Picker -->
+            <div id="captureRecurrencePanel" class="hidden p-3 rounded-xl dark:bg-slate-950/80 bg-slate-50 border dark:border-slate-800 border-slate-200 text-xs space-y-2.5">
+              <div class="flex items-center justify-between gap-2">
+                <label class="text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500">Repeats:</label>
+                <select id="captureRecurFreq" onchange="updateCaptureRecurFreq(this.value)" class="flex-1 dark:bg-slate-900 bg-white border dark:border-slate-700 border-slate-300 rounded-lg px-2.5 py-1 text-xs dark:text-slate-200 text-slate-800 focus:outline-none">
+                  <option value="daily">Every day</option>
+                  <option value="weekdays" selected>Every weekday (Mon–Fri)</option>
+                  <option value="weekly">Weekly on selected days</option>
+                  <option value="monthly">Monthly on same date</option>
+                  <option value="custom">Custom interval</option>
+                </select>
+              </div>
+
+              <!-- Days of week checkboxes for weekly recurrence -->
+              <div id="captureRecurDaysRow" class="flex items-center justify-between gap-1 pt-0.5">
+                <button type="button" onclick="toggleCaptureDayBtn(0)" id="capDay_0" class="cap-day-btn w-7 h-7 rounded-lg text-[10px] font-semibold border dark:border-slate-800 border-slate-300 dark:text-slate-400 text-slate-600 transition">Su</button>
+                <button type="button" onclick="toggleCaptureDayBtn(1)" id="capDay_1" class="cap-day-btn w-7 h-7 rounded-lg text-[10px] font-semibold bg-indigo-600 text-white border border-indigo-500 transition">M</button>
+                <button type="button" onclick="toggleCaptureDayBtn(2)" id="capDay_2" class="cap-day-btn w-7 h-7 rounded-lg text-[10px] font-semibold bg-indigo-600 text-white border border-indigo-500 transition">Tu</button>
+                <button type="button" onclick="toggleCaptureDayBtn(3)" id="capDay_3" class="cap-day-btn w-7 h-7 rounded-lg text-[10px] font-semibold bg-indigo-600 text-white border border-indigo-500 transition">W</button>
+                <button type="button" onclick="toggleCaptureDayBtn(4)" id="capDay_4" class="cap-day-btn w-7 h-7 rounded-lg text-[10px] font-semibold bg-indigo-600 text-white border border-indigo-500 transition">Th</button>
+                <button type="button" onclick="toggleCaptureDayBtn(5)" id="capDay_5" class="cap-day-btn w-7 h-7 rounded-lg text-[10px] font-semibold bg-indigo-600 text-white border border-indigo-500 transition">F</button>
+                <button type="button" onclick="toggleCaptureDayBtn(6)" id="capDay_6" class="cap-day-btn w-7 h-7 rounded-lg text-[10px] font-semibold border dark:border-slate-800 border-slate-300 dark:text-slate-400 text-slate-600 transition">Sa</button>
+              </div>
+
+              <!-- Custom interval row -->
+              <div id="captureRecurCustomRow" class="hidden items-center gap-2 pt-0.5">
+                <span class="text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500">Every:</span>
+                <input type="number" id="captureRecurInterval" min="1" max="99" value="1" class="w-14 dark:bg-slate-900 bg-white border dark:border-slate-700 border-slate-300 rounded px-2 py-0.5 text-xs text-center dark:text-white text-slate-800" />
+                <select id="captureRecurUnit" class="dark:bg-slate-900 bg-white border dark:border-slate-700 border-slate-300 rounded px-2 py-0.5 text-xs dark:text-slate-200 text-slate-800">
+                  <option value="days">day(s)</option>
+                  <option value="weeks">week(s)</option>
+                  <option value="months">month(s)</option>
+                </select>
+              </div>
+            </div>
           </div>
 
           <button type="submit" class="w-full py-2.5 rounded-xl dark:bg-slate-800 bg-slate-200 hover:bg-indigo-600 hover:text-white dark:text-slate-200 text-slate-800 text-xs font-semibold border dark:border-slate-700 border-slate-300 hover:border-indigo-500 transition flex items-center justify-center gap-2">
@@ -454,16 +493,66 @@
       </div>
 
       <!-- Tab Navigation -->
-      <div class="grid grid-cols-3 gap-2 dark:bg-slate-950 bg-slate-100 p-1 rounded-xl border dark:border-slate-800 border-slate-300 text-xs">
-        <button onclick="switchGeminiTab('horizons')" id="geminiTabHorizons" class="py-2 rounded-lg font-semibold bg-indigo-600 text-white transition">
-          🎯 Horizon Suggester
+      <div class="grid grid-cols-4 gap-1.5 dark:bg-slate-950 bg-slate-100 p-1 rounded-xl border dark:border-slate-800 border-slate-300 text-xs">
+        <button onclick="switchGeminiTab('horizons')" id="geminiTabHorizons" class="py-2 rounded-lg font-semibold bg-indigo-600 text-white transition text-center truncate">
+          🎯 Horizons
         </button>
-        <button onclick="switchGeminiTab('ingest')" id="geminiTabIngest" class="py-2 rounded-lg font-semibold dark:text-slate-400 text-slate-600 hover:text-white transition">
-          📥 Email / Chat Ingest
+        <button onclick="switchGeminiTab('google')" id="geminiTabGoogle" class="py-2 rounded-lg font-semibold dark:text-slate-400 text-slate-600 hover:text-white transition text-center truncate">
+          ☁️ Google Suite
         </button>
-        <button onclick="switchGeminiTab('calendar')" id="geminiTabCalendar" class="py-2 rounded-lg font-semibold dark:text-slate-400 text-slate-600 hover:text-white transition">
-          📅 Calendar Sync
+        <button onclick="switchGeminiTab('ingest')" id="geminiTabIngest" class="py-2 rounded-lg font-semibold dark:text-slate-400 text-slate-600 hover:text-white transition text-center truncate">
+          📥 Text Ingest
         </button>
+        <button onclick="switchGeminiTab('calendar')" id="geminiTabCalendar" class="py-2 rounded-lg font-semibold dark:text-slate-400 text-slate-600 hover:text-white transition text-center truncate">
+          📅 Manual
+        </button>
+      </div>
+
+      <!-- Tab: Direct Google Suite Connection via OAuth -->
+      <div id="geminiViewGoogle" class="hidden space-y-4">
+        <div class="p-4 rounded-2xl dark:bg-slate-950/80 bg-slate-50 border dark:border-slate-800 border-slate-200 text-xs space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="text-xl">🌐</span>
+              <div>
+                <h3 class="font-bold text-slate-900 dark:text-white">Direct Google Workspace Integration</h3>
+                <p class="text-[11px] text-slate-500 dark:text-slate-400">Pulls today's Google Calendar meetings and unread Gmail action items automatically without copy-pasting.</p>
+              </div>
+            </div>
+            <div id="googleAuthBadge" class="px-2 py-0.5 rounded text-[10px] font-mono border dark:border-slate-800 border-slate-300 text-slate-500">Not Connected</div>
+          </div>
+
+          <!-- OAuth Client ID Configuration -->
+          <div class="space-y-1.5 pt-2 border-t dark:border-slate-800 border-slate-200">
+            <div class="flex items-center justify-between">
+              <label class="text-[10px] font-mono uppercase dark:text-slate-400 text-slate-600">Google OAuth 2.0 Client ID (Web Application)</label>
+              <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener" class="text-[11px] text-indigo-500 hover:underline">Google Cloud Console ↗</a>
+            </div>
+            <input id="googleClientIdInput" type="text" placeholder="123456789-xxxx.apps.googleusercontent.com" onchange="saveGoogleClientId()" class="w-full dark:bg-slate-900 bg-white border dark:border-slate-700 border-slate-300 rounded-lg px-3 py-1.5 text-xs font-mono dark:text-slate-200 text-slate-800 focus:outline-none focus:border-indigo-500" />
+            <p class="text-[10px] text-slate-400 dark:text-slate-500 font-mono">Authorized JavaScript Origin to set in Google Cloud: <code class="text-indigo-400">https://skmannin19.github.io</code></p>
+          </div>
+
+          <!-- Connect & Sync Actions -->
+          <div class="flex flex-wrap items-center gap-2 pt-2">
+            <button id="googleSignInBtn" onclick="requestGoogleAuth()" class="px-4 py-2 rounded-xl bg-white text-slate-900 hover:bg-slate-100 border border-slate-300 font-semibold text-xs transition flex items-center gap-2 shadow-sm">
+              <svg class="w-4 h-4" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+              <span id="googleSignInBtnText">Sign In with Google</span>
+            </button>
+            <button onclick="fetchGoogleCalendarLive(true)" class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition flex items-center gap-1.5">
+              <span>🔄</span> Auto-Pull Calendar Now
+            </button>
+            <button onclick="fetchGmailActionItemsLive()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs transition flex items-center gap-1.5">
+              <span>✉️</span> Pull Gmail Action Items
+            </button>
+          </div>
+
+          <div class="flex items-center gap-2 pt-1 text-[11px] text-slate-500 dark:text-slate-400">
+            <input type="checkbox" id="autoSyncGoogleToggle" onchange="saveGoogleSyncPref(this.checked)" class="accent-indigo-500 rounded" />
+            <label for="autoSyncGoogleToggle" class="cursor-pointer">Automatically refresh Google Calendar meetings when I visit or wake this page</label>
+          </div>
+
+          <div id="googleSyncFeedback" class="hidden p-2 rounded-lg font-mono text-[11px]"></div>
+        </div>
       </div>
 
       <!-- Tab 1: Horizon-Based Auto Suggester -->
@@ -520,6 +609,72 @@
           <input id="geminiApiKeyInput" type="password" placeholder="AIzaSy..." onchange="saveGeminiApiKey()" class="dark:bg-slate-950 bg-slate-100 border dark:border-slate-800 border-slate-300 rounded px-2 py-1 text-xs font-mono text-indigo-400 focus:outline-none" />
         </div>
         <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" class="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline">Get Free Gemini Key ↗</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- RECURRENCE RULES MODAL -->
+  <div id="recurrenceModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden items-center justify-center p-4 overflow-y-auto">
+    <div class="dark:bg-slate-900 bg-white border dark:border-slate-800 border-slate-200 rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl space-y-5 my-8">
+      <div class="flex items-start justify-between gap-4 border-b dark:border-slate-800 border-slate-200 pb-3">
+        <div>
+          <span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 border border-indigo-500/30">Google-Style Recurrence</span>
+          <h2 class="text-lg font-bold dark:text-white text-slate-900 mt-1">🔁 Set Repeat Schedule</h2>
+          <p id="recurrenceModalTaskTitle" class="text-xs text-indigo-600 dark:text-indigo-400 font-medium truncate mt-0.5">Task Title</p>
+        </div>
+        <button onclick="closeRecurrenceModal()" class="text-slate-400 hover:text-white text-sm px-2.5 py-1 rounded-lg bg-slate-200 dark:bg-slate-800">✕</button>
+      </div>
+
+      <div class="space-y-4 text-xs">
+        <div>
+          <label class="block text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500 mb-1">Recurrence Pattern</label>
+          <select id="modalRecurFreq" onchange="updateModalRecurFreq(this.value)" class="w-full dark:bg-slate-950 bg-slate-50 border dark:border-slate-700 border-slate-300 rounded-xl px-3 py-2 text-xs dark:text-slate-200 text-slate-800 focus:outline-none">
+            <option value="daily">Every day</option>
+            <option value="weekdays">Every weekday (Monday to Friday)</option>
+            <option value="weekly">Weekly on specific days</option>
+            <option value="monthly">Monthly (same day of each month)</option>
+            <option value="custom">Custom interval</option>
+          </select>
+        </div>
+
+        <div id="modalRecurDaysRow" class="space-y-1.5">
+          <label class="block text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500">Repeat On:</label>
+          <div class="grid grid-cols-7 gap-1">
+            <button type="button" onclick="toggleModalDayBtn(0)" id="modalDay_0" class="modal-day-btn py-2 rounded-lg text-xs font-semibold border dark:border-slate-800 border-slate-300 transition text-center">Su</button>
+            <button type="button" onclick="toggleModalDayBtn(1)" id="modalDay_1" class="modal-day-btn py-2 rounded-lg text-xs font-semibold bg-indigo-600 text-white border border-indigo-500 transition text-center">M</button>
+            <button type="button" onclick="toggleModalDayBtn(2)" id="modalDay_2" class="modal-day-btn py-2 rounded-lg text-xs font-semibold bg-indigo-600 text-white border border-indigo-500 transition text-center">Tu</button>
+            <button type="button" onclick="toggleModalDayBtn(3)" id="modalDay_3" class="modal-day-btn py-2 rounded-lg text-xs font-semibold bg-indigo-600 text-white border border-indigo-500 transition text-center">W</button>
+            <button type="button" onclick="toggleModalDayBtn(4)" id="modalDay_4" class="modal-day-btn py-2 rounded-lg text-xs font-semibold bg-indigo-600 text-white border border-indigo-500 transition text-center">Th</button>
+            <button type="button" onclick="toggleModalDayBtn(5)" id="modalDay_5" class="modal-day-btn py-2 rounded-lg text-xs font-semibold bg-indigo-600 text-white border border-indigo-500 transition text-center">F</button>
+            <button type="button" onclick="toggleModalDayBtn(6)" id="modalDay_6" class="modal-day-btn py-2 rounded-lg text-xs font-semibold border dark:border-slate-800 border-slate-300 transition text-center">Sa</button>
+          </div>
+        </div>
+
+        <div id="modalRecurCustomRow" class="hidden items-center gap-2 p-3 rounded-xl dark:bg-slate-950 bg-slate-50 border dark:border-slate-800 border-slate-200">
+          <span class="text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500">Repeat every:</span>
+          <input type="number" id="modalRecurInterval" min="1" max="99" value="1" onchange="updateModalSummary()" class="w-16 dark:bg-slate-900 bg-white border dark:border-slate-700 border-slate-300 rounded-lg px-2.5 py-1 text-xs text-center dark:text-white text-slate-800" />
+          <select id="modalRecurUnit" onchange="updateModalSummary()" class="dark:bg-slate-900 bg-white border dark:border-slate-700 border-slate-300 rounded-lg px-2.5 py-1 text-xs dark:text-slate-200 text-slate-800">
+            <option value="days">day(s)</option>
+            <option value="weeks">week(s)</option>
+            <option value="months">month(s)</option>
+          </select>
+        </div>
+
+        <div class="p-3 rounded-xl dark:bg-slate-950 bg-slate-50 border dark:border-slate-800 border-slate-200 text-xs">
+          <div class="flex items-center gap-2">
+            <span>💡</span>
+            <p id="modalRecurSummary" class="text-slate-600 dark:text-slate-300 font-medium">Repeats every weekday (Monday to Friday).</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 pt-2">
+          <button onclick="saveModalRecurrence()" class="py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition shadow-sm text-center">
+            Save Schedule
+          </button>
+          <button onclick="removeModalRecurrence()" class="py-2.5 px-4 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-rose-950 hover:text-rose-300 dark:text-slate-300 text-slate-700 font-semibold text-xs border dark:border-slate-700 border-slate-300 transition text-center">
+            Make One-Off (Stop Repeating)
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -736,15 +891,15 @@
     };
 
     const DEFAULT_TASKS = [
-      { id: 't1', title: 'Morning Routine, Meditation & Leo Park Walk', microStep: 'Leash up & head out for 20-min low-impact walk', type: 'FIXED', energy: 'steady', duration: 45, fixedStartMin: 450, completed: true, recurring: true, subtasks: [] },
+      { id: 't1', title: 'Morning Routine, Meditation & Leo Park Walk', microStep: 'Leash up & head out for 20-min low-impact walk', type: 'FIXED', energy: 'steady', duration: 45, fixedStartMin: 450, completed: true, recurring: true, recurrence: { freq: 'daily', daysOfWeek: [0, 1, 2, 3, 4, 5, 6], interval: 1, unit: 'days' }, subtasks: [] },
       { id: 't2', title: 'Draft CO Natural Medicine Potency & Packaging Compliance Matrix', microStep: 'Open state DOR compliance rules PDF and extract Section 4 table', type: 'MIT', energy: 'sharp', duration: 60, fixedStartMin: null, completed: false, recurring: false, subtasks: [{ text: 'Define standardized capsule homogenizing SOP requirements', done: true }, { text: 'Map third-party lab stability & microbial testing intervals', done: false }] },
       { id: 't3', title: 'Outreach to 3 Denver Extraction & Formulation Lab Directors', microStep: 'Draft concise 4-sentence intro note to first founder on LinkedIn', type: 'MIT', energy: 'sharp', duration: 45, fixedStartMin: null, completed: false, recurring: false, subtasks: [] },
       { id: 't4', title: 'Evaluate Cleanroom Equipment & Commercial Facility Layouts', microStep: 'Compare square footage & HVAC specs on top 2 saved industrial listings', type: 'MIT', energy: 'steady', duration: 45, fixedStartMin: null, completed: false, recurring: false, subtasks: [] },
-      { id: 't5', title: 'Midday Reset, Lunch & Quick Mobility Break', microStep: 'Step away from screens for 45 mins', type: 'FIXED', energy: 'fried', duration: 45, fixedStartMin: 750, completed: false, recurring: true, subtasks: [] },
+      { id: 't5', title: 'Midday Reset, Lunch & Quick Mobility Break', microStep: 'Step away from screens for 45 mins', type: 'FIXED', energy: 'fried', duration: 45, fixedStartMin: 750, completed: false, recurring: true, recurrence: { freq: 'weekdays', daysOfWeek: [1, 2, 3, 4, 5], interval: 1, unit: 'days' }, subtasks: [] },
       { id: 't6', title: 'Follow up with LiveWell Animal Hospital on Leo Radiographs', microStep: 'Reply to Patsy Mitch email confirming next mobility check-in', type: 'LIT', energy: 'fried', duration: 20, fixedStartMin: null, completed: false, recurring: false, subtasks: [] },
-      { id: 't7', title: 'Inbox Zero & Weekly Sunday Planning Prep', microStep: 'Clear starred emails and archive newsletters', type: 'LIT', energy: 'fried', duration: 25, fixedStartMin: null, completed: false, recurring: true, subtasks: [] },
+      { id: 't7', title: 'Inbox Zero & Weekly Sunday Planning Prep', microStep: 'Clear starred emails and archive newsletters', type: 'LIT', energy: 'fried', duration: 25, fixedStartMin: null, completed: false, recurring: true, recurrence: { freq: 'weekly', daysOfWeek: [0, 5], interval: 1, unit: 'weeks' }, subtasks: [] },
       { id: 't8', title: 'Review West Denver / Lakewood Real Estate Comps & Inspection Notes', microStep: 'Archive non-matching listings & flag top main-floor primary contender', type: 'LIT', energy: 'steady', duration: 30, fixedStartMin: null, completed: false, recurring: false, subtasks: [] },
-      { id: 't9', title: 'Late Afternoon Workout / Pickleball Court Session', microStep: 'Change gear & head out on time', type: 'FIXED', energy: 'steady', duration: 60, fixedStartMin: 1020, completed: false, recurring: true, subtasks: [] }
+      { id: 't9', title: 'Late Afternoon Workout / Pickleball Court Session', microStep: 'Change gear & head out on time', type: 'FIXED', energy: 'steady', duration: 60, fixedStartMin: 1020, completed: false, recurring: true, recurrence: { freq: 'weekly', daysOfWeek: [1, 2, 3, 4, 5], interval: 1, unit: 'days' }, subtasks: [] }
     ];
 
     let state = {
@@ -767,7 +922,9 @@
         reboundStart: 930, reboundEnd: 1080,
         lastCalibratedISO: null, quarterlyPromptDismissed: false
       },
-      tasks: []
+      tasks: [],
+      googleClientId: '',
+      autoSyncGoogle: false
     };
 
     let ghConfig = { owner: 'skmannin19', repo: 'flow', branch: 'main', token: '', autoSync: false };
@@ -781,6 +938,15 @@
     let audioCtx = null;
     let noiseNode = null;
     let isNoisePlaying = false;
+
+    // Google Suite & Recurrence Variables
+    const GOOGLE_CLIENT_ID_KEY = 'flowstate_os_google_client_id';
+    const GOOGLE_SYNC_PREF_KEY = 'flowstate_os_google_auto_sync';
+    let googleTokenClient = null;
+    let googleAccessToken = null;
+    let captureRecurDays = [1, 2, 3, 4, 5];
+    let modalRecurDays = [1, 2, 3, 4, 5];
+    let editingRecurrenceTaskId = null;
 
     async function init() {
       // 1. Load GitHub Config
@@ -835,15 +1001,21 @@
       // 3. Dynamic Date & Day Rollover Check (Auto-corrects date and rolls over tasks)
       updateDateAndRollover(true);
 
-      // Listen for tab wake / revisit to auto-correct date without refresh
+      // Listen for tab wake / revisit to auto-correct date without refresh and sync calendar
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') {
           updateDateAndRollover();
           inferRealtimeEnergyFromChronotype();
+          if (state.autoSyncGoogle && googleAccessToken) {
+            fetchGoogleCalendarLive(false);
+          }
         }
       });
       window.addEventListener('focus', () => {
         updateDateAndRollover();
+        if (state.autoSyncGoogle && googleAccessToken) {
+          fetchGoogleCalendarLive(false);
+        }
       });
       setInterval(updateDateAndRollover, 30000);
 
@@ -851,6 +1023,21 @@
       const savedGeminiKey = localStorage.getItem('flowstate_os_gemini_api_key');
       if (savedGeminiKey && document.getElementById('geminiApiKeyInput')) {
         document.getElementById('geminiApiKeyInput').value = savedGeminiKey;
+      }
+
+      // Load Google Client ID and Auto-Sync Preferences
+      const savedGoogleClientId = localStorage.getItem(GOOGLE_CLIENT_ID_KEY);
+      if (savedGoogleClientId) state.googleClientId = savedGoogleClientId;
+      const savedGoogleSync = localStorage.getItem(GOOGLE_SYNC_PREF_KEY);
+      if (savedGoogleSync !== null) state.autoSyncGoogle = (savedGoogleSync === 'true');
+
+      // Initialize GIS Google Auth Client once accounts SDK is ready
+      if (window.google && window.google.accounts) {
+        initGoogleAuthClient();
+      } else {
+        window.addEventListener('load', () => {
+          setTimeout(initGoogleAuthClient, 500);
+        });
       }
 
       if (ghConfig.token && ghConfig.autoSync) {
@@ -1261,8 +1448,253 @@
       updateRecommendationBanner(); renderPriorityLists();
     }
 
+    // --- GOOGLE CALENDAR-STYLE RECURRENCE ENGINE ---
+    function isTaskScheduledForDate(t, date = new Date()) {
+      if (!t.recurring) return true;
+      if (!t.recurrence) return true; // Legacy daily fallback
+      const freq = t.recurrence.freq || 'daily';
+      const dayOfWeek = date.getDay(); // 0 = Sun .. 6 = Sat
+      const dayOfMonth = date.getDate();
+
+      if (freq === 'daily') return true;
+      if (freq === 'weekdays') return dayOfWeek >= 1 && dayOfWeek <= 5;
+      if (freq === 'weekly') {
+        const days = t.recurrence.daysOfWeek || [1, 2, 3, 4, 5];
+        return days.includes(dayOfWeek);
+      }
+      if (freq === 'monthly') {
+        const targetDay = t.recurrence.dayOfMonth || 1;
+        return dayOfMonth === targetDay;
+      }
+      if (freq === 'custom') {
+        const interval = Math.max(1, parseInt(t.recurrence.interval, 10) || 1);
+        const unit = t.recurrence.unit || 'days';
+        const start = t.recurrence.startDate ? new Date(t.recurrence.startDate + 'T00:00:00') : new Date('2026-01-01T00:00:00');
+        const startNorm = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+        const targetNorm = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        const diffMs = targetNorm - startNorm;
+        const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+        if (diffDays < 0) return false;
+
+        if (unit === 'days') {
+          return diffDays % interval === 0;
+        } else if (unit === 'weeks') {
+          const diffWeeks = Math.floor(diffDays / 7);
+          const days = t.recurrence.daysOfWeek && t.recurrence.daysOfWeek.length > 0 ? t.recurrence.daysOfWeek : [start.getDay()];
+          return (diffWeeks % interval === 0) && days.includes(dayOfWeek);
+        } else if (unit === 'months') {
+          const monthsDiff = (targetNorm.getFullYear() - startNorm.getFullYear()) * 12 + (targetNorm.getMonth() - startNorm.getMonth());
+          return (monthsDiff >= 0) && (monthsDiff % interval === 0) && (dayOfMonth === startNorm.getDate());
+        }
+      }
+      return true;
+    }
+
+    function formatRecurrenceLabel(t) {
+      if (!t.recurring) return '';
+      if (!t.recurrence) return 'Daily';
+      const r = t.recurrence;
+      if (r.freq === 'daily') return 'Daily';
+      if (r.freq === 'weekdays') return 'Weekdays';
+      if (r.freq === 'weekly') {
+        const dayNames = ['Su', 'M', 'Tu', 'W', 'Th', 'F', 'Sa'];
+        const days = (r.daysOfWeek || []).sort((a, b) => a - b).map(d => dayNames[d]);
+        return days.length > 0 ? days.join(', ') : 'Weekly';
+      }
+      if (r.freq === 'monthly') {
+        return `Monthly (Day ${r.dayOfMonth || '1st'})`;
+      }
+      if (r.freq === 'custom') {
+        return `Every ${r.interval || 1} ${r.unit || 'days'}`;
+      }
+      return 'Repeat';
+    }
+
+    // Capture Form Recurrence UI Helpers
+    function toggleCaptureRecurrenceOptions(checked) {
+      const panel = document.getElementById('captureRecurrencePanel');
+      if (panel) {
+        if (checked) panel.classList.remove('hidden');
+        else panel.classList.add('hidden');
+      }
+    }
+
+    function updateCaptureRecurFreq(freq) {
+      const daysRow = document.getElementById('captureRecurDaysRow');
+      const customRow = document.getElementById('captureRecurCustomRow');
+      if (freq === 'weekly') {
+        daysRow.classList.remove('hidden');
+        customRow.classList.add('hidden');
+      } else if (freq === 'custom') {
+        daysRow.classList.add('hidden');
+        customRow.classList.remove('hidden');
+        customRow.classList.add('flex');
+      } else {
+        daysRow.classList.add('hidden');
+        customRow.classList.add('hidden');
+      }
+    }
+
+    function toggleCaptureDayBtn(day) {
+      const idx = captureRecurDays.indexOf(day);
+      if (idx > -1) {
+        if (captureRecurDays.length > 1) captureRecurDays.splice(idx, 1);
+      } else {
+        captureRecurDays.push(day);
+      }
+      captureRecurDays.sort((a, b) => a - b);
+      for (let i = 0; i <= 6; i++) {
+        const btn = document.getElementById(`capDay_${i}`);
+        if (!btn) continue;
+        if (captureRecurDays.includes(i)) {
+          btn.className = 'cap-day-btn w-7 h-7 rounded-lg text-[10px] font-semibold bg-indigo-600 text-white border border-indigo-500 transition';
+        } else {
+          btn.className = 'cap-day-btn w-7 h-7 rounded-lg text-[10px] font-semibold border dark:border-slate-800 border-slate-300 dark:text-slate-400 text-slate-600 transition';
+        }
+      }
+    }
+
+    // Recurrence Modal UI Helpers
+    function openRecurrenceModal(taskId) {
+      const t = state.tasks.find(x => x.id === taskId);
+      if (!t) return;
+      editingRecurrenceTaskId = taskId;
+      document.getElementById('recurrenceModalTaskTitle').textContent = t.title;
+
+      const r = t.recurrence || {
+        freq: t.recurring ? 'daily' : 'weekdays',
+        daysOfWeek: [1, 2, 3, 4, 5],
+        dayOfMonth: new Date().getDate(),
+        interval: 1,
+        unit: 'days'
+      };
+
+      document.getElementById('modalRecurFreq').value = r.freq || 'weekdays';
+      document.getElementById('modalRecurInterval').value = r.interval || 1;
+      document.getElementById('modalRecurUnit').value = r.unit || 'days';
+      modalRecurDays = Array.isArray(r.daysOfWeek) && r.daysOfWeek.length > 0 ? [...r.daysOfWeek] : [1, 2, 3, 4, 5];
+
+      updateModalRecurFreq(r.freq || 'weekdays');
+      renderModalDayButtons();
+      updateModalSummary();
+
+      const modal = document.getElementById('recurrenceModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeRecurrenceModal() {
+      const modal = document.getElementById('recurrenceModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      editingRecurrenceTaskId = null;
+    }
+
+    function updateModalRecurFreq(freq) {
+      const daysRow = document.getElementById('modalRecurDaysRow');
+      const customRow = document.getElementById('modalRecurCustomRow');
+      if (freq === 'weekly') {
+        daysRow.classList.remove('hidden');
+        customRow.classList.add('hidden');
+      } else if (freq === 'custom') {
+        daysRow.classList.add('hidden');
+        customRow.classList.remove('hidden');
+        customRow.classList.add('flex');
+      } else {
+        daysRow.classList.add('hidden');
+        customRow.classList.add('hidden');
+      }
+      updateModalSummary();
+    }
+
+    function renderModalDayButtons() {
+      for (let i = 0; i <= 6; i++) {
+        const btn = document.getElementById(`modalDay_${i}`);
+        if (!btn) continue;
+        if (modalRecurDays.includes(i)) {
+          btn.className = 'modal-day-btn py-2 rounded-lg text-xs font-semibold bg-indigo-600 text-white border border-indigo-500 transition text-center';
+        } else {
+          btn.className = 'modal-day-btn py-2 rounded-lg text-xs font-semibold border dark:border-slate-800 border-slate-300 dark:text-slate-400 text-slate-600 transition text-center';
+        }
+      }
+    }
+
+    function toggleModalDayBtn(day) {
+      const idx = modalRecurDays.indexOf(day);
+      if (idx > -1) {
+        if (modalRecurDays.length > 1) modalRecurDays.splice(idx, 1);
+      } else {
+        modalRecurDays.push(day);
+      }
+      modalRecurDays.sort((a, b) => a - b);
+      renderModalDayButtons();
+      updateModalSummary();
+    }
+
+    function updateModalSummary() {
+      const freq = document.getElementById('modalRecurFreq').value;
+      const interval = document.getElementById('modalRecurInterval').value || 1;
+      const unit = document.getElementById('modalRecurUnit').value || 'days';
+      const summaryEl = document.getElementById('modalRecurSummary');
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+      if (freq === 'daily') {
+        summaryEl.textContent = 'Repeats every single day automatically.';
+      } else if (freq === 'weekdays') {
+        summaryEl.textContent = 'Repeats every weekday (Monday through Friday).';
+      } else if (freq === 'weekly') {
+        const list = modalRecurDays.map(d => dayNames[d]).join(', ');
+        summaryEl.textContent = `Repeats weekly on: ${list || 'selected days'}.`;
+      } else if (freq === 'monthly') {
+        const todayDate = new Date().getDate();
+        summaryEl.textContent = `Repeats monthly on day ${todayDate} of each month.`;
+      } else if (freq === 'custom') {
+        summaryEl.textContent = `Repeats every ${interval} ${unit}.`;
+      }
+    }
+
+    function saveModalRecurrence() {
+      if (!editingRecurrenceTaskId) return;
+      const t = state.tasks.find(x => x.id === editingRecurrenceTaskId);
+      if (!t) return;
+
+      const freq = document.getElementById('modalRecurFreq').value;
+      const interval = parseInt(document.getElementById('modalRecurInterval').value, 10) || 1;
+      const unit = document.getElementById('modalRecurUnit').value || 'days';
+
+      t.recurring = true;
+      t.recurrence = {
+        freq,
+        daysOfWeek: freq === 'weekdays' ? [1, 2, 3, 4, 5] : (freq === 'weekly' ? [...modalRecurDays] : [0, 1, 2, 3, 4, 5, 6]),
+        dayOfMonth: new Date().getDate(),
+        interval,
+        unit,
+        startDate: getLocalDateString()
+      };
+
+      saveState();
+      recalculateSchedule();
+      closeRecurrenceModal();
+      showRippleNotice(`🔁 Saved recurrence schedule for "${t.title}".`);
+    }
+
+    function removeModalRecurrence() {
+      if (!editingRecurrenceTaskId) return;
+      const t = state.tasks.find(x => x.id === editingRecurrenceTaskId);
+      if (!t) return;
+
+      t.recurring = false;
+      t.recurrence = null;
+
+      saveState();
+      recalculateSchedule();
+      closeRecurrenceModal();
+      showRippleNotice(`"${t.title}" is now a one-off task.`);
+    }
+
     function getRecommendedTask() {
-      const incomplete = state.tasks.filter(t => !t.completed && t.type !== 'FIXED');
+      const today = new Date();
+      const incomplete = state.tasks.filter(t => !t.completed && t.type !== 'FIXED' && isTaskScheduledForDate(t, today));
       if (incomplete.length === 0) return null;
       return incomplete.find(t => t.type === 'MIT' && t.energy === state.energy) || incomplete.find(t => t.energy === state.energy) || incomplete.find(t => t.type === 'MIT') || incomplete[0];
     }
@@ -1295,8 +1727,23 @@
       const recurring = document.getElementById('taskRecurringInput') ? document.getElementById('taskRecurringInput').checked : false;
       if (!title) return;
 
-      if (type === 'MIT' && state.tasks.filter(t => t.type === 'MIT' && !t.completed).length >= 3) {
+      if (type === 'MIT' && state.tasks.filter(t => t.type === 'MIT' && !t.completed && isTaskScheduledForDate(t, new Date())).length >= 3) {
         type = 'LIT'; showRippleNotice('🛡️ MIT Cap Reached (Max 3/day). Added as LIT.');
+      }
+
+      let recurrence = null;
+      if (recurring) {
+        const freq = document.getElementById('captureRecurFreq')?.value || 'weekdays';
+        const interval = parseInt(document.getElementById('captureRecurInterval')?.value, 10) || 1;
+        const unit = document.getElementById('captureRecurUnit')?.value || 'days';
+        recurrence = {
+          freq,
+          daysOfWeek: freq === 'weekdays' ? [1, 2, 3, 4, 5] : (freq === 'weekly' ? [...captureRecurDays] : [0, 1, 2, 3, 4, 5, 6]),
+          dayOfMonth: new Date().getDate(),
+          interval,
+          unit,
+          startDate: getLocalDateString()
+        };
       }
 
       state.tasks.push({
@@ -1309,23 +1756,21 @@
         fixedStartMin: type === 'FIXED' ? 840 : null,
         completed: false,
         recurring,
+        recurrence,
         subtasks: []
       });
       document.getElementById('taskTitleInput').value = '';
       document.getElementById('taskMicroInput').value = '';
-      if (document.getElementById('taskRecurringInput')) document.getElementById('taskRecurringInput').checked = false;
+      if (document.getElementById('taskRecurringInput')) {
+        document.getElementById('taskRecurringInput').checked = false;
+        toggleCaptureRecurrenceOptions(false);
+      }
       saveState();
       optimizeByChronotype(false);
     }
 
     function toggleTaskRecurring(taskId) {
-      const t = state.tasks.find(x => x.id === taskId);
-      if (!t) return;
-      t.recurring = !t.recurring;
-      saveState();
-      renderPriorityLists();
-      recalculateSchedule();
-      showRippleNotice(t.recurring ? `🔁 "${t.title}" will now auto-repeat every morning.` : `"${t.title}" is now a one-off task.`);
+      openRecurrenceModal(taskId);
     }
 
     function autoBreakdownTask(taskId) {
@@ -1341,7 +1786,7 @@
       const t = state.tasks.find(x => x.id === taskId);
       if (!t || t.type === 'FIXED') return;
       if (t.type === 'LIT') {
-        if (state.tasks.filter(x => x.type === 'MIT' && !x.completed).length >= 3) { showRippleNotice('⚠️ Max 3 MITs reached.'); return; }
+        if (state.tasks.filter(x => x.type === 'MIT' && !x.completed && isTaskScheduledForDate(x, new Date())).length >= 3) { showRippleNotice('⚠️ Max 3 MITs reached.'); return; }
         t.type = 'MIT';
       } else t.type = 'LIT';
       saveState(); recalculateSchedule();
@@ -1378,8 +1823,10 @@
     function recalculateSchedule() {
       const includeBuffers = document.getElementById('bufferToggle').checked;
       const c = state.chronotype;
-      const fixed = state.tasks.filter(t => t.type === 'FIXED').sort((a, b) => (a.fixedStartMin || 540) - (b.fixedStartMin || 540));
-      const flexible = state.tasks.filter(t => t.type !== 'FIXED');
+      const today = new Date();
+      const activeTasks = state.tasks.filter(t => isTaskScheduledForDate(t, today));
+      const fixed = activeTasks.filter(t => t.type === 'FIXED').sort((a, b) => (a.fixedStartMin || 540) - (b.fixedStartMin || 540));
+      const flexible = activeTasks.filter(t => t.type !== 'FIXED');
 
       let cursor = Math.min(c.peakStart, 510), focusMins = 0, restInserted = false;
       const blocks = [], overflow = [];
@@ -1427,17 +1874,21 @@
     }
 
     function renderPriorityLists() {
-      const mits = state.tasks.filter(t => t.type === 'MIT'), lits = state.tasks.filter(t => t.type === 'LIT');
+      const today = new Date();
+      const activeTasks = state.tasks.filter(t => isTaskScheduledForDate(t, today));
+      const mits = activeTasks.filter(t => t.type === 'MIT'), lits = activeTasks.filter(t => t.type === 'LIT');
       document.getElementById('mitCountBadge').textContent = `${mits.filter(t => !t.completed).length} / 3 Active`;
       document.getElementById('litCountBadge').textContent = `${lits.filter(t => !t.completed).length} Pending`;
 
-      document.getElementById('mitList').innerHTML = mits.map(t => renderCard(t)).join('') || `<div class="text-xs text-slate-400 py-3 text-center border border-dashed rounded-xl">No MITs selected.</div>`;
+      document.getElementById('mitList').innerHTML = mits.map(t => renderCard(t)).join('') || `<div class="text-xs text-slate-400 py-3 text-center border border-dashed rounded-xl">No MITs scheduled for today.</div>`;
       document.getElementById('litList').innerHTML = lits.map(t => renderCard(t)).join('') || `<div class="text-xs text-slate-400 py-3 text-center border border-dashed rounded-xl">All LITs cleared!</div>`;
     }
 
     function renderCard(t) {
       const badges = { sharp: '🔴 Peak', steady: '🟡 Rebound', fried: '🟢 Trough' }[t.energy];
-      const recurringBadge = t.recurring ? '<span class="text-[10px] font-mono px-1.5 py-0.5 rounded border border-indigo-400/40 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400" title="Daily Recurring Routine (Auto-refreshes each day)">🔁 Daily</span>' : '';
+      const recurringBadge = t.recurring 
+        ? `<button onclick="openRecurrenceModal('${t.id}')" class="text-[10px] font-mono px-1.5 py-0.5 rounded border border-indigo-400/40 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20 transition flex items-center gap-1" title="Click to customize repeat pattern (Google-style)">🔁 ${formatRecurrenceLabel(t)}</button>` 
+        : '';
       const rolloverBadge = t.rolledOver ? '<span class="text-[10px] font-mono px-1.5 py-0.5 rounded border border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400" title="Rolled over from previous day">↩ Rolled</span>' : '';
       const subs = t.subtasks?.map((st, i) => `<label class="flex items-center gap-2 text-xs ${st.done ? 'line-through text-slate-400' : 'dark:text-slate-300 text-slate-700'} cursor-pointer"><input type="checkbox" ${st.done ? 'checked' : ''} onchange="toggleSubtask('${t.id}', ${i})" class="accent-emerald-500 rounded" /><span>${st.text}</span></label>`).join('') || '';
       return `
@@ -1458,7 +1909,7 @@
             </div>
             <div class="flex items-center gap-1">
               ${!t.completed ? `<button onclick="openFocusModal('${t.id}')" class="px-2 py-1 rounded bg-indigo-600 text-white text-[10px] font-semibold">Focus</button>` : ''}
-              <button onclick="toggleTaskRecurring('${t.id}')" class="p-1 hover:text-indigo-400 text-xs ${t.recurring ? 'text-indigo-500 dark:text-indigo-400 font-bold' : 'text-slate-400'}" title="${t.recurring ? 'Disable Daily Recurring' : 'Make Daily Recurring Routine'}">🔁</button>
+              <button onclick="openRecurrenceModal('${t.id}')" class="p-1 hover:text-indigo-400 text-xs ${t.recurring ? 'text-indigo-500 dark:text-indigo-400 font-bold' : 'text-slate-400'}" title="${t.recurring ? 'Edit Repeat Schedule' : 'Make Recurring Schedule'}">🔁</button>
               <button onclick="autoBreakdownTask('${t.id}')" class="p-1 hover:text-emerald-500 text-xs" title="Auto-breakdown into micro-steps">🪄</button>
               <button onclick="promoteDemoteTask('${t.id}')" class="p-1 hover:text-amber-500 text-xs" title="Promote/Demote Tier">⇅</button>
               <button onclick="deleteTask('${t.id}')" class="p-1 hover:text-rose-500 text-xs" title="Delete Task">✕</button>
@@ -1591,14 +2042,17 @@
       let recurringResetCount = 0;
 
       // 1. Reset completion on all recurring routines & count lingering tasks
+      const todayDate = new Date();
       state.tasks.forEach(t => {
         if (t.recurring) {
-          if (t.completed) {
-            t.completed = false;
-            recurringResetCount++;
-          }
-          if (t.subtasks && t.subtasks.length > 0) {
-            t.subtasks.forEach(st => st.done = false);
+          if (isTaskScheduledForDate(t, todayDate)) {
+            if (t.completed) {
+              t.completed = false;
+              recurringResetCount++;
+            }
+            if (t.subtasks && t.subtasks.length > 0) {
+              t.subtasks.forEach(st => st.done = false);
+            }
           }
         } else if (!t.completed) {
           lingeringCount++;
@@ -1633,7 +2087,7 @@
     }
 
     // --- GEMINI AI & SMART ASSISTANT FUNCTIONS ---
-    function openGeminiModal() {
+    function openGeminiModal(defaultTab = 'horizons') {
       document.getElementById('geminiAnchorQ').textContent = state.goals?.qGoal || 'None set';
       document.getElementById('geminiAnchorM').textContent = state.goals?.mGoal || 'None set';
       document.getElementById('geminiAnchorW').textContent = state.goals?.wGoal || 'None set';
@@ -1641,6 +2095,16 @@
       const savedKey = localStorage.getItem('flowstate_os_gemini_api_key') || '';
       const keyInp = document.getElementById('geminiApiKeyInput');
       if (keyInp) keyInp.value = savedKey;
+
+      const savedGClient = localStorage.getItem(GOOGLE_CLIENT_ID_KEY) || state.googleClientId || '';
+      const gClientInp = document.getElementById('googleClientIdInput');
+      if (gClientInp) gClientInp.value = savedGClient;
+
+      const autoSyncCheck = document.getElementById('autoSyncGoogleToggle');
+      if (autoSyncCheck) autoSyncCheck.checked = !!state.autoSyncGoogle;
+
+      updateGoogleAuthUI(!!googleAccessToken);
+      switchGeminiTab(defaultTab);
 
       document.getElementById('geminiModal').classList.remove('hidden');
       document.getElementById('geminiModal').classList.add('flex');
@@ -1652,17 +2116,18 @@
     }
 
     function switchGeminiTab(tab) {
-      const views = { horizons: 'geminiViewHorizons', ingest: 'geminiViewIngest', calendar: 'geminiViewCalendar' };
-      const tabs = { horizons: 'geminiTabHorizons', ingest: 'geminiTabIngest', calendar: 'geminiTabCalendar' };
+      const views = { horizons: 'geminiViewHorizons', google: 'geminiViewGoogle', ingest: 'geminiViewIngest', calendar: 'geminiViewCalendar' };
+      const tabs = { horizons: 'geminiTabHorizons', google: 'geminiTabGoogle', ingest: 'geminiTabIngest', calendar: 'geminiTabCalendar' };
       Object.keys(views).forEach(k => {
         const viewEl = document.getElementById(views[k]);
         const tabEl = document.getElementById(tabs[k]);
+        if (!viewEl || !tabEl) return;
         if (k === tab) {
           viewEl.classList.remove('hidden');
-          tabEl.className = 'py-2 rounded-lg font-semibold bg-indigo-600 text-white transition';
+          tabEl.className = 'py-2 rounded-lg font-semibold bg-indigo-600 text-white transition text-center truncate';
         } else {
           viewEl.classList.add('hidden');
-          tabEl.className = 'py-2 rounded-lg font-semibold dark:text-slate-400 text-slate-600 hover:text-white transition';
+          tabEl.className = 'py-2 rounded-lg font-semibold dark:text-slate-400 text-slate-600 hover:text-white transition text-center truncate';
         }
       });
     }
@@ -1671,6 +2136,241 @@
       const val = document.getElementById('geminiApiKeyInput').value.trim();
       localStorage.setItem('flowstate_os_gemini_api_key', val);
       showRippleNotice('✓ Gemini API Key saved locally.');
+    }
+
+    // --- GOOGLE SUITE OAUTH & DIRECT SYNC INTEGRATION ---
+    function initGoogleAuthClient() {
+      const clientId = localStorage.getItem(GOOGLE_CLIENT_ID_KEY) || state.googleClientId;
+      if (!clientId || typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
+        return;
+      }
+      try {
+        googleTokenClient = google.accounts.oauth2.initTokenClient({
+          client_id: clientId,
+          scope: 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/gmail.readonly',
+          callback: (tokenResponse) => {
+            if (tokenResponse && tokenResponse.access_token) {
+              googleAccessToken = tokenResponse.access_token;
+              updateGoogleAuthUI(true);
+              showGoogleFeedback('✓ Successfully connected to Google Suite!', false);
+              fetchGoogleCalendarLive(false);
+            } else if (tokenResponse && tokenResponse.error) {
+              showGoogleFeedback(`Authentication Error: ${tokenResponse.error}`, true);
+            }
+          }
+        });
+        updateGoogleAuthUI(!!googleAccessToken);
+      } catch (err) {
+        console.warn('Google Token Client init error:', err);
+      }
+    }
+
+    function saveGoogleClientId() {
+      const input = document.getElementById('googleClientIdInput');
+      if (!input) return;
+      const val = input.value.trim();
+      state.googleClientId = val;
+      localStorage.setItem(GOOGLE_CLIENT_ID_KEY, val);
+      saveState();
+      initGoogleAuthClient();
+      showGoogleFeedback('✓ Google Client ID saved. Click "Sign In with Google" to authorize.', false);
+    }
+
+    function saveGoogleSyncPref(enabled) {
+      state.autoSyncGoogle = enabled;
+      localStorage.setItem(GOOGLE_SYNC_PREF_KEY, enabled ? 'true' : 'false');
+      saveState();
+    }
+
+    function updateGoogleAuthUI(isConnected) {
+      const badge = document.getElementById('googleAuthBadge');
+      const btnText = document.getElementById('googleSignInBtnText');
+      if (badge) {
+        if (isConnected) {
+          badge.textContent = '🟢 Connected';
+          badge.className = 'px-2 py-0.5 rounded text-[10px] font-mono border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold';
+        } else {
+          badge.textContent = 'Not Connected';
+          badge.className = 'px-2 py-0.5 rounded text-[10px] font-mono border dark:border-slate-800 border-slate-300 text-slate-500';
+        }
+      }
+      if (btnText) {
+        btnText.textContent = isConnected ? 'Re-authorize Google' : 'Sign In with Google';
+      }
+    }
+
+    function showGoogleFeedback(msg, isError = false) {
+      const el = document.getElementById('googleSyncFeedback');
+      if (!el) return;
+      el.classList.remove('hidden');
+      el.className = `p-2.5 rounded-xl font-mono text-[11px] ${isError ? 'bg-rose-500/15 border border-rose-500/30 text-rose-600 dark:text-rose-300' : 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-300'}`;
+      el.textContent = msg;
+    }
+
+    function requestGoogleAuth() {
+      const clientId = localStorage.getItem(GOOGLE_CLIENT_ID_KEY) || state.googleClientId;
+      if (!clientId) {
+        showGoogleFeedback('⚠️ Please enter your Google Cloud OAuth Client ID first.', true);
+        return;
+      }
+      if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
+        showGoogleFeedback('⚠️ Google Identity Services script not yet ready. Please verify your connection.', true);
+        return;
+      }
+      if (!googleTokenClient) {
+        initGoogleAuthClient();
+      }
+      if (googleTokenClient) {
+        googleTokenClient.requestAccessToken({ prompt: 'consent' });
+      }
+    }
+
+    async function fetchGoogleCalendarLive(showFeedback = true) {
+      if (!googleAccessToken) {
+        if (showFeedback) {
+          showGoogleFeedback('⚠️ Please click "Sign In with Google" first to authorize calendar access.', true);
+          requestGoogleAuth();
+        }
+        return;
+      }
+
+      try {
+        if (showFeedback) showGoogleFeedback('⏳ Fetching today\'s meetings from Google Calendar...');
+        const today = new Date();
+        const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0).toISOString();
+        const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59).toISOString();
+
+        const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(startOfDay)}&timeMax=${encodeURIComponent(endOfDay)}&singleEvents=true&orderBy=startTime`;
+        const res = await fetch(url, {
+          headers: { 'Authorization': `Bearer ${googleAccessToken}` }
+        });
+
+        if (res.status === 401) {
+          googleAccessToken = null;
+          updateGoogleAuthUI(false);
+          showGoogleFeedback('⚠️ Google session expired. Please click "Sign In with Google" again.', true);
+          return;
+        }
+
+        if (!res.ok) {
+          throw new Error(`Google Calendar API error ${res.status}`);
+        }
+
+        const data = await res.json();
+        const items = data.items || [];
+        let addedCount = 0;
+
+        items.forEach(ev => {
+          if (!ev.start || (!ev.start.dateTime && !ev.start.date)) return;
+          const startDt = ev.start.dateTime ? new Date(ev.start.dateTime) : new Date(ev.start.date + 'T09:00:00');
+          const endDt = ev.end && ev.end.dateTime ? new Date(ev.end.dateTime) : new Date(startDt.getTime() + 45 * 60000);
+
+          const startMin = startDt.getHours() * 60 + startDt.getMinutes();
+          let duration = Math.round((endDt - startDt) / 60000);
+          if (duration <= 0 || duration > 360) duration = 45;
+
+          const title = ev.summary || 'Google Calendar Event';
+
+          // Deduplicate based on start time and title
+          const exists = state.tasks.some(t => t.type === 'FIXED' && t.fixedStartMin === startMin && t.title.toLowerCase() === title.toLowerCase());
+          if (!exists) {
+            state.tasks.push({
+              id: 'gcal_' + (ev.id || Date.now() + '_' + addedCount),
+              title,
+              microStep: ev.hangoutLink ? `Join Meet: ${ev.hangoutLink}` : (ev.location ? `Location: ${ev.location}` : 'Review agenda & join on time'),
+              type: 'FIXED',
+              energy: 'steady',
+              duration,
+              fixedStartMin: startMin,
+              completed: false,
+              recurring: false,
+              subtasks: []
+            });
+            addedCount++;
+          }
+        });
+
+        saveState();
+        recalculateSchedule();
+        if (showFeedback) {
+          showGoogleFeedback(`✓ Synced ${items.length} calendar events (${addedCount} newly added as FIXED blocks).`, false);
+          showRippleNotice(`🗓️ Synced ${addedCount} calendar meetings into schedule.`);
+        }
+      } catch (err) {
+        console.error('fetchGoogleCalendarLive error:', err);
+        if (showFeedback) showGoogleFeedback(`❌ Failed to pull calendar: ${err.message}`, true);
+      }
+    }
+
+    async function fetchGmailActionItemsLive() {
+      if (!googleAccessToken) {
+        showGoogleFeedback('⚠️ Please click "Sign In with Google" first to authorize Gmail access.', true);
+        requestGoogleAuth();
+        return;
+      }
+
+      try {
+        showGoogleFeedback('⏳ Scanning Gmail for unread action items...');
+        const listUrl = `https://www.googleapis.com/gmail/v1/users/me/messages?q=is:unread%20label:INBOX&maxResults=6`;
+        const listRes = await fetch(listUrl, { headers: { 'Authorization': `Bearer ${googleAccessToken}` } });
+
+        if (listRes.status === 401) {
+          googleAccessToken = null;
+          updateGoogleAuthUI(false);
+          showGoogleFeedback('⚠️ Google session expired. Please click "Sign In with Google" again.', true);
+          return;
+        }
+
+        if (!listRes.ok) throw new Error(`Gmail API error ${listRes.status}`);
+
+        const listData = await listRes.json();
+        const messages = listData.messages || [];
+        if (messages.length === 0) {
+          showGoogleFeedback('✓ Inbox Zero! No unread messages in primary inbox.', false);
+          return;
+        }
+
+        let ingestedCount = 0;
+        for (const msg of messages) {
+          const detailUrl = `https://www.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From`;
+          const detailRes = await fetch(detailUrl, { headers: { 'Authorization': `Bearer ${googleAccessToken}` } });
+          if (detailRes.ok) {
+            const detail = await detailRes.json();
+            const headers = detail.payload?.headers || [];
+            const subjectHeader = headers.find(h => h.name.toLowerCase() === 'subject')?.value || 'Email Action Item';
+            const fromHeader = headers.find(h => h.name.toLowerCase() === 'from')?.value || 'Sender';
+            const snippet = detail.snippet || '';
+
+            const cleanFrom = fromHeader.replace(/<.*?>/, '').trim();
+            const title = `Reply to ${cleanFrom}: ${subjectHeader.slice(0, 50)}`;
+
+            const exists = state.tasks.some(t => t.title.toLowerCase() === title.toLowerCase());
+            if (!exists) {
+              state.tasks.push({
+                id: 'gmail_' + msg.id,
+                title,
+                microStep: snippet ? snippet.slice(0, 75) + '...' : 'Open email client & draft 3-bullet response',
+                type: 'LIT',
+                energy: 'fried',
+                duration: 20,
+                fixedStartMin: null,
+                completed: false,
+                recurring: false,
+                subtasks: []
+              });
+              ingestedCount++;
+            }
+          }
+        }
+
+        saveState();
+        recalculateSchedule();
+        showGoogleFeedback(`✓ Ingested ${ingestedCount} new action items from Gmail!`, false);
+        showRippleNotice(`✉️ Ingested ${ingestedCount} action items from Gmail.`);
+      } catch (err) {
+        console.error('fetchGmailActionItemsLive error:', err);
+        showGoogleFeedback(`❌ Failed to pull Gmail items: ${err.message}`, true);
+      }
     }
 
     async function generateHorizonTaskSuggestions() {
@@ -1909,7 +2609,7 @@ Format strictly as JSON array of objects with keys:
       }
     }
 
-    window.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeFocusModal(); closeChronotypeModal(); closeGitHubModal(); closeGeminiModal(); } });
+    window.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeFocusModal(); closeChronotypeModal(); closeGitHubModal(); closeGeminiModal(); closeRecurrenceModal(); } });
     window.addEventListener('DOMContentLoaded', init);
   </script>
 </body>

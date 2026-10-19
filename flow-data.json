@@ -35,6 +35,12 @@
       "fixedStartMin": 450,
       "completed": false,
       "recurring": true,
+      "recurrence": {
+        "freq": "daily",
+        "daysOfWeek": [0, 1, 2, 3, 4, 5, 6],
+        "interval": 1,
+        "unit": "days"
+      },
       "subtasks": []
     },
     {
@@ -92,6 +98,12 @@
       "fixedStartMin": 750,
       "completed": false,
       "recurring": true,
+      "recurrence": {
+        "freq": "weekdays",
+        "daysOfWeek": [1, 2, 3, 4, 5],
+        "interval": 1,
+        "unit": "days"
+      },
       "subtasks": []
     },
     {
@@ -116,6 +128,12 @@
       "fixedStartMin": null,
       "completed": false,
       "recurring": true,
+      "recurrence": {
+        "freq": "weekly",
+        "daysOfWeek": [0, 5],
+        "interval": 1,
+        "unit": "weeks"
+      },
       "subtasks": []
     },
     {
@@ -140,6 +158,12 @@
       "fixedStartMin": 1020,
       "completed": false,
       "recurring": true,
+      "recurrence": {
+        "freq": "weekly",
+        "daysOfWeek": [1, 2, 3, 4, 5],
+        "interval": 1,
+        "unit": "days"
+      },
       "subtasks": []
     }
   ]
