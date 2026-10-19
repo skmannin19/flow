@@ -96,7 +96,7 @@
         <div>
           <h1 class="font-bold text-base tracking-tight flex items-center gap-2">
             FlowState OS
-            <span class="text-[11px] font-mono uppercase px-2 py-0.5 rounded-full dark:bg-indigo-500/10 dark:text-indigo-400 bg-indigo-50 text-indigo-600 border dark:border-indigo-500/20 border-indigo-200">v4.0 Live</span>
+            <span class="text-[11px] font-mono uppercase px-2 py-0.5 rounded-full dark:bg-indigo-500/10 dark:text-indigo-400 bg-indigo-50 text-indigo-600 border dark:border-indigo-500/20 border-indigo-200">v4.1 Live</span>
           </h1>
           <div class="flex items-center gap-2">
             <p class="text-xs dark:text-slate-400 text-slate-500" id="currentDateDisplay">Loading today's date...</p>
@@ -1406,8 +1406,8 @@
 
     // --- COMPREHENSIVE PROCEDURAL SOUNDSCAPE ENGINE ---
     const SOUNDSCAPES = [
-      // Brainwave Binaural Beats (with Generative Musicality & Ambient Pads)
-      { id: 'alpha', name: 'Alpha Waves (10 Hz)', cat: 'brainwaves', emoji: '🧠', tag: 'Flow State & Relaxed Calm', desc: 'Lush ambient Fmaj9 synth pad & felt piano melody with gentle 10 Hz binaural pulse.' },
+      // Brainwave Binaural Beats (Custom Studio Audio Tracks & Generative Audio)
+      { id: 'alpha', name: 'Alpha Waves (10 Hz)', cat: 'brainwaves', emoji: '🧠', tag: 'Flow State & Relaxed Calm', desc: '10 Hz alpha binaural beats with gentle melodic flow on a seamless loop.', file: 'audio/alpha.mp3' },
       { id: 'beta', name: 'Beta Waves (18 Hz)', cat: 'brainwaves', emoji: '⚡', tag: 'High Analytical Focus', desc: 'Inspiring Am9 focus pad & warm marimba plucks with 18 Hz cognitive clarity beat.' },
       { id: 'gamma', name: 'Gamma Waves (40 Hz)', cat: 'brainwaves', emoji: '🔮', tag: 'Peak Cognitive Insight', desc: 'Ethereal celestial shimmer chords & crystal bells with 40 Hz peak insight beats.' },
       { id: 'theta', name: 'Theta Waves (6 Hz)', cat: 'brainwaves', emoji: '🌙', tag: 'Deep Creativity & NSDR', desc: 'Deep 136.1 Hz Om drone, meditative cello tones, and 6 Hz restorative dreamscape.' },
@@ -1438,6 +1438,7 @@
     let soundscapeIntervals = [];
     let soundscapeTimeouts = [];
     let soundscapeMasterGain = null;
+    let soundscapeAudioEl = null;
 
     function getNoiseBuffer(type = 'brown', seconds = 3) {
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -1483,6 +1484,12 @@
     }
 
     function stopSoundscapeAudio() {
+      if (soundscapeAudioEl) {
+        try {
+          soundscapeAudioEl.pause();
+          soundscapeAudioEl.currentTime = 0;
+        } catch (e) {}
+      }
       if (soundscapeIntervals.length > 0) {
         soundscapeIntervals.forEach(t => clearInterval(t));
         soundscapeIntervals = [];
@@ -1530,6 +1537,46 @@
       soundscapeNodes.push(soundscapeMasterGain);
 
       const targetGain = soundscapeMasterGain;
+
+      const currentSoundscape = SOUNDSCAPES.find(s => s.id === id);
+
+      // If this soundscape has a custom pre-recorded audio file (e.g. user-provided studio track)
+      if (currentSoundscape && currentSoundscape.file) {
+        isSoundscapePlaying = true;
+        updateSoundscapeControlsUI();
+        renderSoundscapeList();
+
+        // 1. Try Web Audio buffer decoding for sample-accurate gapless seamless looping
+        fetch(currentSoundscape.file)
+          .then(res => {
+            if (!res.ok) throw new Error('Fetch status ' + res.status);
+            return res.arrayBuffer();
+          })
+          .then(arrayBuffer => audioCtx.decodeAudioData(arrayBuffer))
+          .then(audioBuffer => {
+            if (!isSoundscapePlaying || activeSoundscapeId !== id) return;
+            if (soundscapeAudioEl) {
+              try { soundscapeAudioEl.pause(); } catch(e) {}
+            }
+            const source = audioCtx.createBufferSource();
+            source.buffer = audioBuffer;
+            source.loop = true;
+            source.connect(targetGain);
+            source.start(0);
+            soundscapeNodes.push(source);
+          })
+          .catch(err => {
+            // Fallback for file:// protocol or offline: use HTML5 Audio with loop = true
+            console.log('Using HTML5 Audio playback fallback:', err.message);
+            if (!isSoundscapePlaying || activeSoundscapeId !== id) return;
+            if (!soundscapeAudioEl) soundscapeAudioEl = new Audio();
+            soundscapeAudioEl.src = currentSoundscape.file;
+            soundscapeAudioEl.loop = true;
+            soundscapeAudioEl.volume = Math.max(0, Math.min(1, soundscapeVolume));
+            soundscapeAudioEl.play().catch(e => console.warn('HTML5 Audio play error:', e));
+          });
+        return;
+      }
 
       // 1. BRAINWAVES (Generative Ambient Pads, Soft Binaural Beats & Minimalist Melodies)
       if (['alpha', 'beta', 'gamma', 'theta'].includes(id)) {
@@ -3453,6 +3500,9 @@
     function setSoundscapeVolume(val) {
       soundscapeVolume = parseFloat(val) / 100;
       localStorage.setItem('flowstate_os_soundscape_volume', soundscapeVolume.toString());
+      if (soundscapeAudioEl) {
+        soundscapeAudioEl.volume = Math.max(0, Math.min(1, soundscapeVolume));
+      }
       if (soundscapeMasterGain && audioCtx) {
         try {
           soundscapeMasterGain.gain.setValueAtTime(soundscapeVolume, audioCtx.currentTime);
