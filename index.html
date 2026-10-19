@@ -938,9 +938,14 @@
       </div>
 
       <div class="flex items-center justify-between pt-2 border-t dark:border-slate-800 border-slate-200">
-        <div class="flex items-center gap-2">
-          <span class="text-xs dark:text-slate-400 text-slate-500">Volume:</span>
-          <input type="range" min="0" max="100" value="50" id="modalSoundVolume" oninput="setSoundscapeVolume(this.value)" class="w-24 h-1.5 accent-indigo-500 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer" />
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2">
+            <span class="text-xs dark:text-slate-400 text-slate-500">Volume:</span>
+            <input type="range" min="0" max="100" value="55" id="modalSoundVolume" oninput="setSoundscapeVolume(this.value)" class="w-24 h-1.5 accent-indigo-500 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer" />
+          </div>
+          <button onclick="toggleSoundscapePlay()" id="modalSoundscapePlayBtn" class="px-3 py-1.5 rounded-xl border border-indigo-500/40 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20 text-xs font-semibold flex items-center gap-1.5 transition">
+            ▶ Play Preview
+          </button>
         </div>
         <button onclick="closeSoundscapeModal()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition">
           Done
@@ -1279,6 +1284,19 @@
       return buffer;
     }
 
+    function createSafePanner(panVal) {
+      if (audioCtx && typeof audioCtx.createStereoPanner === 'function') {
+        try {
+          const panner = audioCtx.createStereoPanner();
+          panner.pan.setValueAtTime(panVal, audioCtx.currentTime);
+          return panner;
+        } catch (e) {}
+      }
+      const g = audioCtx.createGain();
+      g.gain.value = 1.0;
+      return g;
+    }
+
     function stopSoundscapeAudio() {
       if (soundscapeIntervals.length > 0) {
         soundscapeIntervals.forEach(t => clearInterval(t));
@@ -1288,37 +1306,41 @@
         soundscapeTimeouts.forEach(t => clearTimeout(t));
         soundscapeTimeouts = [];
       }
-      if (soundscapeMasterGain && audioCtx) {
+      soundscapeNodes.forEach(n => {
         try {
-          soundscapeMasterGain.gain.setValueAtTime(soundscapeMasterGain.gain.value, audioCtx.currentTime);
-          soundscapeMasterGain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.15);
+          if (n.stop) n.stop();
+          if (n.disconnect) n.disconnect();
         } catch (e) {}
+      });
+      soundscapeNodes = [];
+      if (soundscapeMasterGain) {
+        try {
+          soundscapeMasterGain.disconnect();
+        } catch (e) {}
+        soundscapeMasterGain = null;
       }
-      setTimeout(() => {
-        soundscapeNodes.forEach(n => {
-          try {
-            if (n.stop) n.stop();
-            if (n.disconnect) n.disconnect();
-          } catch (e) {}
-        });
-        soundscapeNodes = [];
-      }, 160);
       isSoundscapePlaying = false;
       updateSoundscapeControlsUI();
+      renderSoundscapeList();
     }
 
     function startSoundscapeAudio(id) {
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      if (audioCtx.state === 'suspended') audioCtx.resume();
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
 
       stopSoundscapeAudio();
 
       activeSoundscapeId = id;
       localStorage.setItem('flowstate_os_soundscape_id', id);
 
+      if (!soundscapeVolume || isNaN(soundscapeVolume) || soundscapeVolume <= 0) {
+        soundscapeVolume = 0.55;
+      }
+
       soundscapeMasterGain = audioCtx.createGain();
-      soundscapeMasterGain.gain.setValueAtTime(0.0001, audioCtx.currentTime);
-      soundscapeMasterGain.gain.exponentialRampToValueAtTime(Math.max(0.01, soundscapeVolume), audioCtx.currentTime + 0.5);
+      soundscapeMasterGain.gain.setValueAtTime(soundscapeVolume, audioCtx.currentTime);
       soundscapeMasterGain.connect(audioCtx.destination);
       soundscapeNodes.push(soundscapeMasterGain);
 
@@ -1327,20 +1349,19 @@
       // 1. BRAINWAVES (Binaural Beats)
       if (['alpha', 'beta', 'gamma', 'theta'].includes(id)) {
         const specs = {
-          alpha: { carrier: 208, beat: 10, noiseGain: 0.12 },
-          beta: { carrier: 240, beat: 18, noiseGain: 0.08 },
-          gamma: { carrier: 280, beat: 40, noiseGain: 0.06 },
-          theta: { carrier: 194, beat: 6, noiseGain: 0.15 }
+          alpha: { carrier: 208, beat: 10, noiseGain: 0.16 },
+          beta: { carrier: 240, beat: 18, noiseGain: 0.12 },
+          gamma: { carrier: 280, beat: 40, noiseGain: 0.10 },
+          theta: { carrier: 194, beat: 6, noiseGain: 0.18 }
         }[id];
 
         // Left ear sine
         const oscL = audioCtx.createOscillator();
-        const pannerL = audioCtx.createStereoPanner();
+        const pannerL = createSafePanner(-1.0);
         const gainL = audioCtx.createGain();
         oscL.type = 'sine';
         oscL.frequency.value = specs.carrier;
-        pannerL.pan.value = -1.0;
-        gainL.gain.value = 0.22;
+        gainL.gain.value = 0.28;
         oscL.connect(pannerL);
         pannerL.connect(gainL);
         gainL.connect(targetGain);
@@ -1349,12 +1370,11 @@
 
         // Right ear sine
         const oscR = audioCtx.createOscillator();
-        const pannerR = audioCtx.createStereoPanner();
+        const pannerR = createSafePanner(1.0);
         const gainR = audioCtx.createGain();
         oscR.type = 'sine';
         oscR.frequency.value = specs.carrier + specs.beat;
-        pannerR.pan.value = 1.0;
-        gainR.gain.value = 0.22;
+        gainR.gain.value = 0.28;
         oscR.connect(pannerR);
         pannerR.connect(gainR);
         gainR.connect(targetGain);
@@ -1926,8 +1946,7 @@
           try {
             const osc = audioCtx.createOscillator();
             const g = audioCtx.createGain();
-            const panner = audioCtx.createStereoPanner();
-            panner.pan.value = (Math.random() * 0.6) - 0.3;
+            const panner = createSafePanner((Math.random() * 0.6) - 0.3);
             const baseFreq = 260 + Math.random() * 60;
             osc.frequency.setValueAtTime(baseFreq, audioCtx.currentTime);
             osc.frequency.exponentialRampToValueAtTime(120, audioCtx.currentTime + 0.02);
@@ -2210,12 +2229,10 @@
     function selectSoundscape(id) {
       activeSoundscapeId = id;
       localStorage.setItem('flowstate_os_soundscape_id', id);
+      // Auto-start audio immediately so user hears their selection!
+      startSoundscapeAudio(id);
       renderSoundscapeList();
       updateSoundscapeControlsUI();
-      if (isSoundscapePlaying) {
-        startSoundscapeAudio(id);
-      }
-      closeSoundscapeModal();
     }
 
     function updateSoundscapeControlsUI() {
@@ -2223,6 +2240,7 @@
       const indicator = document.getElementById('soundscapeIndicator');
       const label = document.getElementById('soundscapeBtnLabel');
       const playBtn = document.getElementById('soundscapePlayBtn');
+      const modalPlayBtn = document.getElementById('modalSoundscapePlayBtn');
 
       if (label) label.textContent = current.name;
       if (indicator) {
@@ -2233,6 +2251,14 @@
           playBtn.classList.add('border-indigo-500', 'text-indigo-600', 'dark:text-indigo-300', 'bg-indigo-500/10');
         } else {
           playBtn.classList.remove('border-indigo-500', 'text-indigo-600', 'dark:text-indigo-300', 'bg-indigo-500/10');
+        }
+      }
+      if (modalPlayBtn) {
+        modalPlayBtn.innerHTML = isSoundscapePlaying ? '<span>■ Stop Audio</span>' : '<span>▶ Play Current</span>';
+        if (isSoundscapePlaying) {
+          modalPlayBtn.className = 'px-3 py-1.5 rounded-xl border border-rose-500/40 bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 text-xs font-semibold flex items-center gap-1.5 transition';
+        } else {
+          modalPlayBtn.className = 'px-3 py-1.5 rounded-xl border border-indigo-500/40 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20 text-xs font-semibold flex items-center gap-1.5 transition';
         }
       }
     }
@@ -2277,21 +2303,36 @@
         if (!listEl) return;
         const items = SOUNDSCAPES.filter(s => s.cat === cat);
         listEl.innerHTML = items.map(s => {
-          const isActive = s.id === activeSoundscapeId;
+          const isSelected = s.id === activeSoundscapeId;
+          const isThisPlaying = isSelected && isSoundscapePlaying;
           return `
-            <div onclick="selectSoundscape('${s.id}')" class="p-3 rounded-2xl border transition cursor-pointer flex flex-col justify-between gap-1.5 ${isActive ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/40 shadow-sm' : 'dark:border-slate-800 border-slate-200 dark:bg-slate-950 bg-slate-50 hover:border-slate-400'}">
+            <div onclick="selectSoundscape('${s.id}')" class="p-3.5 rounded-2xl border transition cursor-pointer flex flex-col justify-between gap-2 ${isSelected ? 'border-indigo-500 bg-indigo-50/70 dark:bg-indigo-950/50 shadow-sm ring-1 ring-indigo-500/50' : 'dark:border-slate-800 border-slate-200 dark:bg-slate-950 bg-slate-50 hover:border-slate-400'}">
               <div class="flex items-center justify-between">
                 <span class="text-xs font-bold dark:text-white text-slate-900 flex items-center gap-1.5">
-                  <span>${s.emoji}</span> <span>${s.name}</span>
+                  <span class="text-base">${s.emoji}</span> <span>${s.name}</span>
                 </span>
-                ${isActive ? '<span class="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 font-semibold">Active</span>' : ''}
+                ${isThisPlaying ? '<span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 font-bold border border-emerald-500/30 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Playing</span>' : (isSelected ? '<span class="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 font-semibold">Selected</span>' : '')}
               </div>
               <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">${s.desc}</p>
-              <span class="text-[10px] font-mono text-indigo-600 dark:text-indigo-400 font-medium">✨ ${s.tag}</span>
+              <div class="flex items-center justify-between mt-1">
+                <span class="text-[10px] font-mono text-indigo-600 dark:text-indigo-400 font-medium">✨ ${s.tag}</span>
+                <button onclick="event.stopPropagation(); if('${s.id}' === activeSoundscapeId && isSoundscapePlaying) { stopSoundscapeAudio(); } else { selectSoundscape('${s.id}'); }" class="px-2.5 py-1 rounded-lg text-[10px] font-semibold transition ${isThisPlaying ? 'bg-rose-500/20 text-rose-600 dark:text-rose-300 hover:bg-rose-500/30' : 'bg-indigo-600 text-white hover:bg-indigo-500'}">
+                  ${isThisPlaying ? '■ Stop' : '▶ Play'}
+                </button>
+              </div>
             </div>
           `;
         }).join('');
       });
+      const modalPlayBtn = document.getElementById('modalSoundscapePlayBtn');
+      if (modalPlayBtn) {
+        modalPlayBtn.innerHTML = isSoundscapePlaying ? '<span>■ Stop Audio</span>' : '<span>▶ Play Current</span>';
+        if (isSoundscapePlaying) {
+          modalPlayBtn.className = 'px-3 py-1.5 rounded-xl border border-rose-500/40 bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 text-xs font-semibold flex items-center gap-1.5 transition';
+        } else {
+          modalPlayBtn.className = 'px-3 py-1.5 rounded-xl border border-indigo-500/40 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20 text-xs font-semibold flex items-center gap-1.5 transition';
+        }
+      }
     }
 
     // --- DATA EXPORT & IMPORT (FAIL-SAFE PERSISTENCE) ---
@@ -2927,90 +2968,276 @@
     }
 
     function formatMinToTime(mins) {
-      const h24 = Math.floor(mins / 60), m = mins % 60;
-      return `${h24 % 12 === 0 ? 12 : h24 % 12}:${m.toString().padStart(2, '0')} ${h24 >= 12 ? 'PM' : 'AM'}`;
+      if (mins == null || isNaN(mins)) return '--:--';
+      const clamped = Math.max(0, Math.min(1439, Math.round(mins)));
+      const h24 = Math.floor(clamped / 60), m = clamped % 60;
+      const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+      return `${h12}:${m.toString().padStart(2, '0')} ${h24 >= 12 ? 'PM' : 'AM'}`;
     }
     function formatMinShort(mins) {
-      const h24 = Math.floor(mins / 60), m = mins % 60;
+      if (mins == null || isNaN(mins)) return '--';
+      const clamped = Math.max(0, Math.min(1439, Math.round(mins)));
+      const h24 = Math.floor(clamped / 60), m = clamped % 60;
       return m === 0 ? `${h24 % 12 || 12}${h24 >= 12 ? 'p' : 'a'}` : `${h24 % 12 || 12}:${m.toString().padStart(2, '0')}${h24 >= 12 ? 'p' : 'a'}`;
     }
 
     function recalculateSchedule() {
-      const includeBuffers = document.getElementById('bufferToggle').checked;
+      const includeBuffers = document.getElementById('bufferToggle')?.checked || false;
       const c = state.chronotype;
       const today = new Date();
       const nowMin = today.getHours() * 60 + today.getMinutes();
       const roundedNowMin = Math.ceil(nowMin / 5) * 5;
 
+      // 1. Deduplicate any identical FIXED calendar tasks (same start time & title)
+      const seenFixed = new Set();
+      state.tasks = state.tasks.filter(t => {
+        if (t.type !== 'FIXED') return true;
+        const key = `${t.fixedStartMin}_${(t.title || '').trim().toLowerCase()}`;
+        if (seenFixed.has(key)) return false;
+        seenFixed.add(key);
+        return true;
+      });
+
+      // 2. Sanitize any previously overflowed or broken start times from previous runs
+      state.tasks.forEach(t => {
+        if (!t.completed && t.type !== 'FIXED') {
+          // If pushed past 10:30 PM (1350m) or corrupted past midnight:
+          if (t.startMin != null && (t.startMin >= 1350 || t.endMin > 1440)) {
+            t.startMin = null;
+            t.endMin = null;
+          }
+        }
+      });
+
       const activeTasks = state.tasks.filter(t => isTaskScheduledForDate(t, today));
       const fixed = activeTasks.filter(t => t.type === 'FIXED').sort((a, b) => (a.fixedStartMin || 540) - (b.fixedStartMin || 540));
+      fixed.forEach(ft => {
+        ft.startMin = ft.fixedStartMin;
+        ft.endMin = ft.fixedStartMin + ft.duration;
+      });
+
       const flexible = activeTasks.filter(t => t.type !== 'FIXED');
 
-      fixed.forEach(ft => { ft.startMin = ft.fixedStartMin; ft.endMin = ft.fixedStartMin + ft.duration; });
+      // 3. Separate preserved tasks (completed or already scheduled in a valid daytime slot) from unassigned tasks
+      const preservedTasks = [];
+      const unassignedTasks = [];
 
-      // Separate completed tasks (morning history) from pending tasks (must start at or after now)
-      const completedFlexible = flexible.filter(t => t.completed);
-      const incompleteFlexible = flexible.filter(t => !t.completed);
+      flexible.forEach(t => {
+        if (t.completed && t.startMin != null) {
+          preservedTasks.push(t);
+        } else if (!t.completed && t.startMin != null && t.startMin < 1350) {
+          preservedTasks.push(t);
+        } else {
+          unassignedTasks.push(t);
+        }
+      });
 
-      let cursor = Math.min(c.peakStart, 510), focusMins = 0, restInserted = false;
-      const blocks = [], overflow = [];
+      // 4. Slot unassigned tasks (e.g. "paint my nails" or new tasks)
+      // Find open gaps between all currently scheduled blocks starting at or after roundedNowMin
+      const overflow = [];
+      let focusMins = 0;
 
-      function scheduleBlock(t, isPending) {
-        if (isPending && focusMins + t.duration > state.maxFocusMinutes) {
-          overflow.push(t);
+      activeTasks.forEach(t => {
+        if (!t.completed && t.type !== 'FIXED') focusMins += (t.duration || 30);
+      });
+
+      unassignedTasks.forEach(t => {
+        // Collect occupied intervals
+        const occupied = [
+          ...fixed.map(f => ({ start: f.startMin, end: f.endMin })),
+          ...preservedTasks.map(p => ({ start: p.startMin, end: p.endMin }))
+        ].sort((a, b) => a.start - b.start);
+
+        let searchCursor = roundedNowMin;
+        let placed = false;
+
+        for (const occ of occupied) {
+          if (occ.end <= searchCursor) continue;
+          if (occ.start > searchCursor) {
+            const gap = occ.start - searchCursor;
+            if (gap >= t.duration) {
+              t.startMin = searchCursor;
+              t.endMin = searchCursor + t.duration;
+              preservedTasks.push(t);
+              placed = true;
+              break;
+            }
+          }
+          searchCursor = Math.max(searchCursor, occ.end + (includeBuffers ? 10 : 0));
+        }
+
+        if (!placed) {
+          if (searchCursor + t.duration <= 1350) { // Fits before 10:30 PM
+            t.startMin = searchCursor;
+            t.endMin = searchCursor + t.duration;
+            preservedTasks.push(t);
+            placed = true;
+          } else {
+            overflow.push(t);
+          }
+        }
+      });
+
+      // 5. Build final sorted blocks for timeline
+      const blocks = [];
+      fixed.forEach(ft => blocks.push({ kind: 'task', task: ft }));
+      preservedTasks.forEach(pt => blocks.push({ kind: 'task', task: pt }));
+
+      // Optional circadian rest trough
+      if (includeBuffers && c.dipStart >= 600 && c.dipStart <= 1020) {
+        const conflict = blocks.find(b => b.kind === 'task' && Math.max(b.task.startMin, c.dipStart) < Math.min(b.task.endMin, c.dipStart + 20));
+        if (!conflict) {
+          blocks.push({ kind: 'circadian_rest', startMin: c.dipStart, endMin: c.dipStart + 20, label: `🌊 ${c.name} Trough Reset: 20m NSDR & Walk` });
+        }
+      }
+
+      blocks.sort((a, b) => {
+        const sa = a.kind === 'task' ? a.task.startMin : a.startMin;
+        const sb = b.kind === 'task' ? b.task.startMin : b.startMin;
+        return sa - sb;
+      });
+
+      renderPriorityLists();
+      renderTimeline(blocks, overflow, nowMin, fixed);
+      updateCapacityBar(focusMins);
+      updateRecommendationBanner();
+    }
+
+    function updateCapacityBar(focusMins) {
+      const max = state.maxFocusMinutes;
+      const pct = Math.min(100, Math.round((focusMins / max) * 100));
+      const capText = document.getElementById('capacityText');
+      const capBar = document.getElementById('capacityBar');
+      if (capText) capText.textContent = `${(focusMins / 60).toFixed(1)} / ${(max / 60).toFixed(1)} hrs`;
+      if (capBar) capBar.style.width = `${pct}%`;
+    }
+
+    function renderPriorityLists() {
+      const today = new Date();
+      const activeTasks = state.tasks.filter(t => isTaskScheduledForDate(t, today));
+      const mits = activeTasks.filter(t => t.type === 'MIT'), lits = activeTasks.filter(t => t.type === 'LIT');
+      document.getElementById('mitCountBadge').textContent = `${mits.filter(t => !t.completed).length} / 3 Active`;
+      document.getElementById('litCountBadge').textContent = `${lits.filter(t => !t.completed).length} Pending`;
+
+      document.getElementById('mitList').innerHTML = mits.map(t => renderCard(t)).join('') || `<div class="text-xs text-slate-400 py-3 text-center border border-dashed rounded-xl">No MITs scheduled for today.</div>`;
+      document.getElementById('litList').innerHTML = lits.map(t => renderCard(t)).join('') || `<div class="text-xs text-slate-400 py-3 text-center border border-dashed rounded-xl">All LITs cleared!</div>`;
+    }
+
+    function renderCard(t) {
+      const badges = { sharp: '🔴 Peak', steady: '🟡 Rebound', fried: '🟢 Trough' }[t.energy];
+      const recurringBadge = t.recurring 
+        ? `<button onclick="openRecurrenceModal('${t.id}')" class="text-[10px] font-mono px-1.5 py-0.5 rounded border border-indigo-400/40 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20 transition flex items-center gap-1" title="Click to customize repeat pattern (Google-style)">🔁 ${formatRecurrenceLabel(t)}</button>` 
+        : '';
+      const rolloverBadge = t.rolledOver ? '<span class="text-[10px] font-mono px-1.5 py-0.5 rounded border border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400" title="Rolled over from previous day">↩ Rolled</span>' : '';
+      const subs = t.subtasks?.map((st, i) => `<label class="flex items-center gap-2 text-xs ${st.done ? 'line-through text-slate-400' : 'dark:text-slate-300 text-slate-700'} cursor-pointer"><input type="checkbox" ${st.done ? 'checked' : ''} onchange="toggleSubtask('${t.id}', ${i})" class="accent-emerald-500 rounded" /><span>${st.text}</span></label>`).join('') || '';
+      return `
+        <div class="p-3 rounded-xl dark:bg-slate-950/90 bg-white border dark:border-slate-800 border-slate-200 shadow-sm transition">
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex items-start gap-2.5">
+              <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTaskComplete('${t.id}')" class="mt-1 accent-indigo-500 w-4 h-4 rounded cursor-pointer" />
+              <div>
+                <div class="flex flex-wrap items-center gap-1.5">
+                  <span class="text-xs font-semibold ${t.completed ? 'line-through text-slate-400' : 'dark:text-slate-100 text-slate-900'}">${t.title}</span>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded border">${badges}</span>
+                  ${recurringBadge}
+                  ${rolloverBadge}
+                  <span class="text-[10px] font-mono dark:text-slate-400 text-slate-500">${t.duration}m</span>
+                </div>
+                <p class="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1">↳ 2m Starter: ${t.microStep}</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-1">
+              ${!t.completed ? `<button onclick="openFocusModal('${t.id}')" class="px-2 py-1 rounded bg-indigo-600 text-white text-[10px] font-semibold">Focus</button>` : ''}
+              <button onclick="openRecurrenceModal('${t.id}')" class="p-1 hover:text-indigo-400 text-xs ${t.recurring ? 'text-indigo-500 dark:text-indigo-400 font-bold' : 'text-slate-400'}" title="${t.recurring ? 'Edit Repeat Schedule' : 'Make Recurring Schedule'}">🔁</button>
+              <button onclick="autoBreakdownTask('${t.id}')" class="p-1 hover:text-emerald-500 text-xs" title="Auto-breakdown into micro-steps">🪄</button>
+              <button onclick="promoteDemoteTask('${t.id}')" class="p-1 hover:text-amber-500 text-xs" title="Promote/Demote Tier">⇅</button>
+              <button onclick="deleteTask('${t.id}')" class="p-1 hover:text-rose-500 text-xs" title="Delete Task">✕</button>
+            </div>
+          </div>
+          ${subs ? `<div class="mt-2.5 pt-2 border-t dark:border-slate-800 border-slate-100 space-y-1.5">${subs}</div>` : ''}
+        </div>`;
+    }
+
+    function renderTimeline(blocks, overflow, nowMin = (new Date().getHours() * 60 + new Date().getMinutes()), fixedList = []) {
+      let nowMarkerInserted = false;
+      const htmlItems = [];
+
+      blocks.forEach(item => {
+        const itemStart = item.kind === 'task' ? item.task.startMin : item.startMin;
+        const itemEnd = item.kind === 'task' ? item.task.endMin : item.endMin;
+
+        // Insert Real-Time Current Time line right before the first block that starts at or after now
+        if (!nowMarkerInserted && itemStart >= nowMin) {
+          htmlItems.push(`
+            <div class="flex items-center gap-2.5 py-1.5 my-1">
+              <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
+              <div class="h-0.5 flex-1 bg-gradient-to-r from-rose-500 via-indigo-500 to-transparent"></div>
+              <span class="text-[10px] font-mono font-bold text-rose-500 dark:text-rose-400 uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/30">CURRENT TIME • ${formatMinToTime(nowMin)}</span>
+            </div>
+          `);
+          nowMarkerInserted = true;
+        }
+
+        if (item.kind === 'circadian_rest') {
+          htmlItems.push(`<div class="flex items-center justify-between px-3.5 py-2 rounded-xl bg-emerald-950/20 border border-emerald-500/40 text-xs text-emerald-700 dark:text-emerald-200"><span class="font-mono">${formatMinToTime(item.startMin)} – ${formatMinToTime(item.endMin)}</span><span>${item.label}</span></div>`);
           return;
         }
 
-        // CRITICAL: Any incomplete/pending task CANNOT be scheduled in the past!
-        if (isPending && cursor < roundedNowMin) {
-          cursor = roundedNowMin;
+        if (item.kind === 'buffer') {
+          htmlItems.push(`<div class="flex items-center gap-3 px-3 py-1.5 rounded-xl border border-dashed dark:border-slate-800 border-slate-200 text-[11px] text-slate-500"><span class="font-mono">${formatMinToTime(item.startMin)}</span><span>☕ ${item.label}</span></div>`);
+          return;
         }
 
-        let placed = false;
-        while (!placed) {
-          if (includeBuffers && !restInserted && cursor >= c.dipStart && cursor <= c.dipStart + 45) {
-            const conflict = fixed.find(ft => cursor < ft.endMin && cursor + 20 > ft.startMin);
-            if (!conflict) {
-              blocks.push({ kind: 'circadian_rest', startMin: cursor, endMin: cursor + 20, label: `🌊 ${c.name} Trough Reset: 20m NSDR & Walk` });
-              cursor += 20;
-              restInserted = true;
-            }
-          }
-          const conflict = fixed.find(ft => cursor < ft.endMin && cursor + t.duration > ft.startMin);
-          if (conflict) {
-            cursor = conflict.endMin + (includeBuffers ? 10 : 0);
-          } else {
-            t.startMin = cursor;
-            t.endMin = cursor + t.duration;
-            cursor = t.endMin;
-            if (isPending) focusMins += t.duration;
-            blocks.push({ kind: 'task', task: t });
-            if (includeBuffers && (t.energy === 'sharp' || t.duration >= 45)) {
-              blocks.push({ kind: 'buffer', startMin: cursor, endMin: cursor + 15, label: '15m Decompression Buffer' });
-              cursor += 15;
-            }
-            placed = true;
-          }
-        }
+        const t = item.task, p = getCircadianPhaseForMinute(t.startMin);
+        const isPast = t.completed || (t.endMin < nowMin);
+
+        // Check if fixed calendar event overlaps with any other fixed event
+        const hasOverlap = t.type === 'FIXED' && fixedList.some(other => other !== t && Math.max(t.startMin, other.startMin) < Math.min(t.endMin, other.endMin));
+
+        htmlItems.push(`
+          <div class="p-3 rounded-xl border dark:border-slate-800 border-slate-200 dark:bg-slate-950/90 bg-white flex items-center justify-between gap-3 ${isPast ? 'opacity-70 bg-slate-50/50 dark:bg-slate-950/40' : ''}">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTaskComplete('${t.id}')" class="w-4 h-4 accent-emerald-500 rounded cursor-pointer shrink-0" title="${t.completed ? 'Mark incomplete' : 'Mark completed'}" />
+              <div class="font-mono text-xs dark:text-slate-300 text-slate-700 w-32 shrink-0">
+                ${formatMinToTime(t.startMin)} – ${formatMinToTime(t.endMin)}
+              </div>
+              <div class="min-w-0">
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <span class="text-xs font-semibold dark:text-white text-slate-900 ${t.completed ? 'line-through text-slate-400' : ''}">${t.title}</span>
+                  ${t.type === 'FIXED' ? '<span class="text-[10px] font-mono px-1.5 py-0.2 rounded border border-indigo-400/40 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">🗓️ Calendar</span>' : `<span class="text-[10px] font-mono px-1 rounded border ${p.color}">${p.label}</span>`}
+                  ${hasOverlap ? '<span class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-semibold" title="Overlapping session on your calendar">⚠️ Overlap</span>' : ''}
+                  ${t.completed ? '<span class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">✓ Done</span>' : ''}
+                </div>
+                <p class="text-[11px] dark:text-slate-400 text-slate-500 truncate">${t.microStep}</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-1 shrink-0">
+              ${!t.completed ? `
+                ${t.type !== 'FIXED' ? `
+                  <button onclick="adjustTaskDuration('${t.id}', -15)" class="px-2 py-1 rounded bg-slate-100 dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 text-[10px] font-mono">-15m</button>
+                  <button onclick="adjustTaskDuration('${t.id}', 15)" class="px-2 py-1 rounded bg-slate-100 dark:bg-slate-900 text-amber-600 dark:text-amber-400 text-[10px] font-mono">+15m</button>
+                  <button onclick="openFocusModal('${t.id}')" class="px-2.5 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-sm transition">▶ Focus</button>
+                ` : `<button onclick="toggleTaskComplete('${t.id}')" class="px-2.5 py-1 rounded bg-emerald-600/15 hover:bg-emerald-600/25 border border-emerald-500/30 text-emerald-600 dark:text-emerald-300 text-xs font-semibold transition">✓ Mark Done</button>`}
+              ` : `
+                <button onclick="toggleTaskComplete('${t.id}')" class="text-xs text-emerald-500 font-mono hover:underline">✓ Completed</button>
+              `}
+            </div>
+          </div>
+        `);
+      });
+
+      // If all blocks are in the past, place the NOW marker at the end
+      if (!nowMarkerInserted && blocks.length > 0) {
+        htmlItems.push(`
+          <div class="flex items-center gap-2.5 py-1.5 my-1">
+            <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
+            <div class="h-0.5 flex-1 bg-gradient-to-r from-rose-500 via-indigo-500 to-transparent"></div>
+            <span class="text-[10px] font-mono font-bold text-rose-500 dark:text-rose-400 uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/30">CURRENT TIME • ${formatMinToTime(nowMin)}</span>
+          </div>
+        `);
       }
 
-      // 1. Place completed tasks in their morning sequence
-      completedFlexible.forEach(t => scheduleBlock(t, false));
-
-      // 2. Advance cursor to current real-time so incomplete tasks (like 'paint my nails') start from now onwards
-      if (cursor < roundedNowMin) {
-        cursor = roundedNowMin;
-      }
-
-      // 3. Place all pending/incomplete tasks starting from current time into the afternoon
-      incompleteFlexible.forEach(t => scheduleBlock(t, true));
-
-      // 4. Anchor fixed meetings
-      fixed.forEach(ft => blocks.push({ kind: 'task', task: ft }));
-      blocks.sort((a, b) => (a.kind === 'task' ? a.task.startMin : a.startMin) - (b.kind === 'task' ? b.task.startMin : b.startMin));
-
-      renderPriorityLists();
-      renderTimeline(blocks, overflow, nowMin);
+      document.getElementById('timelineContainer').innerHTML = htmlItems.join('');
       updateCapacityBar(focusMins);
       updateRecommendationBanner();
     }
