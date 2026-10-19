@@ -77,9 +77,12 @@
         <div>
           <h1 class="font-bold text-base tracking-tight flex items-center gap-2">
             FlowState OS
-            <span class="text-[11px] font-mono uppercase px-2 py-0.5 rounded-full dark:bg-indigo-500/10 dark:text-indigo-400 bg-indigo-50 text-indigo-600 border dark:border-indigo-500/20 border-indigo-200">v3.1 Synced</span>
+            <span class="text-[11px] font-mono uppercase px-2 py-0.5 rounded-full dark:bg-indigo-500/10 dark:text-indigo-400 bg-indigo-50 text-indigo-600 border dark:border-indigo-500/20 border-indigo-200">v3.2 Synced</span>
           </h1>
-          <p class="text-xs dark:text-slate-400 text-slate-500" id="currentDateDisplay">Friday, Oct 16, 2026</p>
+          <div class="flex items-center gap-2">
+            <p class="text-xs dark:text-slate-400 text-slate-500" id="currentDateDisplay">Loading today's date...</p>
+            <span id="rolloverBadge" class="hidden text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">Auto-Rolled</span>
+          </div>
         </div>
       </div>
 
@@ -117,10 +120,16 @@
           <span id="audioMasterIcon">🔔</span>
         </button>
 
+        <!-- Gemini AI Smart Assistant Trigger -->
+        <button onclick="openGeminiModal()" class="text-xs px-3 py-2 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 border border-indigo-500/30 transition flex items-center gap-1.5 font-medium" title="Smart AI task suggestions, Email & Calendar extraction">
+          <span>✨</span>
+          <span class="hidden sm:inline">Gemini AI</span>
+        </button>
+
         <!-- Data Backup & Sync Modal Trigger -->
         <button onclick="openGitHubModal()" class="text-xs px-3 py-2 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30 transition flex items-center gap-1.5 font-medium" title="Backup, sync tasks & manage GitHub repository">
           <span id="ghSyncDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
-          <span>💾 Data & Sync</span>
+          <span>💾 Sync</span>
         </button>
 
         <button onclick="toggleHorizonModal()" class="text-xs px-3 py-2 rounded-lg dark:bg-slate-800 bg-slate-200 hover:dark:bg-slate-700 hover:bg-slate-300 dark:text-slate-200 text-slate-800 dark:border-slate-700 border-slate-300 border transition flex items-center gap-1.5">
@@ -243,6 +252,16 @@
             </div>
           </div>
 
+          <div class="flex items-center justify-between pt-1">
+            <label class="flex items-center gap-1.5 text-xs dark:text-slate-300 text-slate-700 cursor-pointer select-none">
+              <input type="checkbox" id="taskRecurringInput" class="accent-indigo-500 rounded" />
+              <span>🔁 Daily Routine (repeats daily)</span>
+            </label>
+            <button type="button" onclick="openGeminiModal()" class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1">
+              <span>✨</span> AI Task Assistant
+            </button>
+          </div>
+
           <button type="submit" class="w-full py-2.5 rounded-xl dark:bg-slate-800 bg-slate-200 hover:bg-indigo-600 hover:text-white dark:text-slate-200 text-slate-800 text-xs font-semibold border dark:border-slate-700 border-slate-300 hover:border-indigo-500 transition flex items-center justify-center gap-2">
             <span>+</span> Capture & Match to Chronotype Wave
           </button>
@@ -299,6 +318,9 @@
             </label>
             <button onclick="optimizeByChronotype()" class="px-3 py-1.5 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 text-xs font-semibold transition">
               🧬 Align to Wave
+            </button>
+            <button onclick="triggerManualRollover()" class="px-2.5 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 text-xs font-semibold transition flex items-center gap-1" title="Manually roll over incomplete tasks & reset daily routines to today">
+              <span>🌅</span> <span class="hidden sm:inline">New Day</span>
             </button>
             <button onclick="resetDefaultData()" class="px-2.5 py-1.5 rounded-lg dark:bg-slate-800 bg-slate-200 hover:dark:bg-slate-700 hover:bg-slate-300 dark:text-slate-400 text-slate-700 text-xs transition" title="Restore default sample tasks">
               ↺
@@ -416,6 +438,89 @@
       </div>
 
       <div id="ghStatusBanner" class="hidden px-3.5 py-2.5 rounded-xl dark:bg-slate-950 bg-slate-100 border dark:border-slate-700 border-slate-300 text-xs font-mono text-emerald-600 dark:text-emerald-300"></div>
+    </div>
+  </div>
+
+  <!-- GEMINI AI SMART ASSISTANT MODAL -->
+  <div id="geminiModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden items-center justify-center p-4 overflow-y-auto">
+    <div class="dark:bg-slate-900 bg-white border dark:border-slate-800 border-slate-200 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl space-y-5 my-8">
+      <div class="flex items-start justify-between gap-4 border-b dark:border-slate-800 border-slate-200 pb-4">
+        <div>
+          <span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 border border-indigo-500/30">AI Ecosystem Connected</span>
+          <h2 class="text-xl font-bold dark:text-white text-slate-900 mt-1.5">✨ Gemini AI Task Assistant</h2>
+          <p class="text-xs dark:text-slate-400 text-slate-500 mt-0.5">Synthesize actionable tasks from your North Star goals, incoming emails, Gemini conversations, or calendar agendas.</p>
+        </div>
+        <button onclick="closeGeminiModal()" class="text-slate-400 hover:text-white text-sm px-2.5 py-1 rounded-lg bg-slate-200 dark:bg-slate-800">✕</button>
+      </div>
+
+      <!-- Tab Navigation -->
+      <div class="grid grid-cols-3 gap-2 dark:bg-slate-950 bg-slate-100 p-1 rounded-xl border dark:border-slate-800 border-slate-300 text-xs">
+        <button onclick="switchGeminiTab('horizons')" id="geminiTabHorizons" class="py-2 rounded-lg font-semibold bg-indigo-600 text-white transition">
+          🎯 Horizon Suggester
+        </button>
+        <button onclick="switchGeminiTab('ingest')" id="geminiTabIngest" class="py-2 rounded-lg font-semibold dark:text-slate-400 text-slate-600 hover:text-white transition">
+          📥 Email / Chat Ingest
+        </button>
+        <button onclick="switchGeminiTab('calendar')" id="geminiTabCalendar" class="py-2 rounded-lg font-semibold dark:text-slate-400 text-slate-600 hover:text-white transition">
+          📅 Calendar Sync
+        </button>
+      </div>
+
+      <!-- Tab 1: Horizon-Based Auto Suggester -->
+      <div id="geminiViewHorizons" class="space-y-4">
+        <div class="p-3.5 rounded-2xl dark:bg-slate-950/80 bg-slate-50 border dark:border-slate-800 border-slate-200 text-xs space-y-2">
+          <span class="font-semibold dark:text-slate-200 text-slate-800">Active Strategic Anchors</span>
+          <div class="space-y-1 text-slate-600 dark:text-slate-400 font-mono text-[11px]">
+            <div>• Q4: <span id="geminiAnchorQ" class="text-indigo-500 dark:text-indigo-300">...</span></div>
+            <div>• Milestone: <span id="geminiAnchorM" class="text-emerald-600 dark:text-emerald-400">...</span></div>
+            <div>• Weekly: <span id="geminiAnchorW" class="text-amber-600 dark:text-amber-400">...</span></div>
+          </div>
+        </div>
+
+        <button onclick="generateHorizonTaskSuggestions()" class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition flex items-center justify-center gap-2 shadow-sm">
+          <span>⚡</span> Generate Today's MITs & LITs with Gemini
+        </button>
+
+        <div id="geminiSuggestionsContainer" class="space-y-2 max-h-60 overflow-y-auto pr-1"></div>
+      </div>
+
+      <!-- Tab 2: Ingest from Email / Gemini / Notes -->
+      <div id="geminiViewIngest" class="hidden space-y-3">
+        <p class="text-xs text-slate-600 dark:text-slate-400">Paste text from an email thread, discussion with Gemini, or meeting notes. Gemini will extract concrete next actions with starter steps:</p>
+        <textarea id="geminiIngestInput" rows="5" placeholder="e.g. 'From Denver Lab Director: We need the potency SOP signed by Thursday, review the revised cleanroom schematics, and confirm Friday inspection...' " class="w-full dark:bg-slate-950 bg-slate-50 border dark:border-slate-800 border-slate-300 focus:border-indigo-500 rounded-xl p-3 text-xs dark:text-white text-slate-900 placeholder-slate-400 focus:outline-none font-mono"></textarea>
+        
+        <div class="flex items-center justify-between gap-2">
+          <button onclick="extractTasksFromText()" class="py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition flex items-center justify-center gap-2 shadow-sm">
+            <span>⚡</span> Extract & Auto-Add Action Items
+          </button>
+          <span id="geminiIngestStatus" class="text-xs font-mono text-emerald-600 dark:text-emerald-400"></span>
+        </div>
+      </div>
+
+      <!-- Tab 3: Calendar Agenda Importer -->
+      <div id="geminiViewCalendar" class="hidden space-y-3">
+        <p class="text-xs text-slate-600 dark:text-slate-400">Paste calendar events or meetings to automatically anchor them as <strong>FIXED</strong> routines in your timeline:</p>
+        <textarea id="geminiCalendarInput" rows="5" placeholder="e.g.
+9:00 AM - 10:00 AM Team Sync & Formulation Review
+1:30 PM - 2:30 PM Investor Coffee Chat
+4:30 PM - 5:30 PM Cleanroom Contractor Walkthrough" class="w-full dark:bg-slate-950 bg-slate-50 border dark:border-slate-800 border-slate-300 focus:border-indigo-500 rounded-xl p-3 text-xs dark:text-white text-slate-900 placeholder-slate-400 focus:outline-none font-mono"></textarea>
+        
+        <div class="flex items-center justify-between gap-2">
+          <button onclick="importCalendarAgenda()" class="py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition flex items-center justify-center gap-2 shadow-sm">
+            <span>📅</span> Import & Anchor Schedule
+          </button>
+          <span id="geminiCalendarStatus" class="text-xs font-mono text-emerald-600 dark:text-emerald-400"></span>
+        </div>
+      </div>
+
+      <!-- Optional API Key Footer -->
+      <div class="pt-3 border-t dark:border-slate-800 border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+        <div class="flex items-center gap-2">
+          <label class="text-[10px] font-mono uppercase text-slate-400">Gemini API Key (Optional):</label>
+          <input id="geminiApiKeyInput" type="password" placeholder="AIzaSy..." onchange="saveGeminiApiKey()" class="dark:bg-slate-950 bg-slate-100 border dark:border-slate-800 border-slate-300 rounded px-2 py-1 text-xs font-mono text-indigo-400 focus:outline-none" />
+        </div>
+        <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" class="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline">Get Free Gemini Key ↗</a>
+      </div>
     </div>
   </div>
 
@@ -631,15 +736,15 @@
     };
 
     const DEFAULT_TASKS = [
-      { id: 't1', title: 'Morning Routine, Meditation & Leo Park Walk', microStep: 'Leash up & head out for 20-min low-impact walk', type: 'FIXED', energy: 'steady', duration: 45, fixedStartMin: 450, completed: true, subtasks: [] },
-      { id: 't2', title: 'Draft CO Natural Medicine Potency & Packaging Compliance Matrix', microStep: 'Open state DOR compliance rules PDF and extract Section 4 table', type: 'MIT', energy: 'sharp', duration: 60, fixedStartMin: null, completed: false, subtasks: [{ text: 'Define standardized capsule homogenizing SOP requirements', done: true }, { text: 'Map third-party lab stability & microbial testing intervals', done: false }] },
-      { id: 't3', title: 'Outreach to 3 Denver Extraction & Formulation Lab Directors', microStep: 'Draft concise 4-sentence intro note to first founder on LinkedIn', type: 'MIT', energy: 'sharp', duration: 45, fixedStartMin: null, completed: false, subtasks: [] },
-      { id: 't4', title: 'Evaluate Cleanroom Equipment & Commercial Facility Layouts', microStep: 'Compare square footage & HVAC specs on top 2 saved industrial listings', type: 'MIT', energy: 'steady', duration: 45, fixedStartMin: null, completed: false, subtasks: [] },
-      { id: 't5', title: 'Midday Reset, Lunch & Quick Mobility Break', microStep: 'Step away from screens for 45 mins', type: 'FIXED', energy: 'fried', duration: 45, fixedStartMin: 750, completed: false, subtasks: [] },
-      { id: 't6', title: 'Follow up with LiveWell Animal Hospital on Leo Radiographs', microStep: 'Reply to Patsy Mitch email confirming next mobility check-in', type: 'LIT', energy: 'fried', duration: 20, fixedStartMin: null, completed: false, subtasks: [] },
-      { id: 't7', title: 'Inbox Zero & Weekly Sunday Planning Prep', microStep: 'Clear starred emails and archive newsletters', type: 'LIT', energy: 'fried', duration: 25, fixedStartMin: null, completed: false, subtasks: [] },
-      { id: 't8', title: 'Review West Denver / Lakewood Real Estate Comps & Inspection Notes', microStep: 'Archive non-matching listings & flag top main-floor primary contender', type: 'LIT', energy: 'steady', duration: 30, fixedStartMin: null, completed: false, subtasks: [] },
-      { id: 't9', title: 'Late Afternoon Workout / Pickleball Court Session', microStep: 'Change gear & head out on time', type: 'FIXED', energy: 'steady', duration: 60, fixedStartMin: 1020, completed: false, subtasks: [] }
+      { id: 't1', title: 'Morning Routine, Meditation & Leo Park Walk', microStep: 'Leash up & head out for 20-min low-impact walk', type: 'FIXED', energy: 'steady', duration: 45, fixedStartMin: 450, completed: true, recurring: true, subtasks: [] },
+      { id: 't2', title: 'Draft CO Natural Medicine Potency & Packaging Compliance Matrix', microStep: 'Open state DOR compliance rules PDF and extract Section 4 table', type: 'MIT', energy: 'sharp', duration: 60, fixedStartMin: null, completed: false, recurring: false, subtasks: [{ text: 'Define standardized capsule homogenizing SOP requirements', done: true }, { text: 'Map third-party lab stability & microbial testing intervals', done: false }] },
+      { id: 't3', title: 'Outreach to 3 Denver Extraction & Formulation Lab Directors', microStep: 'Draft concise 4-sentence intro note to first founder on LinkedIn', type: 'MIT', energy: 'sharp', duration: 45, fixedStartMin: null, completed: false, recurring: false, subtasks: [] },
+      { id: 't4', title: 'Evaluate Cleanroom Equipment & Commercial Facility Layouts', microStep: 'Compare square footage & HVAC specs on top 2 saved industrial listings', type: 'MIT', energy: 'steady', duration: 45, fixedStartMin: null, completed: false, recurring: false, subtasks: [] },
+      { id: 't5', title: 'Midday Reset, Lunch & Quick Mobility Break', microStep: 'Step away from screens for 45 mins', type: 'FIXED', energy: 'fried', duration: 45, fixedStartMin: 750, completed: false, recurring: true, subtasks: [] },
+      { id: 't6', title: 'Follow up with LiveWell Animal Hospital on Leo Radiographs', microStep: 'Reply to Patsy Mitch email confirming next mobility check-in', type: 'LIT', energy: 'fried', duration: 20, fixedStartMin: null, completed: false, recurring: false, subtasks: [] },
+      { id: 't7', title: 'Inbox Zero & Weekly Sunday Planning Prep', microStep: 'Clear starred emails and archive newsletters', type: 'LIT', energy: 'fried', duration: 25, fixedStartMin: null, completed: false, recurring: true, subtasks: [] },
+      { id: 't8', title: 'Review West Denver / Lakewood Real Estate Comps & Inspection Notes', microStep: 'Archive non-matching listings & flag top main-floor primary contender', type: 'LIT', energy: 'steady', duration: 30, fixedStartMin: null, completed: false, recurring: false, subtasks: [] },
+      { id: 't9', title: 'Late Afternoon Workout / Pickleball Court Session', microStep: 'Change gear & head out on time', type: 'FIXED', energy: 'steady', duration: 60, fixedStartMin: 1020, completed: false, recurring: true, subtasks: [] }
     ];
 
     let state = {
@@ -648,6 +753,8 @@
       maxFocusMinutes: 360,
       theme: 'system', // 'dark', 'light', or 'system'
       soundEnabled: true, // Master auditory switch
+      lastActiveDate: null, // Tracks date for auto-rollover
+      archivedTasks: [],
       goals: {
         qGoal: 'Launch Downstream Formulation Venture & Compliance Framework',
         mGoal: 'Complete CO Natural Medicine Lab Standards & 8 Founder Coffee Chats',
@@ -682,7 +789,6 @@
       populateGitHubModalInputs();
 
       // 2. Safe State Loading: Ensures user modifications in localStorage ALWAYS persist
-      // across page reloads and code deployments without ever wiping existing tasks.
       const masterSaved = localStorage.getItem(MASTER_STORAGE_KEY);
       if (masterSaved) {
         try {
@@ -699,7 +805,6 @@
           state.tasks = JSON.parse(JSON.stringify(DEFAULT_TASKS));
         }
       } else {
-        // If first time visit with no localStorage, attempt to fetch committed flow-data.json if present
         try {
           const resp = await fetch('./flow-data.json', { cache: 'no-cache' });
           if (resp.ok) {
@@ -718,13 +823,35 @@
         }
       }
 
-      // Initialize Theme (matches OS preference by default or user toggle)
+      // Initialize Theme & Audio
       applyTheme(state.theme || 'system');
       updateAudioMasterUI();
 
+      // Ensure goals are loaded into inputs
       document.getElementById('qGoal').value = state.goals?.qGoal || '';
       document.getElementById('mGoal').value = state.goals?.mGoal || '';
       document.getElementById('wGoal').value = state.goals?.wGoal || '';
+
+      // 3. Dynamic Date & Day Rollover Check (Auto-corrects date and rolls over tasks)
+      updateDateAndRollover(true);
+
+      // Listen for tab wake / revisit to auto-correct date without refresh
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          updateDateAndRollover();
+          inferRealtimeEnergyFromChronotype();
+        }
+      });
+      window.addEventListener('focus', () => {
+        updateDateAndRollover();
+      });
+      setInterval(updateDateAndRollover, 30000);
+
+      // Load Gemini API Key if saved
+      const savedGeminiKey = localStorage.getItem('flowstate_os_gemini_api_key');
+      if (savedGeminiKey && document.getElementById('geminiApiKeyInput')) {
+        document.getElementById('geminiApiKeyInput').value = savedGeminiKey;
+      }
 
       if (ghConfig.token && ghConfig.autoSync) {
         await pullStateFromGitHub(true);
@@ -1165,15 +1292,40 @@
       let type = document.getElementById('taskTypeInput').value;
       const energy = document.getElementById('taskEnergyInput').value;
       const duration = parseInt(document.getElementById('taskDurationInput').value, 10);
+      const recurring = document.getElementById('taskRecurringInput') ? document.getElementById('taskRecurringInput').checked : false;
       if (!title) return;
 
       if (type === 'MIT' && state.tasks.filter(t => t.type === 'MIT' && !t.completed).length >= 3) {
         type = 'LIT'; showRippleNotice('🛡️ MIT Cap Reached (Max 3/day). Added as LIT.');
       }
 
-      state.tasks.push({ id: 't_' + Date.now(), title, microStep: micro || `Draft rough framework`, type, energy, duration, fixedStartMin: type === 'FIXED' ? 840 : null, completed: false, subtasks: [] });
-      document.getElementById('taskTitleInput').value = ''; document.getElementById('taskMicroInput').value = '';
-      saveState(); optimizeByChronotype(false);
+      state.tasks.push({
+        id: 't_' + Date.now(),
+        title,
+        microStep: micro || `Draft rough framework`,
+        type,
+        energy,
+        duration,
+        fixedStartMin: type === 'FIXED' ? 840 : null,
+        completed: false,
+        recurring,
+        subtasks: []
+      });
+      document.getElementById('taskTitleInput').value = '';
+      document.getElementById('taskMicroInput').value = '';
+      if (document.getElementById('taskRecurringInput')) document.getElementById('taskRecurringInput').checked = false;
+      saveState();
+      optimizeByChronotype(false);
+    }
+
+    function toggleTaskRecurring(taskId) {
+      const t = state.tasks.find(x => x.id === taskId);
+      if (!t) return;
+      t.recurring = !t.recurring;
+      saveState();
+      renderPriorityLists();
+      recalculateSchedule();
+      showRippleNotice(t.recurring ? `🔁 "${t.title}" will now auto-repeat every morning.` : `"${t.title}" is now a one-off task.`);
     }
 
     function autoBreakdownTask(taskId) {
@@ -1285,6 +1437,8 @@
 
     function renderCard(t) {
       const badges = { sharp: '🔴 Peak', steady: '🟡 Rebound', fried: '🟢 Trough' }[t.energy];
+      const recurringBadge = t.recurring ? '<span class="text-[10px] font-mono px-1.5 py-0.5 rounded border border-indigo-400/40 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400" title="Daily Recurring Routine (Auto-refreshes each day)">🔁 Daily</span>' : '';
+      const rolloverBadge = t.rolledOver ? '<span class="text-[10px] font-mono px-1.5 py-0.5 rounded border border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400" title="Rolled over from previous day">↩ Rolled</span>' : '';
       const subs = t.subtasks?.map((st, i) => `<label class="flex items-center gap-2 text-xs ${st.done ? 'line-through text-slate-400' : 'dark:text-slate-300 text-slate-700'} cursor-pointer"><input type="checkbox" ${st.done ? 'checked' : ''} onchange="toggleSubtask('${t.id}', ${i})" class="accent-emerald-500 rounded" /><span>${st.text}</span></label>`).join('') || '';
       return `
         <div class="p-3 rounded-xl dark:bg-slate-950/90 bg-white border dark:border-slate-800 border-slate-200 shadow-sm transition">
@@ -1292,15 +1446,22 @@
             <div class="flex items-start gap-2.5">
               <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTaskComplete('${t.id}')" class="mt-1 accent-indigo-500 w-4 h-4 rounded cursor-pointer" />
               <div>
-                <div class="flex flex-wrap items-center gap-1.5"><span class="text-xs font-semibold ${t.completed ? 'line-through text-slate-400' : 'dark:text-slate-100 text-slate-900'}">${t.title}</span><span class="text-[10px] px-1.5 py-0.5 rounded border">${badges}</span><span class="text-[10px] font-mono dark:text-slate-400 text-slate-500">${t.duration}m</span></div>
+                <div class="flex flex-wrap items-center gap-1.5">
+                  <span class="text-xs font-semibold ${t.completed ? 'line-through text-slate-400' : 'dark:text-slate-100 text-slate-900'}">${t.title}</span>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded border">${badges}</span>
+                  ${recurringBadge}
+                  ${rolloverBadge}
+                  <span class="text-[10px] font-mono dark:text-slate-400 text-slate-500">${t.duration}m</span>
+                </div>
                 <p class="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1">↳ 2m Starter: ${t.microStep}</p>
               </div>
             </div>
             <div class="flex items-center gap-1">
               ${!t.completed ? `<button onclick="openFocusModal('${t.id}')" class="px-2 py-1 rounded bg-indigo-600 text-white text-[10px] font-semibold">Focus</button>` : ''}
-              <button onclick="autoBreakdownTask('${t.id}')" class="p-1 hover:text-emerald-500 text-xs">🪄</button>
-              <button onclick="promoteDemoteTask('${t.id}')" class="p-1 hover:text-amber-500 text-xs">⇅</button>
-              <button onclick="deleteTask('${t.id}')" class="p-1 hover:text-rose-500 text-xs">✕</button>
+              <button onclick="toggleTaskRecurring('${t.id}')" class="p-1 hover:text-indigo-400 text-xs ${t.recurring ? 'text-indigo-500 dark:text-indigo-400 font-bold' : 'text-slate-400'}" title="${t.recurring ? 'Disable Daily Recurring' : 'Make Daily Recurring Routine'}">🔁</button>
+              <button onclick="autoBreakdownTask('${t.id}')" class="p-1 hover:text-emerald-500 text-xs" title="Auto-breakdown into micro-steps">🪄</button>
+              <button onclick="promoteDemoteTask('${t.id}')" class="p-1 hover:text-amber-500 text-xs" title="Promote/Demote Tier">⇅</button>
+              <button onclick="deleteTask('${t.id}')" class="p-1 hover:text-rose-500 text-xs" title="Delete Task">✕</button>
             </div>
           </div>
           ${subs ? `<div class="mt-2.5 pt-2 border-t dark:border-slate-800 border-slate-100 space-y-1.5">${subs}</div>` : ''}
@@ -1383,7 +1544,372 @@
       const p = document.getElementById('parkedCount'); p.classList.remove('hidden'); setTimeout(() => p.classList.add('hidden'), 3000);
     }
 
-    window.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeFocusModal(); closeChronotypeModal(); closeGitHubModal(); } });
+    // --- DAY ROLLOVER & DATE AUTOCORRECTION ENGINE ---
+    function getLocalDateString() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    function updateDateAndRollover(silent = false) {
+      const now = new Date();
+      const dateOptions = { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' };
+      const dateStr = now.toLocaleDateString('en-US', dateOptions);
+      
+      const dateEl = document.getElementById('currentDateDisplay');
+      if (dateEl) dateEl.textContent = dateStr;
+
+      const todayKey = getLocalDateString();
+      
+      if (!state.lastActiveDate) {
+        state.lastActiveDate = todayKey;
+        saveState();
+        return;
+      }
+
+      if (state.lastActiveDate !== todayKey) {
+        executeDayRollover(state.lastActiveDate, todayKey, dateStr, silent);
+      }
+    }
+
+    function triggerManualRollover() {
+      const now = new Date();
+      const dateOptions = { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' };
+      const dateStr = now.toLocaleDateString('en-US', dateOptions);
+      const todayKey = getLocalDateString();
+      
+      if (!confirm(`Start fresh for ${dateStr}?\n\n• Incomplete tasks will roll over.\n• Recurring daily routines will reset to unchecked.\n• Completed one-offs will be archived.`)) {
+        return;
+      }
+      executeDayRollover(state.lastActiveDate || 'prior', todayKey, dateStr, false);
+    }
+
+    function executeDayRollover(lastDate, todayKey, dateStr, silent = false) {
+      let lingeringCount = 0;
+      let recurringResetCount = 0;
+
+      // 1. Reset completion on all recurring routines & count lingering tasks
+      state.tasks.forEach(t => {
+        if (t.recurring) {
+          if (t.completed) {
+            t.completed = false;
+            recurringResetCount++;
+          }
+          if (t.subtasks && t.subtasks.length > 0) {
+            t.subtasks.forEach(st => st.done = false);
+          }
+        } else if (!t.completed) {
+          lingeringCount++;
+          t.rolledOver = true;
+        }
+      });
+
+      // 2. Archive completed one-off tasks from previous days so today's workspace is clean
+      const completedOneOff = state.tasks.filter(t => t.completed && !t.recurring);
+      if (completedOneOff.length > 0) {
+        state.archivedTasks = state.archivedTasks || [];
+        state.archivedTasks.push({
+          date: lastDate,
+          tasks: completedOneOff
+        });
+        state.tasks = state.tasks.filter(t => !t.completed || t.recurring);
+      }
+
+      state.lastActiveDate = todayKey;
+      saveState();
+      recalculateSchedule();
+      
+      const badge = document.getElementById('rolloverBadge');
+      if (badge) {
+        badge.classList.remove('hidden');
+        setTimeout(() => badge.classList.add('hidden'), 8000);
+      }
+
+      if (!silent) {
+        showRippleNotice(`🌅 Auto-rolled to ${dateStr}! Kept ${lingeringCount} pending tasks & refreshed ${recurringResetCount} daily routines.`);
+      }
+    }
+
+    // --- GEMINI AI & SMART ASSISTANT FUNCTIONS ---
+    function openGeminiModal() {
+      document.getElementById('geminiAnchorQ').textContent = state.goals?.qGoal || 'None set';
+      document.getElementById('geminiAnchorM').textContent = state.goals?.mGoal || 'None set';
+      document.getElementById('geminiAnchorW').textContent = state.goals?.wGoal || 'None set';
+      
+      const savedKey = localStorage.getItem('flowstate_os_gemini_api_key') || '';
+      const keyInp = document.getElementById('geminiApiKeyInput');
+      if (keyInp) keyInp.value = savedKey;
+
+      document.getElementById('geminiModal').classList.remove('hidden');
+      document.getElementById('geminiModal').classList.add('flex');
+    }
+
+    function closeGeminiModal() {
+      document.getElementById('geminiModal').classList.add('hidden');
+      document.getElementById('geminiModal').classList.remove('flex');
+    }
+
+    function switchGeminiTab(tab) {
+      const views = { horizons: 'geminiViewHorizons', ingest: 'geminiViewIngest', calendar: 'geminiViewCalendar' };
+      const tabs = { horizons: 'geminiTabHorizons', ingest: 'geminiTabIngest', calendar: 'geminiTabCalendar' };
+      Object.keys(views).forEach(k => {
+        const viewEl = document.getElementById(views[k]);
+        const tabEl = document.getElementById(tabs[k]);
+        if (k === tab) {
+          viewEl.classList.remove('hidden');
+          tabEl.className = 'py-2 rounded-lg font-semibold bg-indigo-600 text-white transition';
+        } else {
+          viewEl.classList.add('hidden');
+          tabEl.className = 'py-2 rounded-lg font-semibold dark:text-slate-400 text-slate-600 hover:text-white transition';
+        }
+      });
+    }
+
+    function saveGeminiApiKey() {
+      const val = document.getElementById('geminiApiKeyInput').value.trim();
+      localStorage.setItem('flowstate_os_gemini_api_key', val);
+      showRippleNotice('✓ Gemini API Key saved locally.');
+    }
+
+    async function generateHorizonTaskSuggestions() {
+      const container = document.getElementById('geminiSuggestionsContainer');
+      container.innerHTML = '<div class="text-xs font-mono text-indigo-400 py-4 text-center">⏳ Synthesizing peak-aligned MITs from your North Stars...</div>';
+      
+      const apiKey = localStorage.getItem('flowstate_os_gemini_api_key');
+      const q = state.goals?.qGoal || 'Launch downstream formulation venture';
+      const m = state.goals?.mGoal || 'Complete CO natural medicine lab standards';
+      const w = state.goals?.wGoal || 'Finalize dosing matrix & tour 2 properties';
+      const c = state.chronotype;
+
+      if (apiKey) {
+        try {
+          const prompt = `You are an elite executive chief of staff and chronotype coach.
+User Chronotype: ${c.name} (Peak hours: ${formatMinShort(c.peakStart)} - ${formatMinShort(c.peakEnd)}).
+Horizons:
+- Q4 North Star: ${q}
+- Monthly Milestone: ${m}
+- Weekly Win: ${w}
+
+Suggest 3 high-impact Most Important Tasks (MITs) for today's Peak wave, and 2 low-cognitive Batch Tasks (LITs) for their Trough dip.
+Format strictly as JSON array of objects with keys:
+"title" (concise task name), "microStep" (concrete 2-minute physical starter step), "type" ("MIT" or "LIT"), "energy" ("sharp", "steady", or "fried"), "duration" (minutes: 25, 45, or 60).`;
+
+          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: { responseMimeType: 'application/json' }
+            })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            const tasks = JSON.parse(text);
+            renderGeminiSuggestions(tasks);
+            return;
+          }
+        } catch (e) {
+          console.warn('Gemini API call error, falling back to smart local synthesizer:', e);
+        }
+      }
+
+      // Smart Heuristic Synthesizer (Instant Fallback when API key is not yet set)
+      setTimeout(() => {
+        const smartSuggestions = [
+          {
+            title: `Execute Step for Weekly Win: ${w.slice(0, 48)}...`,
+            microStep: `Open working doc and outline top 3 actionable checkpoints`,
+            type: 'MIT',
+            energy: 'sharp',
+            duration: 60
+          },
+          {
+            title: `Advance Milestone: ${m.slice(0, 48)}...`,
+            microStep: `Identify primary stakeholder / vendor contact and draft quick outline`,
+            type: 'MIT',
+            energy: 'sharp',
+            duration: 45
+          },
+          {
+            title: `Strategic Alignment Review: ${q.slice(0, 48)}...`,
+            microStep: `Review weekly blockers and update milestone progress notes`,
+            type: 'MIT',
+            energy: 'steady',
+            duration: 45
+          },
+          {
+            title: `Email & Communication Sweep (Denver Labs & Partners)`,
+            microStep: `Clear pending replies and file incoming status updates`,
+            type: 'LIT',
+            energy: 'fried',
+            duration: 25
+          },
+          {
+            title: `Day Closeout & Tomorrow's 3 MIT Sequence Prep`,
+            microStep: `Clean physical desk & write 1st micro-step on sticky note`,
+            type: 'LIT',
+            energy: 'fried',
+            duration: 15
+          }
+        ];
+        renderGeminiSuggestions(smartSuggestions);
+      }, 350);
+    }
+
+    function renderGeminiSuggestions(tasks) {
+      const container = document.getElementById('geminiSuggestionsContainer');
+      container.innerHTML = tasks.map((t, idx) => `
+        <div class="p-3 rounded-xl dark:bg-slate-950 bg-slate-50 border dark:border-slate-800 border-slate-200 flex items-start justify-between gap-2.5">
+          <div class="flex-1">
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="text-xs font-semibold dark:text-white text-slate-900">${t.title}</span>
+              <span class="text-[10px] px-1.5 py-0.2 rounded border ${t.type === 'MIT' ? 'border-rose-500/40 text-rose-500' : 'border-slate-500/40 text-slate-500'} font-mono">${t.type}</span>
+              <span class="text-[10px] font-mono text-slate-400">${t.duration}m</span>
+            </div>
+            <p class="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1">👉 2m Starter: ${t.microStep}</p>
+          </div>
+          <button onclick="addSuggestedTask(${idx})" id="suggBtn_${idx}" class="px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold transition shrink-0">
+            + Add to Wave
+          </button>
+        </div>
+      `).join('');
+      window._currentGeminiSuggestions = tasks;
+    }
+
+    function addSuggestedTask(idx) {
+      const t = window._currentGeminiSuggestions?.[idx];
+      if (!t) return;
+      state.tasks.push({
+        id: 't_' + Date.now() + '_' + idx,
+        title: t.title,
+        microStep: t.microStep,
+        type: t.type || 'MIT',
+        energy: t.energy || 'sharp',
+        duration: t.duration || 45,
+        fixedStartMin: null,
+        completed: false,
+        recurring: false,
+        subtasks: []
+      });
+      saveState();
+      recalculateSchedule();
+      const btn = document.getElementById(`suggBtn_${idx}`);
+      if (btn) {
+        btn.textContent = '✓ Added';
+        btn.classList.remove('bg-indigo-600', 'hover:bg-indigo-500');
+        btn.classList.add('bg-emerald-600', 'cursor-default');
+        btn.disabled = true;
+      }
+      showRippleNotice(`✨ Added "${t.title}" to your schedule.`);
+    }
+
+    function extractTasksFromText() {
+      const text = document.getElementById('geminiIngestInput').value.trim();
+      const statusEl = document.getElementById('geminiIngestStatus');
+      if (!text) {
+        statusEl.textContent = '⚠️ Please paste some text first.';
+        return;
+      }
+
+      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 5);
+      let count = 0;
+
+      lines.forEach(line => {
+        const clean = line.replace(/^[-*•\d.)\]\s]+/, '').trim();
+        if (clean.length > 8) {
+          const isDeep = /draft|analyze|evaluate|design|create|sop|matrix|cleanroom|formulation|patent|spec/i.test(clean);
+          state.tasks.push({
+            id: 't_' + Date.now() + '_' + count,
+            title: clean,
+            microStep: `Open workspace & take first 2-min starter action`,
+            type: isDeep ? 'MIT' : 'LIT',
+            energy: isDeep ? 'sharp' : 'fried',
+            duration: isDeep ? 45 : 20,
+            fixedStartMin: null,
+            completed: false,
+            recurring: false,
+            subtasks: []
+          });
+          count++;
+        }
+      });
+
+      if (count > 0) {
+        saveState();
+        recalculateSchedule();
+        statusEl.textContent = `✓ Extracted & added ${count} action items!`;
+        document.getElementById('geminiIngestInput').value = '';
+        showRippleNotice(`📥 Ingested ${count} new tasks.`);
+      } else {
+        statusEl.textContent = '⚠️ Could not find distinct action lines. Try bullet points.';
+      }
+    }
+
+    function importCalendarAgenda() {
+      const text = document.getElementById('geminiCalendarInput').value.trim();
+      const statusEl = document.getElementById('geminiCalendarStatus');
+      if (!text) {
+        statusEl.textContent = '⚠️ Please paste an agenda first.';
+        return;
+      }
+
+      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      let added = 0;
+
+      lines.forEach(l => {
+        const timeMatch = l.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?(?:\s*[-–to]+\s*(\d{1,2}):(\d{2})\s*(AM|PM)?)?/i);
+        if (timeMatch) {
+          let h1 = parseInt(timeMatch[1], 10);
+          const m1 = parseInt(timeMatch[2], 10);
+          const ampm1 = timeMatch[3]?.toUpperCase();
+          if (ampm1 === 'PM' && h1 < 12) h1 += 12;
+          if (ampm1 === 'AM' && h1 === 12) h1 = 0;
+          const startMin = h1 * 60 + m1;
+
+          let duration = 45;
+          if (timeMatch[4] && timeMatch[5]) {
+            let h2 = parseInt(timeMatch[4], 10);
+            const m2 = parseInt(timeMatch[5], 10);
+            let ampm2 = timeMatch[6]?.toUpperCase() || ampm1;
+            if (ampm2 === 'PM' && h2 < 12) h2 += 12;
+            if (ampm2 === 'AM' && h2 === 12) h2 = 0;
+            const endMin = h2 * 60 + m2;
+            if (endMin > startMin) duration = endMin - startMin;
+          }
+
+          const title = l.replace(timeMatch[0], '').replace(/^[:\s\-–]+/, '').trim() || 'Calendar Event';
+
+          state.tasks.push({
+            id: 't_' + Date.now() + '_' + added,
+            title,
+            microStep: `Log in / arrive on time & review agenda`,
+            type: 'FIXED',
+            energy: 'steady',
+            duration,
+            fixedStartMin: startMin,
+            completed: false,
+            recurring: false,
+            subtasks: []
+          });
+          added++;
+        }
+      });
+
+      if (added > 0) {
+        saveState();
+        recalculateSchedule();
+        statusEl.textContent = `✓ Anchored ${added} calendar blocks!`;
+        document.getElementById('geminiCalendarInput').value = '';
+        showRippleNotice(`🗓️ Anchored ${added} calendar events into schedule.`);
+      } else {
+        statusEl.textContent = '⚠️ Could not parse times (e.g., "9:00 AM - 10:00 AM Event Name").';
+      }
+    }
+
+    window.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeFocusModal(); closeChronotypeModal(); closeGitHubModal(); closeGeminiModal(); } });
     window.addEventListener('DOMContentLoaded', init);
   </script>
 </body>
