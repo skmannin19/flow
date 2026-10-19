@@ -351,6 +351,9 @@
           </div>
 
           <div class="flex flex-wrap items-center gap-2">
+            <button onclick="fetchGoogleCalendarLive(true)" class="px-2.5 py-1.5 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 text-xs font-semibold transition flex items-center gap-1.5" title="Pull updates and prune deleted meetings from Google Calendar">
+              <span>🔄</span> <span>Sync Calendar</span>
+            </button>
             <label class="flex items-center gap-1.5 text-xs dark:text-slate-300 text-slate-700 dark:bg-slate-950 bg-slate-100 px-2.5 py-1.5 rounded-lg border dark:border-slate-800 border-slate-300 cursor-pointer">
               <input type="checkbox" id="bufferToggle" checked onchange="recalculateSchedule()" class="accent-indigo-500 rounded" />
               <span>Circadian Breaks & Buffers</span>
@@ -3009,6 +3012,18 @@
         }
       });
 
+      // 3. Repair completed tasks that were erroneously pushed into afternoon/evening (startMin >= 720)
+      const mislocatedCompleted = state.tasks.filter(t => t.completed && t.startMin != null && t.startMin >= 720);
+      if (mislocatedCompleted.length > 0) {
+        let repairCursor = Math.max(480, Math.min(c.peakStart - 60, 510));
+        mislocatedCompleted.forEach(ct => {
+          ct.startMin = repairCursor;
+          ct.endMin = repairCursor + (ct.duration || 30);
+          repairCursor = ct.endMin + 10;
+        });
+        saveState();
+      }
+
       const activeTasks = state.tasks.filter(t => isTaskScheduledForDate(t, today));
       const fixed = activeTasks.filter(t => t.type === 'FIXED').sort((a, b) => (a.fixedStartMin || 540) - (b.fixedStartMin || 540));
       fixed.forEach(ft => {
@@ -3158,6 +3173,77 @@
         </div>`;
     }
 
+    let draggedTaskId = null;
+
+    function onTimelineDragStart(e, taskId) {
+      draggedTaskId = taskId;
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', taskId);
+      e.currentTarget.classList.add('opacity-50', 'ring-2', 'ring-indigo-500');
+    }
+
+    function onTimelineDragEnd(e) {
+      e.currentTarget.classList.remove('opacity-50', 'ring-2', 'ring-indigo-500');
+      document.querySelectorAll('.timeline-card').forEach(el => {
+        el.classList.remove('ring-2', 'ring-indigo-400', 'bg-indigo-500/10', 'border-indigo-500');
+      });
+      draggedTaskId = null;
+    }
+
+    function onTimelineDragOver(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const el = e.currentTarget;
+      if (!el.classList.contains('ring-2')) {
+        el.classList.add('ring-2', 'ring-indigo-400', 'bg-indigo-500/10');
+      }
+    }
+
+    function onTimelineDragLeave(e) {
+      const el = e.currentTarget;
+      el.classList.remove('ring-2', 'ring-indigo-400', 'bg-indigo-500/10');
+    }
+
+    function onTimelineDrop(e, targetTaskId) {
+      e.preventDefault();
+      e.stopPropagation();
+      const el = e.currentTarget;
+      el.classList.remove('ring-2', 'ring-indigo-400', 'bg-indigo-500/10');
+
+      const sourceId = draggedTaskId || e.dataTransfer.getData('text/plain');
+      if (!sourceId || sourceId === targetTaskId) return;
+
+      const sourceTask = state.tasks.find(t => t.id === sourceId);
+      const targetTask = state.tasks.find(t => t.id === targetTaskId);
+      if (!sourceTask || !targetTask) return;
+
+      // Swap their scheduled start positions
+      const tempStart = sourceTask.startMin;
+      sourceTask.startMin = targetTask.startMin;
+      sourceTask.endMin = sourceTask.startMin + (sourceTask.duration || 30);
+      if (sourceTask.type === 'FIXED') sourceTask.fixedStartMin = sourceTask.startMin;
+
+      targetTask.startMin = tempStart;
+      targetTask.endMin = targetTask.startMin + (targetTask.duration || 30);
+      if (targetTask.type === 'FIXED') targetTask.fixedStartMin = targetTask.startMin;
+
+      saveState();
+      recalculateSchedule();
+      showRippleNotice(`↔ Reordered schedule: "${sourceTask.title}" and "${targetTask.title}" swapped.`);
+    }
+
+    function slideTaskTime(taskId, deltaMin) {
+      const t = state.tasks.find(x => x.id === taskId);
+      if (!t) return;
+      if (t.startMin == null) t.startMin = 540;
+      const newStart = Math.max(360, Math.min(1380 - (t.duration || 30), t.startMin + deltaMin));
+      t.startMin = newStart;
+      t.endMin = newStart + (t.duration || 30);
+      if (t.type === 'FIXED') t.fixedStartMin = t.startMin;
+      saveState();
+      recalculateSchedule();
+    }
+
     function renderTimeline(blocks, overflow, nowMin = (new Date().getHours() * 60 + new Date().getMinutes()), fixedList = []) {
       let nowMarkerInserted = false;
       const htmlItems = [];
@@ -3195,162 +3281,44 @@
         const hasOverlap = t.type === 'FIXED' && fixedList.some(other => other !== t && Math.max(t.startMin, other.startMin) < Math.min(t.endMin, other.endMin));
 
         htmlItems.push(`
-          <div class="p-3 rounded-xl border dark:border-slate-800 border-slate-200 dark:bg-slate-950/90 bg-white flex items-center justify-between gap-3 ${isPast ? 'opacity-70 bg-slate-50/50 dark:bg-slate-950/40' : ''}">
+          <div draggable="true" 
+               ondragstart="onTimelineDragStart(event, '${t.id}')" 
+               ondragend="onTimelineDragEnd(event)" 
+               ondragover="onTimelineDragOver(event)" 
+               ondragleave="onTimelineDragLeave(event)" 
+               ondrop="onTimelineDrop(event, '${t.id}')"
+               class="timeline-card group p-3 rounded-xl border dark:border-slate-800 border-slate-200 dark:bg-slate-950/90 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition cursor-grab active:cursor-grabbing hover:border-indigo-400/50 ${isPast ? 'opacity-75 bg-slate-50/50 dark:bg-slate-950/40' : ''}">
             <div class="flex items-center gap-2.5 min-w-0">
+              <span class="text-slate-400 dark:text-slate-500 hover:text-slate-600 cursor-grab text-base select-none shrink-0" title="Drag to reorder/swap schedule position">⠿</span>
               <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTaskComplete('${t.id}')" class="w-4 h-4 accent-emerald-500 rounded cursor-pointer shrink-0" title="${t.completed ? 'Mark incomplete' : 'Mark completed'}" />
-              <div class="font-mono text-xs dark:text-slate-300 text-slate-700 w-32 shrink-0">
-                ${formatMinToTime(t.startMin)} – ${formatMinToTime(t.endMin)}
+              <div class="flex items-center gap-1 shrink-0">
+                <span class="font-mono text-xs dark:text-slate-300 text-slate-700 w-28 sm:w-32">
+                  ${formatMinToTime(t.startMin)} – ${formatMinToTime(t.endMin)}
+                </span>
+                <button onclick="slideTaskTime('${t.id}', -15)" class="px-1 py-0.5 rounded text-[10px] bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 font-mono transition" title="Slide earlier by 15m">◀</button>
+                <button onclick="slideTaskTime('${t.id}', 15)" class="px-1 py-0.5 rounded text-[10px] bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 font-mono transition" title="Slide later by 15m">▶</button>
               </div>
-              <div class="min-w-0">
+              <div class="min-w-0 ml-1">
                 <div class="flex items-center gap-1.5 flex-wrap">
-                  <span class="text-xs font-semibold dark:text-white text-slate-900 ${t.completed ? 'line-through text-slate-400' : ''}">${t.title}</span>
+                  <span class="text-xs font-semibold dark:text-white text-slate-900 ${t.completed ? 'line-through text-slate-400 dark:text-slate-500' : ''}">${t.title}</span>
                   ${t.type === 'FIXED' ? '<span class="text-[10px] font-mono px-1.5 py-0.2 rounded border border-indigo-400/40 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">🗓️ Calendar</span>' : `<span class="text-[10px] font-mono px-1 rounded border ${p.color}">${p.label}</span>`}
                   ${hasOverlap ? '<span class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-semibold" title="Overlapping session on your calendar">⚠️ Overlap</span>' : ''}
                   ${t.completed ? '<span class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">✓ Done</span>' : ''}
                 </div>
-                <p class="text-[11px] dark:text-slate-400 text-slate-500 truncate">${t.microStep}</p>
+                <p class="text-[11px] dark:text-slate-400 text-slate-500 truncate">${t.microStep || ''}</p>
               </div>
             </div>
-            <div class="flex items-center gap-1 shrink-0">
+            <div class="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
               ${!t.completed ? `
                 ${t.type !== 'FIXED' ? `
-                  <button onclick="adjustTaskDuration('${t.id}', -15)" class="px-2 py-1 rounded bg-slate-100 dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 text-[10px] font-mono">-15m</button>
-                  <button onclick="adjustTaskDuration('${t.id}', 15)" class="px-2 py-1 rounded bg-slate-100 dark:bg-slate-900 text-amber-600 dark:text-amber-400 text-[10px] font-mono">+15m</button>
+                  <button onclick="adjustTaskDuration('${t.id}', -15)" class="px-1.5 py-0.5 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 text-emerald-600 dark:text-emerald-400 text-[10px] font-mono" title="Shorten by 15m">-15m</button>
+                  <button onclick="adjustTaskDuration('${t.id}', 15)" class="px-1.5 py-0.5 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 text-amber-600 dark:text-amber-400 text-[10px] font-mono" title="Extend by 15m">+15m</button>
                   <button onclick="openFocusModal('${t.id}')" class="px-2.5 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-sm transition">▶ Focus</button>
                 ` : `<button onclick="toggleTaskComplete('${t.id}')" class="px-2.5 py-1 rounded bg-emerald-600/15 hover:bg-emerald-600/25 border border-emerald-500/30 text-emerald-600 dark:text-emerald-300 text-xs font-semibold transition">✓ Mark Done</button>`}
               ` : `
                 <button onclick="toggleTaskComplete('${t.id}')" class="text-xs text-emerald-500 font-mono hover:underline">✓ Completed</button>
               `}
-            </div>
-          </div>
-        `);
-      });
-
-      // If all blocks are in the past, place the NOW marker at the end
-      if (!nowMarkerInserted && blocks.length > 0) {
-        htmlItems.push(`
-          <div class="flex items-center gap-2.5 py-1.5 my-1">
-            <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
-            <div class="h-0.5 flex-1 bg-gradient-to-r from-rose-500 via-indigo-500 to-transparent"></div>
-            <span class="text-[10px] font-mono font-bold text-rose-500 dark:text-rose-400 uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/30">CURRENT TIME • ${formatMinToTime(nowMin)}</span>
-          </div>
-        `);
-      }
-
-      document.getElementById('timelineContainer').innerHTML = htmlItems.join('');
-      updateCapacityBar(focusMins);
-      updateRecommendationBanner();
-    }
-
-    function updateCapacityBar(focusMins) {
-      const max = state.maxFocusMinutes;
-      const pct = Math.min(100, Math.round((focusMins / max) * 100));
-      const capText = document.getElementById('capacityText');
-      const capBar = document.getElementById('capacityBar');
-      if (capText) capText.textContent = `${(focusMins / 60).toFixed(1)} / ${(max / 60).toFixed(1)} hrs`;
-      if (capBar) capBar.style.width = `${pct}%`;
-    }
-
-    function renderPriorityLists() {
-      const today = new Date();
-      const activeTasks = state.tasks.filter(t => isTaskScheduledForDate(t, today));
-      const mits = activeTasks.filter(t => t.type === 'MIT'), lits = activeTasks.filter(t => t.type === 'LIT');
-      document.getElementById('mitCountBadge').textContent = `${mits.filter(t => !t.completed).length} / 3 Active`;
-      document.getElementById('litCountBadge').textContent = `${lits.filter(t => !t.completed).length} Pending`;
-
-      document.getElementById('mitList').innerHTML = mits.map(t => renderCard(t)).join('') || `<div class="text-xs text-slate-400 py-3 text-center border border-dashed rounded-xl">No MITs scheduled for today.</div>`;
-      document.getElementById('litList').innerHTML = lits.map(t => renderCard(t)).join('') || `<div class="text-xs text-slate-400 py-3 text-center border border-dashed rounded-xl">All LITs cleared!</div>`;
-    }
-
-    function renderCard(t) {
-      const badges = { sharp: '🔴 Peak', steady: '🟡 Rebound', fried: '🟢 Trough' }[t.energy];
-      const recurringBadge = t.recurring 
-        ? `<button onclick="openRecurrenceModal('${t.id}')" class="text-[10px] font-mono px-1.5 py-0.5 rounded border border-indigo-400/40 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20 transition flex items-center gap-1" title="Click to customize repeat pattern (Google-style)">🔁 ${formatRecurrenceLabel(t)}</button>` 
-        : '';
-      const rolloverBadge = t.rolledOver ? '<span class="text-[10px] font-mono px-1.5 py-0.5 rounded border border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400" title="Rolled over from previous day">↩ Rolled</span>' : '';
-      const subs = t.subtasks?.map((st, i) => `<label class="flex items-center gap-2 text-xs ${st.done ? 'line-through text-slate-400' : 'dark:text-slate-300 text-slate-700'} cursor-pointer"><input type="checkbox" ${st.done ? 'checked' : ''} onchange="toggleSubtask('${t.id}', ${i})" class="accent-emerald-500 rounded" /><span>${st.text}</span></label>`).join('') || '';
-      return `
-        <div class="p-3 rounded-xl dark:bg-slate-950/90 bg-white border dark:border-slate-800 border-slate-200 shadow-sm transition">
-          <div class="flex items-start justify-between gap-2">
-            <div class="flex items-start gap-2.5">
-              <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTaskComplete('${t.id}')" class="mt-1 accent-indigo-500 w-4 h-4 rounded cursor-pointer" />
-              <div>
-                <div class="flex flex-wrap items-center gap-1.5">
-                  <span class="text-xs font-semibold ${t.completed ? 'line-through text-slate-400' : 'dark:text-slate-100 text-slate-900'}">${t.title}</span>
-                  <span class="text-[10px] px-1.5 py-0.5 rounded border">${badges}</span>
-                  ${recurringBadge}
-                  ${rolloverBadge}
-                  <span class="text-[10px] font-mono dark:text-slate-400 text-slate-500">${t.duration}m</span>
-                </div>
-                <p class="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1">↳ 2m Starter: ${t.microStep}</p>
-              </div>
-            </div>
-            <div class="flex items-center gap-1">
-              ${!t.completed ? `<button onclick="openFocusModal('${t.id}')" class="px-2 py-1 rounded bg-indigo-600 text-white text-[10px] font-semibold">Focus</button>` : ''}
-              <button onclick="openRecurrenceModal('${t.id}')" class="p-1 hover:text-indigo-400 text-xs ${t.recurring ? 'text-indigo-500 dark:text-indigo-400 font-bold' : 'text-slate-400'}" title="${t.recurring ? 'Edit Repeat Schedule' : 'Make Recurring Schedule'}">🔁</button>
-              <button onclick="autoBreakdownTask('${t.id}')" class="p-1 hover:text-emerald-500 text-xs" title="Auto-breakdown into micro-steps">🪄</button>
-              <button onclick="promoteDemoteTask('${t.id}')" class="p-1 hover:text-amber-500 text-xs" title="Promote/Demote Tier">⇅</button>
-              <button onclick="deleteTask('${t.id}')" class="p-1 hover:text-rose-500 text-xs" title="Delete Task">✕</button>
-            </div>
-          </div>
-          ${subs ? `<div class="mt-2.5 pt-2 border-t dark:border-slate-800 border-slate-100 space-y-1.5">${subs}</div>` : ''}
-        </div>`;
-    }
-
-    function renderTimeline(blocks, overflow, nowMin = (new Date().getHours() * 60 + new Date().getMinutes())) {
-      let nowMarkerInserted = false;
-      const htmlItems = [];
-
-      blocks.forEach(item => {
-        const itemStart = item.kind === 'task' ? item.task.startMin : item.startMin;
-        const itemEnd = item.kind === 'task' ? item.task.endMin : item.endMin;
-
-        // Insert Real-Time Current Time line right before the first block that starts at or after now
-        if (!nowMarkerInserted && itemStart >= nowMin) {
-          htmlItems.push(`
-            <div class="flex items-center gap-2.5 py-1.5 my-1">
-              <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
-              <div class="h-0.5 flex-1 bg-gradient-to-r from-rose-500 via-indigo-500 to-transparent"></div>
-              <span class="text-[10px] font-mono font-bold text-rose-500 dark:text-rose-400 uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/30">CURRENT TIME • ${formatMinToTime(nowMin)}</span>
-            </div>
-          `);
-          nowMarkerInserted = true;
-        }
-
-        if (item.kind === 'circadian_rest') {
-          htmlItems.push(`<div class="flex items-center justify-between px-3.5 py-2 rounded-xl bg-emerald-950/20 border border-emerald-500/40 text-xs text-emerald-700 dark:text-emerald-200"><span class="font-mono">${formatMinToTime(item.startMin)} – ${formatMinToTime(item.endMin)}</span><span>${item.label}</span></div>`);
-          return;
-        }
-
-        if (item.kind === 'buffer') {
-          htmlItems.push(`<div class="flex items-center gap-3 px-3 py-1.5 rounded-xl border border-dashed dark:border-slate-800 border-slate-200 text-[11px] text-slate-500"><span class="font-mono">${formatMinToTime(item.startMin)}</span><span>☕ ${item.label}</span></div>`);
-          return;
-        }
-
-        const t = item.task, p = getCircadianPhaseForMinute(t.startMin);
-        const isPast = t.completed || (t.endMin < nowMin);
-
-        htmlItems.push(`
-          <div class="p-3 rounded-xl border dark:border-slate-800 border-slate-200 dark:bg-slate-950/90 bg-white flex items-center justify-between gap-3 ${isPast ? 'opacity-60 bg-slate-50/50 dark:bg-slate-950/40' : ''}">
-            <div class="flex items-center gap-3">
-              <div class="font-mono text-xs dark:text-slate-300 text-slate-700 w-32 shrink-0">
-                ${formatMinToTime(t.startMin)} – ${formatMinToTime(t.endMin)}
-              </div>
-              <div>
-                <div class="flex items-center gap-1.5 flex-wrap">
-                  <span class="text-xs font-semibold dark:text-white text-slate-900 ${t.completed ? 'line-through text-slate-400' : ''}">${t.title}</span>
-                  <span class="text-[10px] font-mono px-1 rounded border ${p.color}">${p.label}</span>
-                  ${t.completed ? '<span class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">Done</span>' : ''}
-                </div>
-                <p class="text-[11px] dark:text-slate-400 text-slate-500">${t.microStep}</p>
-              </div>
-            </div>
-            <div class="flex items-center gap-1 shrink-0">
-              ${!t.completed ? `
-                <button onclick="adjustTaskDuration('${t.id}', -15)" class="px-2 py-1 rounded bg-slate-100 dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 text-[10px] font-mono">-15m</button>
-                <button onclick="adjustTaskDuration('${t.id}', 15)" class="px-2 py-1 rounded bg-slate-100 dark:bg-slate-900 text-amber-600 dark:text-amber-400 text-[10px] font-mono">+15m</button>
-                <button onclick="openFocusModal('${t.id}')" class="px-2.5 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-sm transition">▶ Focus</button>
-              ` : '<span class="text-xs text-emerald-500 font-mono">✓ Done</span>'}
+              <button onclick="deleteTask('${t.id}')" class="p-1 text-slate-400 hover:text-rose-500 text-xs transition" title="Delete block">✕</button>
             </div>
           </div>
         `);
@@ -3370,10 +3338,14 @@
       document.getElementById('timelineContainer').innerHTML = htmlItems.join('');
 
       const ow = document.getElementById('overflowContainer');
-      if (overflow.length > 0) {
-        ow.classList.remove('hidden');
-        document.getElementById('overflowList').innerHTML = overflow.map(ot => `<div class="flex items-center justify-between px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs"><span class="font-semibold text-amber-700 dark:text-amber-200">${ot.title} (${ot.duration}m)</span><button onclick="adjustTaskDuration('${ot.id}', -15)" class="underline text-amber-600 dark:text-amber-300">Shrink to fit</button></div>`).join('');
-      } else ow.classList.add('hidden');
+      if (ow) {
+        if (overflow && overflow.length > 0) {
+          ow.classList.remove('hidden');
+          document.getElementById('overflowList').innerHTML = overflow.map(ot => `<div class="flex items-center justify-between px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs"><span class="font-semibold text-amber-700 dark:text-amber-200">${ot.title} (${ot.duration}m)</span><button onclick="adjustTaskDuration('${ot.id}', -15)" class="underline text-amber-600 dark:text-amber-300">Shrink to fit</button></div>`).join('');
+        } else {
+          ow.classList.add('hidden');
+        }
+      }
     }
 
     function showRippleNotice(msg) { const b = document.getElementById('rippleAlert'); document.getElementById('rippleAlertText').textContent = msg; b.classList.remove('hidden'); }
@@ -3698,10 +3670,17 @@
 
         const data = await res.json();
         const items = data.items || [];
+        const activeGcalIds = new Set();
         let addedCount = 0;
+        let updatedCount = 0;
 
         items.forEach(ev => {
           if (!ev.start || (!ev.start.dateTime && !ev.start.date)) return;
+          if (ev.status === 'cancelled') return;
+
+          const gcalId = 'gcal_' + ev.id;
+          activeGcalIds.add(gcalId);
+
           const startDt = ev.start.dateTime ? new Date(ev.start.dateTime) : new Date(ev.start.date + 'T09:00:00');
           const endDt = ev.end && ev.end.dateTime ? new Date(ev.end.dateTime) : new Date(startDt.getTime() + 45 * 60000);
 
@@ -3710,18 +3689,33 @@
           if (duration <= 0 || duration > 360) duration = 45;
 
           const title = ev.summary || 'Google Calendar Event';
+          const microStep = ev.hangoutLink ? `Join Meet: ${ev.hangoutLink}` : (ev.location ? `Location: ${ev.location}` : 'Review agenda & join on time');
 
-          // Deduplicate based on start time and title
-          const exists = state.tasks.some(t => t.type === 'FIXED' && t.fixedStartMin === startMin && t.title.toLowerCase() === title.toLowerCase());
-          if (!exists) {
+          // Check if already in tasks
+          const existing = state.tasks.find(t => t.id === gcalId || (t.type === 'FIXED' && t.fixedStartMin === startMin && t.title.toLowerCase() === title.toLowerCase()));
+
+          if (existing) {
+            existing.id = gcalId;
+            if (existing.fixedStartMin !== startMin || existing.duration !== duration || existing.title !== title) {
+              existing.fixedStartMin = startMin;
+              existing.startMin = startMin;
+              existing.duration = duration;
+              existing.endMin = startMin + duration;
+              existing.title = title;
+              existing.microStep = microStep;
+              updatedCount++;
+            }
+          } else {
             state.tasks.push({
-              id: 'gcal_' + (ev.id || Date.now() + '_' + addedCount),
+              id: gcalId,
               title,
-              microStep: ev.hangoutLink ? `Join Meet: ${ev.hangoutLink}` : (ev.location ? `Location: ${ev.location}` : 'Review agenda & join on time'),
+              microStep,
               type: 'FIXED',
               energy: 'steady',
               duration,
               fixedStartMin: startMin,
+              startMin: startMin,
+              endMin: startMin + duration,
               completed: false,
               recurring: false,
               subtasks: []
@@ -3730,11 +3724,26 @@
           }
         });
 
+        // Prune any gcal_ tasks deleted from Google Calendar
+        const prevCount = state.tasks.length;
+        state.tasks = state.tasks.filter(t => {
+          if (t.id && t.id.startsWith('gcal_')) {
+            return activeGcalIds.has(t.id);
+          }
+          return true;
+        });
+        const deletedCount = prevCount - state.tasks.length;
+
         saveState();
         recalculateSchedule();
         if (showFeedback) {
-          showGoogleFeedback(`✓ Synced ${items.length} calendar events (${addedCount} newly added as FIXED blocks).`, false);
-          showRippleNotice(`🗓️ Synced ${addedCount} calendar meetings into schedule.`);
+          const detailMsg = [
+            addedCount > 0 ? `${addedCount} added` : null,
+            updatedCount > 0 ? `${updatedCount} updated` : null,
+            deletedCount > 0 ? `${deletedCount} pruned` : null
+          ].filter(Boolean).join(', ');
+          showGoogleFeedback(`✓ Synced ${items.length} calendar events${detailMsg ? ` (${detailMsg})` : ''}.`, false);
+          showRippleNotice(`🗓️ Calendar synced${detailMsg ? `: ${detailMsg}` : ''}.`);
         }
       } catch (err) {
         console.error('fetchGoogleCalendarLive error:', err);
