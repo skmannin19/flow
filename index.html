@@ -96,7 +96,7 @@
         <div>
           <h1 class="font-bold text-base tracking-tight flex items-center gap-2">
             FlowState OS
-            <span class="text-[11px] font-mono uppercase px-2 py-0.5 rounded-full dark:bg-indigo-500/10 dark:text-indigo-400 bg-indigo-50 text-indigo-600 border dark:border-indigo-500/20 border-indigo-200">v4.1 Live</span>
+            <span class="text-[11px] font-mono uppercase px-2 py-0.5 rounded-full dark:bg-indigo-500/10 dark:text-indigo-400 bg-indigo-50 text-indigo-600 border dark:border-indigo-500/20 border-indigo-200">v4.2 Live</span>
           </h1>
           <div class="flex items-center gap-2">
             <p class="text-xs dark:text-slate-400 text-slate-500" id="currentDateDisplay">Loading today's date...</p>
@@ -371,6 +371,9 @@
           <div class="flex flex-wrap items-center gap-2">
             <button onclick="fetchGoogleCalendarLive(true)" class="px-2.5 py-1.5 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 text-xs font-semibold transition flex items-center gap-1.5" title="Pull updates and prune deleted meetings from Google Calendar">
               <span>🔄</span> <span>Sync Calendar</span>
+            </button>
+            <button onclick="rippleShiftScheduleToNow(true)" class="px-2.5 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-xs font-semibold transition flex items-center gap-1.5" title="Pull upcoming flexible tasks forward to the current time, preserving locked anchors">
+              <span>⚡</span> <span>Ripple Up</span>
             </button>
             <label class="flex items-center gap-1.5 text-xs dark:text-slate-300 text-slate-700 dark:bg-slate-950 bg-slate-100 px-2.5 py-1.5 rounded-lg border dark:border-slate-800 border-slate-300 cursor-pointer">
               <input type="checkbox" id="bufferToggle" checked onchange="recalculateSchedule()" class="accent-indigo-500 rounded" />
@@ -755,6 +758,19 @@
             <label class="block text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500 mb-1">Scheduled Start Time</label>
             <input type="time" id="editTaskStartTime" class="w-full dark:bg-slate-950 bg-slate-50 border dark:border-slate-700 border-slate-300 rounded-xl px-3 py-2 text-xs font-mono dark:text-slate-200 text-slate-800 focus:outline-none focus:border-indigo-500" />
           </div>
+        </div>
+
+        <!-- Locked Anchor vs Flexible Toggle -->
+        <div class="flex items-center justify-between p-3 rounded-xl dark:bg-slate-950 bg-slate-50 border dark:border-slate-800 border-slate-200">
+          <div>
+            <div class="text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500">Schedule Flexibility</div>
+            <div class="text-xs font-semibold text-slate-700 dark:text-slate-300 mt-0.5">🔒 Lock Position (Non-Movable Anchor)</div>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Locked tasks stay pinned in place and will not ripple or shift.</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer ml-3">
+            <input type="checkbox" id="editTaskLocked" class="sr-only peer" />
+            <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-amber-600"></div>
+          </label>
         </div>
 
         <!-- Recurrence Shortcut -->
@@ -1150,15 +1166,15 @@
     };
 
     const DEFAULT_TASKS = [
-      { id: 't1', title: 'Morning Routine, Meditation & Leo Park Walk', microStep: 'Leash up & head out for 20-min low-impact walk', type: 'FIXED', energy: 'steady', duration: 45, fixedStartMin: 450, completed: true, recurring: true, recurrence: { freq: 'daily', daysOfWeek: [0, 1, 2, 3, 4, 5, 6], interval: 1, unit: 'days' }, subtasks: [] },
-      { id: 't2', title: 'Draft CO Natural Medicine Potency & Packaging Compliance Matrix', microStep: 'Open state DOR compliance rules PDF and extract Section 4 table', type: 'MIT', energy: 'sharp', duration: 60, fixedStartMin: null, completed: false, recurring: false, subtasks: [{ text: 'Define standardized capsule homogenizing SOP requirements', done: true }, { text: 'Map third-party lab stability & microbial testing intervals', done: false }] },
-      { id: 't3', title: 'Outreach to 3 Denver Extraction & Formulation Lab Directors', microStep: 'Draft concise 4-sentence intro note to first founder on LinkedIn', type: 'MIT', energy: 'sharp', duration: 45, fixedStartMin: null, completed: false, recurring: false, subtasks: [] },
-      { id: 't4', title: 'Evaluate Cleanroom Equipment & Commercial Facility Layouts', microStep: 'Compare square footage & HVAC specs on top 2 saved industrial listings', type: 'MIT', energy: 'steady', duration: 45, fixedStartMin: null, completed: false, recurring: false, subtasks: [] },
-      { id: 't5', title: 'Midday Reset, Lunch & Quick Mobility Break', microStep: 'Step away from screens for 45 mins', type: 'FIXED', energy: 'fried', duration: 45, fixedStartMin: 750, completed: false, recurring: true, recurrence: { freq: 'weekdays', daysOfWeek: [1, 2, 3, 4, 5], interval: 1, unit: 'days' }, subtasks: [] },
-      { id: 't6', title: 'Follow up with LiveWell Animal Hospital on Leo Radiographs', microStep: 'Reply to Patsy Mitch email confirming next mobility check-in', type: 'LIT', energy: 'fried', duration: 20, fixedStartMin: null, completed: false, recurring: false, subtasks: [] },
-      { id: 't7', title: 'Inbox Zero & Weekly Sunday Planning Prep', microStep: 'Clear starred emails and archive newsletters', type: 'LIT', energy: 'fried', duration: 25, fixedStartMin: null, completed: false, recurring: true, recurrence: { freq: 'weekly', daysOfWeek: [0, 5], interval: 1, unit: 'weeks' }, subtasks: [] },
-      { id: 't8', title: 'Review West Denver / Lakewood Real Estate Comps & Inspection Notes', microStep: 'Archive non-matching listings & flag top main-floor primary contender', type: 'LIT', energy: 'steady', duration: 30, fixedStartMin: null, completed: false, recurring: false, subtasks: [] },
-      { id: 't9', title: 'Late Afternoon Workout / Pickleball Court Session', microStep: 'Change gear & head out on time', type: 'FIXED', energy: 'steady', duration: 60, fixedStartMin: 1020, completed: false, recurring: true, recurrence: { freq: 'weekly', daysOfWeek: [1, 2, 3, 4, 5], interval: 1, unit: 'days' }, subtasks: [] }
+      { id: 't1', title: 'Morning Routine, Meditation & Leo Park Walk', microStep: 'Leash up & head out for 20-min low-impact walk', type: 'FIXED', energy: 'steady', duration: 45, fixedStartMin: 450, locked: false, completed: true, recurring: true, recurrence: { freq: 'daily', daysOfWeek: [0, 1, 2, 3, 4, 5, 6], interval: 1, unit: 'days' }, subtasks: [] },
+      { id: 't2', title: 'Draft CO Natural Medicine Potency & Packaging Compliance Matrix', microStep: 'Open state DOR compliance rules PDF and extract Section 4 table', type: 'MIT', energy: 'sharp', duration: 60, fixedStartMin: null, locked: false, completed: false, recurring: false, subtasks: [{ text: 'Define standardized capsule homogenizing SOP requirements', done: true }, { text: 'Map third-party lab stability & microbial testing intervals', done: false }] },
+      { id: 't3', title: 'Outreach to 3 Denver Extraction & Formulation Lab Directors', microStep: 'Draft concise 4-sentence intro note to first founder on LinkedIn', type: 'MIT', energy: 'sharp', duration: 45, fixedStartMin: null, locked: false, completed: false, recurring: false, subtasks: [] },
+      { id: 't4', title: 'Evaluate Cleanroom Equipment & Commercial Facility Layouts', microStep: 'Compare square footage & HVAC specs on top 2 saved industrial listings', type: 'MIT', energy: 'steady', duration: 45, fixedStartMin: null, locked: false, completed: false, recurring: false, subtasks: [] },
+      { id: 't5', title: 'Midday Reset, Lunch & Quick Mobility Break', microStep: 'Step away from screens for 45 mins', type: 'FIXED', energy: 'fried', duration: 45, fixedStartMin: 750, locked: false, completed: false, recurring: true, recurrence: { freq: 'weekdays', daysOfWeek: [1, 2, 3, 4, 5], interval: 1, unit: 'days' }, subtasks: [] },
+      { id: 't6', title: 'Follow up with LiveWell Animal Hospital on Leo Radiographs', microStep: 'Reply to Patsy Mitch email confirming next mobility check-in', type: 'LIT', energy: 'fried', duration: 20, fixedStartMin: null, locked: false, completed: false, recurring: false, subtasks: [] },
+      { id: 't7', title: 'Inbox Zero & Weekly Sunday Planning Prep', microStep: 'Clear starred emails and archive newsletters', type: 'LIT', energy: 'fried', duration: 25, fixedStartMin: null, locked: false, completed: false, recurring: true, recurrence: { freq: 'weekly', daysOfWeek: [0, 5], interval: 1, unit: 'weeks' }, subtasks: [] },
+      { id: 't8', title: 'Review West Denver / Lakewood Real Estate Comps & Inspection Notes', microStep: 'Archive non-matching listings & flag top main-floor primary contender', type: 'LIT', energy: 'steady', duration: 30, fixedStartMin: null, locked: false, completed: false, recurring: false, subtasks: [] },
+      { id: 't9', title: 'Late Afternoon Workout / Pickleball Court Session', microStep: 'Change gear & head out on time', type: 'FIXED', energy: 'steady', duration: 60, fixedStartMin: 1020, locked: false, completed: false, recurring: true, recurrence: { freq: 'weekly', daysOfWeek: [1, 2, 3, 4, 5], interval: 1, unit: 'days' }, subtasks: [] }
     ];
 
     let state = {
@@ -4361,6 +4377,7 @@
         energy,
         duration,
         fixedStartMin: type === 'FIXED' ? 840 : null,
+        locked: false,
         completed: false,
         recurring,
         recurrence,
@@ -4380,6 +4397,81 @@
       openRecurrenceModal(taskId);
     }
 
+    function isTaskLocked(t) {
+      if (!t) return false;
+      return t.locked === true;
+    }
+
+    function toggleTaskLock(taskId) {
+      const t = state.tasks.find(x => String(x.id) === String(taskId));
+      if (!t) return;
+      t.locked = !t.locked;
+      if (t.locked) {
+        t.fixedStartMin = t.startMin != null ? t.startMin : (t.fixedStartMin || 540);
+      } else {
+        t.fixedStartMin = null;
+      }
+      saveState();
+      recalculateSchedule();
+      showRippleNotice(t.locked ? `🔒 Locked "${t.title}" at ${formatMinToTime(t.startMin)} (Non-movable anchor)` : `🔓 Unlocked "${t.title}" (Now flexible & rippling)`);
+    }
+
+    function rippleShiftScheduleToNow(notify = true) {
+      const today = new Date();
+      const nowMin = today.getHours() * 60 + today.getMinutes();
+      const roundedNowMin = Math.ceil(nowMin / 5) * 5;
+      const includeBuffers = document.getElementById('bufferToggle')?.checked || false;
+      const bufferMin = includeBuffers ? 10 : 0;
+
+      const activeTasks = state.tasks.filter(t => isTaskScheduledForDate(t, today));
+      const lockedIntervals = activeTasks
+        .filter(t => isTaskLocked(t))
+        .map(f => ({
+          start: f.startMin != null ? f.startMin : (f.fixedStartMin || 540),
+          end: (f.startMin != null ? f.startMin : (f.fixedStartMin || 540)) + (f.duration || 30)
+        }))
+        .sort((a, b) => a.start - b.start);
+
+      // Incomplete flexible tasks currently on today's schedule
+      const flexibleTasks = activeTasks
+        .filter(t => !isTaskLocked(t) && !t.completed && t.startMin != null)
+        .sort((a, b) => a.startMin - b.startMin);
+
+      if (flexibleTasks.length === 0) {
+        if (notify) showRippleNotice('⚡ All upcoming tasks are already locked anchors or completed.');
+        return;
+      }
+
+      let cursor = roundedNowMin;
+      let shiftedCount = 0;
+
+      flexibleTasks.forEach(t => {
+        const duration = t.duration || 30;
+        let placed = false;
+        while (!placed) {
+          const conflict = lockedIntervals.find(f => Math.max(cursor, f.start) < Math.min(cursor + duration, f.end));
+          if (conflict) {
+            cursor = conflict.end + bufferMin;
+          } else {
+            if (t.startMin !== cursor) {
+              t.startMin = cursor;
+              t.endMin = cursor + duration;
+              t.manuallyPositioned = true;
+              shiftedCount++;
+            }
+            cursor = t.endMin + bufferMin;
+            placed = true;
+          }
+        }
+      });
+
+      saveState();
+      recalculateSchedule();
+      if (notify) {
+        showRippleNotice(`⚡ Rippled ${shiftedCount} flexible tasks up to current time (${formatMinToTime(roundedNowMin)}).`);
+      }
+    }
+
     function autoBreakdownTask(taskId) {
       const task = state.tasks.find(t => String(t.id) === String(taskId));
       if (!task) return;
@@ -4388,14 +4480,27 @@
     }
 
     function toggleSubtask(taskId, idx) { const t = state.tasks.find(x => String(x.id) === String(taskId)); if (t && t.subtasks[idx]) { t.subtasks[idx].done = !t.subtasks[idx].done; saveState(); renderPriorityLists(); } }
-    function toggleTaskComplete(taskId) { const t = state.tasks.find(x => String(x.id) === String(taskId)); if (t) { t.completed = !t.completed; saveState(); recalculateSchedule(); updateRecommendationBanner(); } }
+    function toggleTaskComplete(taskId) { 
+      const t = state.tasks.find(x => String(x.id) === String(taskId)); 
+      if (t) { 
+        t.completed = !t.completed; 
+        if (t.completed) {
+          rippleShiftScheduleToNow(false);
+        }
+        saveState(); 
+        recalculateSchedule(); 
+        updateRecommendationBanner(); 
+      } 
+    }
     function promoteDemoteTask(taskId) {
       const t = state.tasks.find(x => String(x.id) === String(taskId));
-      if (!t || t.type === 'FIXED') return;
+      if (!t) return;
       if (t.type === 'LIT') {
         if (state.tasks.filter(x => x.type === 'MIT' && !x.completed && isTaskScheduledForDate(x, new Date())).length >= 3) { showRippleNotice('⚠️ Max 3 MITs reached.'); return; }
         t.type = 'MIT';
-      } else t.type = 'LIT';
+      } else if (t.type === 'MIT') {
+        t.type = 'LIT';
+      }
       saveState(); recalculateSchedule();
     }
     function deleteTask(taskId) { state.tasks = state.tasks.filter(x => String(x.id) !== String(taskId)); saveState(); recalculateSchedule(); }
@@ -4408,7 +4513,7 @@
       if (t.startMin != null) {
         t.endMin = t.startMin + t.duration;
       }
-      if (t.type === 'FIXED' && t.fixedStartMin != null) {
+      if (isTaskLocked(t) && t.fixedStartMin != null) {
         t.endMin = t.fixedStartMin + t.duration;
       }
 
@@ -4420,8 +4525,8 @@
         const tEnd = t.endMin || (t.startMin + t.duration);
 
         const activeTasks = state.tasks.filter(x => isTaskScheduledForDate(x, today));
-        const fixedIntervals = activeTasks
-          .filter(x => x.type === 'FIXED' && String(x.id) !== String(taskId))
+        const lockedIntervals = activeTasks
+          .filter(x => isTaskLocked(x) && String(x.id) !== String(taskId))
           .map(f => ({
             start: f.fixedStartMin || f.startMin || 540,
             end: (f.fixedStartMin || f.startMin || 540) + (f.duration || 30)
@@ -4429,7 +4534,7 @@
           .sort((a, b) => a.start - b.start);
 
         const downstreamFlexible = activeTasks
-          .filter(x => String(x.id) !== String(taskId) && x.type !== 'FIXED' && x.startMin != null && !x.completed)
+          .filter(x => String(x.id) !== String(taskId) && !isTaskLocked(x) && x.startMin != null && !x.completed)
           .sort((a, b) => a.startMin - b.startMin);
 
         let rippleCursor = tEnd + bufferMin;
@@ -4439,7 +4544,7 @@
             let stCur = rippleCursor;
             const stDur = st.duration || 30;
             while (!stPlaced) {
-              const conflict = fixedIntervals.find(f => Math.max(stCur, f.start) < Math.min(stCur + stDur, f.end));
+              const conflict = lockedIntervals.find(f => Math.max(stCur, f.start) < Math.min(stCur + stDur, f.end));
               if (conflict) {
                 stCur = conflict.end + bufferMin;
               } else {
@@ -4488,8 +4593,13 @@
       document.getElementById('editTaskEnergy').value = t.energy || 'steady';
       document.getElementById('editTaskDuration').value = t.duration || 30;
 
-      const currentStart = t.type === 'FIXED' ? (t.fixedStartMin ?? t.startMin ?? 540) : (t.startMin ?? 540);
+      const currentStart = isTaskLocked(t) ? (t.fixedStartMin ?? t.startMin ?? 540) : (t.startMin ?? 540);
       document.getElementById('editTaskStartTime').value = minToTimeInputValue(currentStart);
+
+      const lockedCheck = document.getElementById('editTaskLocked');
+      if (lockedCheck) {
+        lockedCheck.checked = isTaskLocked(t);
+      }
 
       const recurEl = document.getElementById('editTaskRecurrenceText');
       if (recurEl) {
@@ -4594,13 +4704,17 @@
       t.energy = newEnergy;
       t.duration = newDuration;
 
-      const timeChanged = (t.startMin !== newStartMin) || (t.type === 'FIXED' && t.fixedStartMin !== newStartMin);
+      const isLocked = document.getElementById('editTaskLocked')?.checked || false;
+      t.locked = isLocked;
 
-      if (t.type === 'FIXED') {
+      const timeChanged = (t.startMin !== newStartMin) || (isLocked && t.fixedStartMin !== newStartMin);
+
+      if (isLocked) {
         t.fixedStartMin = newStartMin;
         t.startMin = newStartMin;
         t.endMin = newStartMin + newDuration;
       } else {
+        t.fixedStartMin = null;
         t.startMin = newStartMin;
         t.endMin = newStartMin + newDuration;
       }
@@ -4611,10 +4725,16 @@
         const includeBuffers = document.getElementById('bufferToggle')?.checked || false;
         const bufferMin = includeBuffers ? 10 : 0;
         const activeTasks = state.tasks.filter(x => isTaskScheduledForDate(x, today));
-        const fixedIntervals = activeTasks.filter(x => x.type === 'FIXED' && x.id !== t.id).map(f => ({ start: f.fixedStartMin, end: f.fixedStartMin + f.duration }));
+        const lockedIntervals = activeTasks
+          .filter(x => isTaskLocked(x) && x.id !== t.id)
+          .map(f => ({
+            start: f.fixedStartMin || f.startMin || 540,
+            end: (f.fixedStartMin || f.startMin || 540) + (f.duration || 30)
+          }))
+          .sort((a, b) => a.start - b.start);
 
         const subsequentFlexible = activeTasks
-          .filter(x => x.type !== 'FIXED' && x.id !== t.id && x.startMin != null && x.startMin >= t.startMin && !x.completed)
+          .filter(x => !isTaskLocked(x) && x.id !== t.id && x.startMin != null && x.startMin >= t.startMin && !x.completed)
           .sort((a, b) => a.startMin - b.startMin);
 
         let cursor = t.endMin + bufferMin;
@@ -4622,7 +4742,7 @@
           if (st.startMin < cursor) {
             let placed = false;
             while (!placed) {
-              const conflict = fixedIntervals.find(f => Math.max(cursor, f.start) < Math.min(cursor + (st.duration || 30), f.end));
+              const conflict = lockedIntervals.find(f => Math.max(cursor, f.start) < Math.min(cursor + (st.duration || 30), f.end));
               if (conflict) {
                 cursor = conflict.end + bufferMin;
               } else {
@@ -4648,7 +4768,7 @@
     function optimizeByChronotype(showNotice = true) {
       const c = state.chronotype;
       state.tasks.sort((a, b) => {
-        if (a.type === 'FIXED' || b.type === 'FIXED') return 0;
+        if (isTaskLocked(a) || isTaskLocked(b)) return 0;
         const score = (t) => (t.type === 'MIT' && t.energy === 'sharp' ? 1 : (t.type === 'MIT' ? 2 : (t.energy === 'fried' ? 3 : 4)));
         return score(a) - score(b);
       });
@@ -4678,11 +4798,11 @@
       const roundedNowMin = Math.ceil(nowMin / 5) * 5;
       window._lastRenderedMinute = nowMin;
 
-      // 1. Deduplicate any identical FIXED calendar tasks (same start time & title)
+      // 1. Deduplicate any identical calendar tasks (same start time & title)
       const seenFixed = new Set();
       state.tasks = state.tasks.filter(t => {
-        if (t.type !== 'FIXED') return true;
-        const key = `${t.fixedStartMin}_${(t.title || '').trim().toLowerCase()}`;
+        if (!t.fromCalendar && t.type !== 'FIXED') return true;
+        const key = `${t.fixedStartMin || t.startMin}_${(t.title || '').trim().toLowerCase()}`;
         if (seenFixed.has(key)) return false;
         seenFixed.add(key);
         return true;
@@ -4690,7 +4810,7 @@
 
       // 2. Sanitize any previously overflowed or broken start times from previous runs
       state.tasks.forEach(t => {
-        if (!t.completed && t.type !== 'FIXED') {
+        if (!t.completed && !isTaskLocked(t)) {
           // If pushed past 10:30 PM (1350m) or corrupted past midnight:
           if (t.startMin != null && (t.startMin >= 1350 || t.endMin > 1440)) {
             t.startMin = null;
@@ -4712,13 +4832,13 @@
       }
 
       const activeTasks = state.tasks.filter(t => isTaskScheduledForDate(t, today));
-      const fixed = activeTasks.filter(t => t.type === 'FIXED').sort((a, b) => (a.fixedStartMin || 540) - (b.fixedStartMin || 540));
-      fixed.forEach(ft => {
-        ft.startMin = ft.fixedStartMin;
-        ft.endMin = ft.fixedStartMin + ft.duration;
+      const lockedAnchors = activeTasks.filter(t => isTaskLocked(t)).sort((a, b) => (a.fixedStartMin || a.startMin || 540) - (b.fixedStartMin || b.startMin || 540));
+      lockedAnchors.forEach(ft => {
+        if (ft.fixedStartMin != null) ft.startMin = ft.fixedStartMin;
+        ft.endMin = ft.startMin + (ft.duration || 30);
       });
 
-      const flexible = activeTasks.filter(t => t.type !== 'FIXED');
+      const flexible = activeTasks.filter(t => !isTaskLocked(t));
 
       // 3. Separate preserved tasks (completed or already scheduled in a valid daytime slot) from unassigned tasks
       const preservedTasks = [];
@@ -4740,13 +4860,13 @@
       let focusMins = 0;
 
       activeTasks.forEach(t => {
-        if (!t.completed && t.type !== 'FIXED') focusMins += (t.duration || 30);
+        if (!t.completed && !isTaskLocked(t)) focusMins += (t.duration || 30);
       });
 
       unassignedTasks.forEach(t => {
         // Collect occupied intervals
         const occupied = [
-          ...fixed.map(f => ({ start: f.startMin, end: f.endMin })),
+          ...lockedAnchors.map(f => ({ start: f.startMin, end: f.endMin })),
           ...preservedTasks.map(p => ({ start: p.startMin, end: p.endMin }))
         ].sort((a, b) => a.start - b.start);
 
@@ -4782,7 +4902,7 @@
 
       // 5. Build final sorted blocks for timeline
       const blocks = [];
-      fixed.forEach(ft => blocks.push({ kind: 'task', task: ft }));
+      lockedAnchors.forEach(ft => blocks.push({ kind: 'task', task: ft }));
       preservedTasks.forEach(pt => blocks.push({ kind: 'task', task: pt }));
 
       // Optional circadian rest trough
@@ -4800,7 +4920,7 @@
       });
 
       renderPriorityLists();
-      renderTimeline(blocks, overflow, nowMin, fixed);
+      renderTimeline(blocks, overflow, nowMin, lockedAnchors);
       updateCapacityBar(focusMins);
       updateRecommendationBanner();
     }
@@ -4984,11 +5104,11 @@
 
       // 1. Determine intended new start time for sourceTask
       let desiredStart;
-      const targetStart = targetTask.type === 'FIXED' ? (targetTask.fixedStartMin || targetTask.startMin || 540) : (targetTask.startMin != null ? targetTask.startMin : 540);
-      const targetEnd = targetTask.type === 'FIXED' ? (targetStart + (targetTask.duration || 30)) : (targetTask.endMin != null ? targetTask.endMin : (targetStart + (targetTask.duration || 30)));
+      const targetStart = isTaskLocked(targetTask) ? (targetTask.fixedStartMin || targetTask.startMin || 540) : (targetTask.startMin != null ? targetTask.startMin : 540);
+      const targetEnd = targetStart + (targetTask.duration || 30);
 
       if (dropBefore) {
-        if (targetTask.type === 'FIXED') {
+        if (isTaskLocked(targetTask)) {
           desiredStart = Math.max(360, targetStart - (sourceTask.duration || 30) - bufferMin);
         } else {
           desiredStart = targetStart;
@@ -4997,23 +5117,23 @@
         desiredStart = targetEnd + bufferMin;
       }
 
-      // 2. Fixed events (anchors that cannot move unless sourceTask itself is fixed)
+      // 2. Locked events (anchors that cannot move unless sourceTask itself is locked)
       const activeTasks = state.tasks.filter(t => isTaskScheduledForDate(t, today));
-      const fixedIntervals = activeTasks
-        .filter(t => t.type === 'FIXED' && String(t.id) !== String(sourceId))
+      const lockedIntervals = activeTasks
+        .filter(t => isTaskLocked(t) && String(t.id) !== String(sourceId))
         .map(f => ({
           start: f.fixedStartMin || f.startMin || 540,
           end: (f.fixedStartMin || f.startMin || 540) + (f.duration || 30)
         }))
         .sort((a, b) => a.start - b.start);
 
-      // 3. Place sourceTask at or as close as possible to desiredStart without colliding with fixed calendar meetings
+      // 3. Place sourceTask at or as close as possible to desiredStart without colliding with locked anchors
       let cursor = Math.max(360, Math.min(1320, desiredStart));
       const sDuration = sourceTask.duration || 30;
 
       let placed = false;
       while (!placed) {
-        const conflict = fixedIntervals.find(f => Math.max(cursor, f.start) < Math.min(cursor + sDuration, f.end));
+        const conflict = lockedIntervals.find(f => Math.max(cursor, f.start) < Math.min(cursor + sDuration, f.end));
         if (conflict) {
           cursor = conflict.end + bufferMin;
         } else {
@@ -5024,13 +5144,13 @@
       sourceTask.startMin = cursor;
       sourceTask.endMin = cursor + sDuration;
       sourceTask.manuallyPositioned = true;
-      if (sourceTask.type === 'FIXED') {
+      if (isTaskLocked(sourceTask)) {
         sourceTask.fixedStartMin = cursor;
       }
 
       // 4. Ripple only SUBSEQUENT flexible tasks that collide
       const otherFlexible = activeTasks
-        .filter(t => String(t.id) !== String(sourceId) && t.type !== 'FIXED' && t.startMin != null && !t.completed)
+        .filter(t => String(t.id) !== String(sourceId) && !isTaskLocked(t) && t.startMin != null && !t.completed)
         .sort((a, b) => a.startMin - b.startMin);
 
       let rippleCursor = sourceTask.endMin + bufferMin;
@@ -5041,7 +5161,7 @@
           let stCur = rippleCursor;
           const stDur = st.duration || 30;
           while (!stPlaced) {
-            const conflict = fixedIntervals.find(f => Math.max(stCur, f.start) < Math.min(stCur + stDur, f.end));
+            const conflict = lockedIntervals.find(f => Math.max(stCur, f.start) < Math.min(stCur + stDur, f.end));
             if (conflict) {
               stCur = conflict.end + bufferMin;
             } else {
@@ -5070,17 +5190,20 @@
       t.startMin = newStart;
       t.endMin = newStart + (t.duration || 30);
       t.manuallyPositioned = true;
-      if (t.type === 'FIXED') t.fixedStartMin = t.startMin;
+      if (isTaskLocked(t)) t.fixedStartMin = t.startMin;
 
       // Ripple any subsequent overlapping flexible tasks
       const today = new Date();
       const includeBuffers = document.getElementById('bufferToggle')?.checked || false;
       const bufferMin = includeBuffers ? 10 : 0;
       const activeTasks = state.tasks.filter(x => isTaskScheduledForDate(x, today));
-      const fixedIntervals = activeTasks.filter(x => x.type === 'FIXED').map(f => ({ start: f.fixedStartMin, end: f.fixedStartMin + f.duration }));
+      const lockedIntervals = activeTasks.filter(x => isTaskLocked(x) && x.id !== taskId).map(f => ({
+        start: f.fixedStartMin || f.startMin || 540,
+        end: (f.fixedStartMin || f.startMin || 540) + (f.duration || 30)
+      }));
 
       const subsequentFlexible = activeTasks
-        .filter(x => x.type !== 'FIXED' && x.id !== taskId && x.startMin != null && x.startMin >= newStart && !x.completed)
+        .filter(x => !isTaskLocked(x) && x.id !== taskId && x.startMin != null && x.startMin >= newStart && !x.completed)
         .sort((a, b) => a.startMin - b.startMin);
 
       let cursor = t.endMin + bufferMin;
@@ -5088,7 +5211,7 @@
         if (st.startMin < cursor) {
           let placed = false;
           while (!placed) {
-            const conflict = fixedIntervals.find(f => Math.max(cursor, f.start) < Math.min(cursor + (st.duration || 30), f.end));
+            const conflict = lockedIntervals.find(f => Math.max(cursor, f.start) < Math.min(cursor + (st.duration || 30), f.end));
             if (conflict) {
               cursor = conflict.end + bufferMin;
             } else {
@@ -5139,9 +5262,10 @@
 
         const t = item.task, p = getCircadianPhaseForMinute(t.startMin);
         const isPast = t.completed || (t.endMin < nowMin);
+        const locked = isTaskLocked(t);
 
-        // Check if fixed calendar event overlaps with any other fixed event
-        const hasOverlap = t.type === 'FIXED' && fixedList.some(other => other !== t && Math.max(t.startMin, other.startMin) < Math.min(t.endMin, other.endMin));
+        // Check if locked event overlaps with any other locked anchor
+        const hasOverlap = locked && fixedList.some(other => other !== t && Math.max(t.startMin, other.startMin) < Math.min(t.endMin, other.endMin));
 
         htmlItems.push(`
           <div draggable="true" 
@@ -5166,7 +5290,10 @@
               <div class="min-w-0 ml-1">
                 <div class="flex items-center gap-1.5 flex-wrap">
                   <span onclick="openEditTaskModal('${t.id}')" class="text-xs font-semibold cursor-pointer hover:underline hover:text-indigo-500 transition dark:text-white text-slate-900 ${t.completed ? 'line-through text-slate-400 dark:text-slate-500' : ''}" title="Click to edit task details">${t.title}</span>
-                  ${t.type === 'FIXED' ? '<span class="text-[10px] font-mono px-1.5 py-0.2 rounded border border-indigo-400/40 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">🗓️ Calendar</span>' : `<span class="text-[10px] font-mono px-1 rounded border ${p.color}">${p.label}</span>`}
+                  ${(t.fromCalendar || t.type === 'FIXED') ? '<span class="text-[10px] font-mono px-1.5 py-0.2 rounded border border-indigo-400/40 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">🗓️ Calendar</span>' : `<span class="text-[10px] font-mono px-1 rounded border ${p.color}">${p.label}</span>`}
+                  <button onclick="toggleTaskLock('${t.id}')" class="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold transition flex items-center gap-1 ${locked ? 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-300 border border-amber-500/30' : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-300 dark:border-slate-700'}" title="${locked ? 'Locked anchor (immovable). Click to unlock & make flexible.' : 'Flexible (ripples). Click to lock in place.'}">
+                    ${locked ? '🔒 Locked' : '🔓 Flexible'}
+                  </button>
                   ${hasOverlap ? '<span class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-semibold" title="Overlapping session on your calendar">⚠️ Overlap</span>' : ''}
                   ${t.completed ? '<span class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">✓ Done</span>' : ''}
                 </div>
@@ -5262,8 +5389,19 @@
       document.getElementById('timerDisplay').textContent = `${isOverflow ? '+' : ''}${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     }
 
-    function addFocusMinutes(mins) { if (activeFocusTaskId) adjustTaskDuration(activeFocusTaskId, mins); if (!isOverflow) { timerSeconds += mins * 60; updateTimerUI(); } }
-    function completeFromFocus() { if (activeFocusTaskId) { const t = state.tasks.find(x => String(x.id) === String(activeFocusTaskId)); if (t) t.completed = true; saveState(); recalculateSchedule(); } playGentleChime(880, 0.4); closeFocusModal(); }
+    function completeFromFocus() { 
+      if (activeFocusTaskId) { 
+        const t = state.tasks.find(x => String(x.id) === String(activeFocusTaskId)); 
+        if (t) {
+          t.completed = true;
+          rippleShiftScheduleToNow(false);
+        }
+        saveState(); 
+        recalculateSchedule(); 
+      } 
+      playGentleChime(880, 0.4); 
+      closeFocusModal(); 
+    }
     function captureDistraction() {
       const inp = document.getElementById('distractionInput'), val = inp.value.trim(); if (!val) return;
       state.tasks.push({ id: 't_' + Date.now(), title: val, microStep: 'Review during trough', type: 'LIT', energy: 'fried', duration: 15, fixedStartMin: null, completed: false, subtasks: [] });
@@ -5576,17 +5714,22 @@
           const microStep = ev.hangoutLink ? `Join Meet: ${ev.hangoutLink}` : (ev.location ? `Location: ${ev.location}` : 'Review agenda & join on time');
 
           // Check if already in tasks
-          const existing = state.tasks.find(t => t.id === gcalId || (t.type === 'FIXED' && t.fixedStartMin === startMin && t.title.toLowerCase() === title.toLowerCase()));
+          const existing = state.tasks.find(t => t.id === gcalId || (t.fromCalendar && t.title.toLowerCase() === title.toLowerCase()));
 
           if (existing) {
             existing.id = gcalId;
-            if (existing.fixedStartMin !== startMin || existing.duration !== duration || existing.title !== title) {
-              existing.fixedStartMin = startMin;
-              existing.startMin = startMin;
+            existing.fromCalendar = true;
+            if (existing.duration !== duration || existing.title !== title) {
               existing.duration = duration;
-              existing.endMin = startMin + duration;
               existing.title = title;
               existing.microStep = microStep;
+              if (isTaskLocked(existing)) {
+                existing.fixedStartMin = startMin;
+                existing.startMin = startMin;
+                existing.endMin = startMin + duration;
+              } else {
+                existing.endMin = (existing.startMin || startMin) + duration;
+              }
               updatedCount++;
             }
           } else {
@@ -5595,9 +5738,11 @@
               title,
               microStep,
               type: 'FIXED',
+              fromCalendar: true,
+              locked: false,
               energy: 'steady',
               duration,
-              fixedStartMin: startMin,
+              fixedStartMin: null,
               startMin: startMin,
               endMin: startMin + duration,
               completed: false,
@@ -5920,9 +6065,13 @@ Format strictly as JSON array of objects with keys:
             title,
             microStep: `Log in / arrive on time & review agenda`,
             type: 'FIXED',
+            fromCalendar: true,
+            locked: false,
             energy: 'steady',
             duration,
-            fixedStartMin: startMin,
+            fixedStartMin: null,
+            startMin: startMin,
+            endMin: startMin + duration,
             completed: false,
             recurring: false,
             subtasks: []
