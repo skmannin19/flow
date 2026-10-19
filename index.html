@@ -1077,12 +1077,12 @@
       document.getElementById('wGoal').value = state.goals?.wGoal || '';
 
       // 3. Dynamic Date & Day Rollover Check (Auto-corrects date and rolls over tasks)
-      updateDateAndRollover(true);
+      updateLiveClockAndSchedule();
 
-      // Listen for tab wake / revisit to auto-correct date without refresh and sync calendar
+      // Listen for tab wake / revisit to auto-correct date, live schedule clock, and sync calendar
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') {
-          updateDateAndRollover();
+          updateLiveClockAndSchedule();
           inferRealtimeEnergyFromChronotype();
           if (state.autoSyncGoogle && googleAccessToken) {
             fetchGoogleCalendarLive(false);
@@ -1090,12 +1090,12 @@
         }
       });
       window.addEventListener('focus', () => {
-        updateDateAndRollover();
+        updateLiveClockAndSchedule();
         if (state.autoSyncGoogle && googleAccessToken) {
           fetchGoogleCalendarLive(false);
         }
       });
-      setInterval(updateDateAndRollover, 30000);
+      setInterval(updateLiveClockAndSchedule, 5000);
 
       // Load Gemini API Key if saved
       const savedGeminiKey = localStorage.getItem('flowstate_os_gemini_api_key');
@@ -2990,6 +2990,7 @@
       const today = new Date();
       const nowMin = today.getHours() * 60 + today.getMinutes();
       const roundedNowMin = Math.ceil(nowMin / 5) * 5;
+      window._lastRenderedMinute = nowMin;
 
       // 1. Deduplicate any identical FIXED calendar tasks (same start time & title)
       const seenFixed = new Set();
@@ -3255,10 +3256,10 @@
         // Insert Real-Time Current Time line right before the first block that starts at or after now
         if (!nowMarkerInserted && itemStart >= nowMin) {
           htmlItems.push(`
-            <div class="flex items-center gap-2.5 py-1.5 my-1">
+            <div id="currentTimeMarker" class="flex items-center gap-2.5 py-1.5 my-1">
               <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
               <div class="h-0.5 flex-1 bg-gradient-to-r from-rose-500 via-indigo-500 to-transparent"></div>
-              <span class="text-[10px] font-mono font-bold text-rose-500 dark:text-rose-400 uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/30">CURRENT TIME • ${formatMinToTime(nowMin)}</span>
+              <span id="currentTimeMarkerText" class="text-[10px] font-mono font-bold text-rose-500 dark:text-rose-400 uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/30">CURRENT TIME • ${formatMinToTime(nowMin)}</span>
             </div>
           `);
           nowMarkerInserted = true;
@@ -3327,10 +3328,10 @@
       // If all blocks are in the past, place the NOW marker at the end
       if (!nowMarkerInserted && blocks.length > 0) {
         htmlItems.push(`
-          <div class="flex items-center gap-2.5 py-1.5 my-1">
+          <div id="currentTimeMarker" class="flex items-center gap-2.5 py-1.5 my-1">
             <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
             <div class="h-0.5 flex-1 bg-gradient-to-r from-rose-500 via-indigo-500 to-transparent"></div>
-            <span class="text-[10px] font-mono font-bold text-rose-500 dark:text-rose-400 uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/30">CURRENT TIME • ${formatMinToTime(nowMin)}</span>
+            <span id="currentTimeMarkerText" class="text-[10px] font-mono font-bold text-rose-500 dark:text-rose-400 uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/30">CURRENT TIME • ${formatMinToTime(nowMin)}</span>
           </div>
         `);
       }
@@ -3434,6 +3435,26 @@
 
       if (state.lastActiveDate !== todayKey) {
         executeDayRollover(state.lastActiveDate, todayKey, dateStr, silent);
+      }
+    }
+
+    function updateLiveClockAndSchedule() {
+      const now = new Date();
+      const nowMin = now.getHours() * 60 + now.getMinutes();
+
+      // Keep top date display and rollover fresh
+      updateDateAndRollover(true);
+
+      // Fast in-place DOM update so the schedule marker always matches laptop clock immediately
+      const markerText = document.getElementById('currentTimeMarkerText');
+      if (markerText) {
+        markerText.textContent = `CURRENT TIME • ${formatMinToTime(nowMin)}`;
+      }
+
+      // When the minute advances, re-render timeline so the marker line advances between blocks
+      if (window._lastRenderedMinute !== nowMin) {
+        window._lastRenderedMinute = nowMin;
+        recalculateSchedule();
       }
     }
 
