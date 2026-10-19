@@ -96,7 +96,7 @@
         <div>
           <h1 class="font-bold text-base tracking-tight flex items-center gap-2">
             FlowState OS
-            <span class="text-[11px] font-mono uppercase px-2 py-0.5 rounded-full dark:bg-indigo-500/10 dark:text-indigo-400 bg-indigo-50 text-indigo-600 border dark:border-indigo-500/20 border-indigo-200">v3.5 Live</span>
+            <span class="text-[11px] font-mono uppercase px-2 py-0.5 rounded-full dark:bg-indigo-500/10 dark:text-indigo-400 bg-indigo-50 text-indigo-600 border dark:border-indigo-500/20 border-indigo-200">v3.6 Live</span>
           </h1>
           <div class="flex items-center gap-2">
             <p class="text-xs dark:text-slate-400 text-slate-500" id="currentDateDisplay">Loading today's date...</p>
@@ -695,6 +695,102 @@
           <button onclick="removeModalRecurrence()" class="py-2.5 px-4 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-rose-950 hover:text-rose-300 dark:text-slate-300 text-slate-700 font-semibold text-xs border dark:border-slate-700 border-slate-300 transition text-center">
             Make One-Off (Stop Repeating)
           </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EDIT TASK / EVENT MODAL -->
+  <div id="editTaskModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden items-center justify-center p-4 overflow-y-auto">
+    <div class="dark:bg-slate-900 bg-white border dark:border-slate-800 border-slate-200 rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl space-y-5 my-8">
+      <div class="flex items-start justify-between gap-4 border-b dark:border-slate-800 border-slate-200 pb-3">
+        <div>
+          <span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 border border-indigo-500/30">Task Customization</span>
+          <h2 class="text-lg font-bold dark:text-white text-slate-900 mt-1">✏️ Edit Task / Routine</h2>
+          <p class="text-xs dark:text-slate-400 text-slate-500 mt-0.5">Modify title, starter micro-step, schedule time, duration, and energy alignment.</p>
+        </div>
+        <button onclick="closeEditTaskModal()" class="text-slate-400 hover:text-white text-sm px-2.5 py-1 rounded-lg bg-slate-200 dark:bg-slate-800 transition">✕</button>
+      </div>
+
+      <div class="space-y-4 text-xs">
+        <!-- Title -->
+        <div>
+          <label class="block text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500 mb-1">Task Title</label>
+          <input type="text" id="editTaskTitle" placeholder="e.g. Paint my nails, Review budget..." class="w-full dark:bg-slate-950 bg-slate-50 border dark:border-slate-700 border-slate-300 rounded-xl px-3 py-2 text-xs font-medium dark:text-slate-100 text-slate-900 focus:outline-none focus:border-indigo-500" />
+        </div>
+
+        <!-- 2-Min Starter Micro Step -->
+        <div>
+          <label class="block text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500 mb-1">2-Minute Starter / Micro-Step</label>
+          <input type="text" id="editTaskMicro" placeholder="e.g. Get nail polish & file on desk" class="w-full dark:bg-slate-950 bg-slate-50 border dark:border-slate-700 border-slate-300 rounded-xl px-3 py-2 text-xs dark:text-slate-200 text-slate-800 focus:outline-none focus:border-indigo-500" />
+        </div>
+
+        <!-- Priority Tier & Energy Match Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500 mb-1">Priority Tier</label>
+            <select id="editTaskType" class="w-full dark:bg-slate-950 bg-slate-50 border dark:border-slate-700 border-slate-300 rounded-xl px-3 py-2 text-xs dark:text-slate-200 text-slate-800 focus:outline-none focus:border-indigo-500">
+              <option value="MIT">🔴 MIT (Most Important Task — Max 3)</option>
+              <option value="LIT">🟡 LIT (Low-Intensity Task)</option>
+              <option value="FIXED">🔒 Fixed Routine / Calendar Event</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500 mb-1">Energy Match</label>
+            <select id="editTaskEnergy" class="w-full dark:bg-slate-950 bg-slate-50 border dark:border-slate-700 border-slate-300 rounded-xl px-3 py-2 text-xs dark:text-slate-200 text-slate-800 focus:outline-none focus:border-indigo-500">
+              <option value="sharp">🔴 Peak (Deep Focus & Complex Tasks)</option>
+              <option value="steady">🟡 Rebound (Admin, Meetings, Moderate Work)</option>
+              <option value="fried">🟢 Trough (Low-Energy / Restorative Tasks)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Duration & Scheduled Start Time Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500 mb-1">Duration (Minutes)</label>
+            <input type="number" id="editTaskDuration" min="5" max="360" step="5" class="w-full dark:bg-slate-950 bg-slate-50 border dark:border-slate-700 border-slate-300 rounded-xl px-3 py-2 text-xs dark:text-slate-200 text-slate-800 focus:outline-none focus:border-indigo-500" />
+          </div>
+          <div>
+            <label class="block text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500 mb-1">Scheduled Start Time</label>
+            <input type="time" id="editTaskStartTime" class="w-full dark:bg-slate-950 bg-slate-50 border dark:border-slate-700 border-slate-300 rounded-xl px-3 py-2 text-xs font-mono dark:text-slate-200 text-slate-800 focus:outline-none focus:border-indigo-500" />
+          </div>
+        </div>
+
+        <!-- Recurrence Shortcut -->
+        <div class="flex items-center justify-between p-3 rounded-xl dark:bg-slate-950 bg-slate-50 border dark:border-slate-800 border-slate-200">
+          <div>
+            <div class="text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500">Recurrence</div>
+            <div id="editTaskRecurrenceText" class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 mt-0.5">One-off Task</div>
+          </div>
+          <button type="button" onclick="const tid = editingTaskId; closeEditTaskModal(); openRecurrenceModal(tid);" class="px-2.5 py-1.5 rounded-lg border border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-500/20 text-xs font-semibold transition flex items-center gap-1.5">
+            🔁 Edit Repeat Rule
+          </button>
+        </div>
+
+        <!-- Sub-steps / Breakdown Checklist -->
+        <div class="space-y-2">
+          <label class="block text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500">Sub-steps / Breakdown Checklist</label>
+          <div id="editTaskSubtasksList" class="space-y-1.5 max-h-36 overflow-y-auto pr-1"></div>
+          <div class="flex items-center gap-2 pt-1">
+            <input type="text" id="newSubtaskInput" placeholder="Add micro-step..." onkeydown="if(event.key==='Enter'){event.preventDefault();addEditModalSubtask();}" class="flex-1 dark:bg-slate-950 bg-slate-50 border dark:border-slate-700 border-slate-300 rounded-xl px-3 py-1.5 text-xs dark:text-slate-200 text-slate-800 focus:outline-none" />
+            <button type="button" onclick="addEditModalSubtask()" class="px-3 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-indigo-600 hover:text-white text-xs font-semibold dark:text-slate-300 text-slate-700 transition">+ Add</button>
+          </div>
+        </div>
+
+        <!-- Modal Actions Footer -->
+        <div class="flex items-center justify-between pt-3 border-t dark:border-slate-800 border-slate-200">
+          <button type="button" onclick="deleteFromEditModal()" class="py-2 px-3 rounded-xl hover:bg-rose-950/40 text-rose-500 hover:text-rose-400 font-semibold text-xs transition border border-rose-500/20">
+            🗑️ Delete Task
+          </button>
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="closeEditTaskModal()" class="py-2 px-3.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 dark:text-slate-300 text-slate-700 font-semibold text-xs transition">
+              Cancel
+            </button>
+            <button type="button" onclick="saveEditTask()" class="py-2 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition shadow-sm">
+              Save Changes
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -3611,6 +3707,192 @@
       saveState(); recalculateSchedule();
     }
 
+    // Task Edit Modal & Customization Helpers
+    let editingTaskId = null;
+
+    function minToTimeInputValue(mins) {
+      if (mins == null || isNaN(mins)) return '09:00';
+      const clamped = Math.max(0, Math.min(1439, Math.round(mins)));
+      const h = Math.floor(clamped / 60).toString().padStart(2, '0');
+      const m = (clamped % 60).toString().padStart(2, '0');
+      return `${h}:${m}`;
+    }
+
+    function timeInputValueToMin(val) {
+      if (!val) return 540;
+      const parts = val.split(':');
+      if (parts.length < 2) return 540;
+      return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+    }
+
+    function openEditTaskModal(taskId) {
+      const t = state.tasks.find(x => x.id === taskId);
+      if (!t) return;
+      editingTaskId = taskId;
+
+      document.getElementById('editTaskTitle').value = t.title || '';
+      document.getElementById('editTaskMicro').value = t.microStep || '';
+      document.getElementById('editTaskType').value = t.type || 'LIT';
+      document.getElementById('editTaskEnergy').value = t.energy || 'steady';
+      document.getElementById('editTaskDuration').value = t.duration || 30;
+
+      const currentStart = t.type === 'FIXED' ? (t.fixedStartMin ?? t.startMin ?? 540) : (t.startMin ?? 540);
+      document.getElementById('editTaskStartTime').value = minToTimeInputValue(currentStart);
+
+      const recurEl = document.getElementById('editTaskRecurrenceText');
+      if (recurEl) {
+        recurEl.textContent = t.recurring ? `Repeats: ${formatRecurrenceLabel(t)}` : 'One-off (Does not repeat)';
+      }
+
+      renderEditModalSubtasks();
+
+      const modal = document.getElementById('editTaskModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeEditTaskModal() {
+      const modal = document.getElementById('editTaskModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+      editingTaskId = null;
+    }
+
+    function renderEditModalSubtasks() {
+      const container = document.getElementById('editTaskSubtasksList');
+      if (!container) return;
+      const t = state.tasks.find(x => x.id === editingTaskId);
+      if (!t || !t.subtasks || t.subtasks.length === 0) {
+        container.innerHTML = '<p class="text-[11px] text-slate-400 italic py-1">No sub-steps yet. Add one below or click 🪄 on the card.</p>';
+        return;
+      }
+      container.innerHTML = t.subtasks.map((st, i) => `
+        <div class="flex items-center justify-between gap-2 p-1.5 rounded-lg dark:bg-slate-950 bg-slate-50 border dark:border-slate-800 border-slate-200 text-xs">
+          <span class="truncate dark:text-slate-300 text-slate-700 ${st.done ? 'line-through text-slate-400' : ''}">${st.text}</span>
+          <button type="button" onclick="removeEditModalSubtask(${i})" class="text-slate-400 hover:text-rose-500 p-0.5 text-xs font-bold" title="Remove sub-step">✕</button>
+        </div>
+      `).join('');
+    }
+
+    function addEditModalSubtask() {
+      const input = document.getElementById('newSubtaskInput');
+      const text = input ? input.value.trim() : '';
+      if (!text || !editingTaskId) return;
+      const t = state.tasks.find(x => x.id === editingTaskId);
+      if (!t) return;
+      if (!t.subtasks) t.subtasks = [];
+      t.subtasks.push({ text, done: false });
+      input.value = '';
+      renderEditModalSubtasks();
+    }
+
+    function removeEditModalSubtask(idx) {
+      const t = state.tasks.find(x => x.id === editingTaskId);
+      if (!t || !t.subtasks) return;
+      t.subtasks.splice(idx, 1);
+      renderEditModalSubtasks();
+    }
+
+    function deleteFromEditModal() {
+      if (!editingTaskId) return;
+      const t = state.tasks.find(x => x.id === editingTaskId);
+      const title = t ? t.title : 'this task';
+      if (confirm(`Are you sure you want to delete "${title}"?`)) {
+        deleteTask(editingTaskId);
+        closeEditTaskModal();
+        showRippleNotice(`🗑️ Deleted "${title}"`);
+      }
+    }
+
+    function saveEditTask() {
+      if (!editingTaskId) return;
+      const t = state.tasks.find(x => x.id === editingTaskId);
+      if (!t) return;
+
+      const newTitle = document.getElementById('editTaskTitle').value.trim();
+      if (!newTitle) {
+        showRippleNotice('⚠️ Task title cannot be empty.');
+        return;
+      }
+      const newMicro = document.getElementById('editTaskMicro').value.trim();
+      const newType = document.getElementById('editTaskType').value;
+      const newEnergy = document.getElementById('editTaskEnergy').value;
+      const newDuration = Math.max(5, parseInt(document.getElementById('editTaskDuration').value, 10) || 30);
+      const timeVal = document.getElementById('editTaskStartTime').value;
+      const newStartMin = timeInputValueToMin(timeVal);
+
+      // MIT capacity check
+      if (newType === 'MIT' && t.type !== 'MIT') {
+        const today = new Date();
+        const activeMits = state.tasks.filter(x => x.type === 'MIT' && x.id !== t.id && !x.completed && isTaskScheduledForDate(x, today));
+        if (activeMits.length >= 3) {
+          showRippleNotice('⚠️ MIT Cap Reached (Max 3/day). Saved as LIT.');
+          t.type = 'LIT';
+        } else {
+          t.type = 'MIT';
+        }
+      } else {
+        t.type = newType;
+      }
+
+      t.title = newTitle;
+      t.microStep = newMicro || 'Draft rough framework';
+      t.energy = newEnergy;
+      t.duration = newDuration;
+
+      const timeChanged = (t.startMin !== newStartMin) || (t.type === 'FIXED' && t.fixedStartMin !== newStartMin);
+
+      if (t.type === 'FIXED') {
+        t.fixedStartMin = newStartMin;
+        t.startMin = newStartMin;
+        t.endMin = newStartMin + newDuration;
+      } else {
+        t.startMin = newStartMin;
+        t.endMin = newStartMin + newDuration;
+      }
+
+      // If start time was explicitly updated, ripple subsequent flexible tasks
+      if (timeChanged) {
+        const today = new Date();
+        const includeBuffers = document.getElementById('bufferToggle')?.checked || false;
+        const bufferMin = includeBuffers ? 10 : 0;
+        const activeTasks = state.tasks.filter(x => isTaskScheduledForDate(x, today));
+        const fixedIntervals = activeTasks.filter(x => x.type === 'FIXED' && x.id !== t.id).map(f => ({ start: f.fixedStartMin, end: f.fixedStartMin + f.duration }));
+
+        const subsequentFlexible = activeTasks
+          .filter(x => x.type !== 'FIXED' && x.id !== t.id && x.startMin != null && x.startMin >= t.startMin && !x.completed)
+          .sort((a, b) => a.startMin - b.startMin);
+
+        let cursor = t.endMin + bufferMin;
+        subsequentFlexible.forEach(st => {
+          if (st.startMin < cursor) {
+            let placed = false;
+            while (!placed) {
+              const conflict = fixedIntervals.find(f => Math.max(cursor, f.start) < Math.min(cursor + (st.duration || 30), f.end));
+              if (conflict) {
+                cursor = conflict.end + bufferMin;
+              } else {
+                st.startMin = cursor;
+                st.endMin = cursor + (st.duration || 30);
+                cursor = st.endMin + bufferMin;
+                placed = true;
+              }
+            }
+          } else {
+            cursor = Math.max(cursor, st.endMin + bufferMin);
+          }
+        });
+      }
+
+      saveState();
+      recalculateSchedule();
+      updateRecommendationBanner();
+      closeEditTaskModal();
+      showRippleNotice(`✓ Saved changes for "${t.title}"`);
+    }
+
     function optimizeByChronotype(showNotice = true) {
       const c = state.chronotype;
       state.tasks.sort((a, b) => {
@@ -3799,13 +4081,13 @@
       const rolloverBadge = t.rolledOver ? '<span class="text-[10px] font-mono px-1.5 py-0.5 rounded border border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400" title="Rolled over from previous day">↩ Rolled</span>' : '';
       const subs = t.subtasks?.map((st, i) => `<label class="flex items-center gap-2 text-xs ${st.done ? 'line-through text-slate-400' : 'dark:text-slate-300 text-slate-700'} cursor-pointer"><input type="checkbox" ${st.done ? 'checked' : ''} onchange="toggleSubtask('${t.id}', ${i})" class="accent-emerald-500 rounded" /><span>${st.text}</span></label>`).join('') || '';
       return `
-        <div class="p-3 rounded-xl dark:bg-slate-950/90 bg-white border dark:border-slate-800 border-slate-200 shadow-sm transition">
+        <div ondblclick="openEditTaskModal('${t.id}')" class="p-3 rounded-xl dark:bg-slate-950/90 bg-white border dark:border-slate-800 border-slate-200 shadow-sm transition">
           <div class="flex items-start justify-between gap-2">
             <div class="flex items-start gap-2.5">
               <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTaskComplete('${t.id}')" class="mt-1 accent-indigo-500 w-4 h-4 rounded cursor-pointer" />
               <div>
                 <div class="flex flex-wrap items-center gap-1.5">
-                  <span class="text-xs font-semibold ${t.completed ? 'line-through text-slate-400' : 'dark:text-slate-100 text-slate-900'}">${t.title}</span>
+                  <span onclick="openEditTaskModal('${t.id}')" class="text-xs font-semibold cursor-pointer hover:underline hover:text-indigo-500 transition ${t.completed ? 'line-through text-slate-400' : 'dark:text-slate-100 text-slate-900'}" title="Click to edit task details">${t.title}</span>
                   <span class="text-[10px] px-1.5 py-0.5 rounded border">${badges}</span>
                   ${recurringBadge}
                   ${rolloverBadge}
@@ -3816,6 +4098,7 @@
             </div>
             <div class="flex items-center gap-1">
               ${!t.completed ? `<button onclick="openFocusModal('${t.id}')" class="px-2 py-1 rounded bg-indigo-600 text-white text-[10px] font-semibold">Focus</button>` : ''}
+              <button onclick="openEditTaskModal('${t.id}')" class="p-1 hover:text-indigo-400 text-xs text-slate-400 transition" title="Edit Task Details">✏️</button>
               <button onclick="openRecurrenceModal('${t.id}')" class="p-1 hover:text-indigo-400 text-xs ${t.recurring ? 'text-indigo-500 dark:text-indigo-400 font-bold' : 'text-slate-400'}" title="${t.recurring ? 'Edit Repeat Schedule' : 'Make Recurring Schedule'}">🔁</button>
               <button onclick="autoBreakdownTask('${t.id}')" class="p-1 hover:text-emerald-500 text-xs" title="Auto-breakdown into micro-steps">🪄</button>
               <button onclick="promoteDemoteTask('${t.id}')" class="p-1 hover:text-amber-500 text-xs" title="Promote/Demote Tier">⇅</button>
@@ -4057,6 +4340,7 @@
                ondragover="onTimelineDragOver(event)" 
                ondragleave="onTimelineDragLeave(event)" 
                ondrop="onTimelineDrop(event, '${t.id}')"
+               ondblclick="openEditTaskModal('${t.id}')"
                class="timeline-card group p-3 rounded-xl border dark:border-slate-800 border-slate-200 dark:bg-slate-950/90 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition cursor-grab active:cursor-grabbing hover:border-indigo-400/50 ${isPast ? 'opacity-75 bg-slate-50/50 dark:bg-slate-950/40' : ''}">
             <div class="flex items-center gap-2.5 min-w-0">
               <span class="text-slate-400 dark:text-slate-500 hover:text-slate-600 cursor-grab text-base select-none shrink-0" title="Drag to reorder/swap schedule position">⠿</span>
@@ -4070,7 +4354,7 @@
               </div>
               <div class="min-w-0 ml-1">
                 <div class="flex items-center gap-1.5 flex-wrap">
-                  <span class="text-xs font-semibold dark:text-white text-slate-900 ${t.completed ? 'line-through text-slate-400 dark:text-slate-500' : ''}">${t.title}</span>
+                  <span onclick="openEditTaskModal('${t.id}')" class="text-xs font-semibold cursor-pointer hover:underline hover:text-indigo-500 transition dark:text-white text-slate-900 ${t.completed ? 'line-through text-slate-400 dark:text-slate-500' : ''}" title="Click to edit task details">${t.title}</span>
                   ${t.type === 'FIXED' ? '<span class="text-[10px] font-mono px-1.5 py-0.2 rounded border border-indigo-400/40 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">🗓️ Calendar</span>' : `<span class="text-[10px] font-mono px-1 rounded border ${p.color}">${p.label}</span>`}
                   ${hasOverlap ? '<span class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-semibold" title="Overlapping session on your calendar">⚠️ Overlap</span>' : ''}
                   ${t.completed ? '<span class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">✓ Done</span>' : ''}
@@ -4088,6 +4372,7 @@
               ` : `
                 <button onclick="toggleTaskComplete('${t.id}')" class="text-xs text-emerald-500 font-mono hover:underline">✓ Completed</button>
               `}
+              <button onclick="openEditTaskModal('${t.id}')" class="p-1 text-slate-400 hover:text-indigo-400 text-xs transition" title="Edit task details">✏️</button>
               <button onclick="deleteTask('${t.id}')" class="p-1 text-slate-400 hover:text-rose-500 text-xs transition" title="Delete block">✕</button>
             </div>
           </div>
@@ -4848,7 +5133,7 @@ Format strictly as JSON array of objects with keys:
       }
     }
 
-    window.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeFocusModal(); closeChronotypeModal(); closeGitHubModal(); closeGeminiModal(); closeRecurrenceModal(); closeSoundscapeModal(); } });
+    window.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeFocusModal(); closeChronotypeModal(); closeGitHubModal(); closeGeminiModal(); closeRecurrenceModal(); closeSoundscapeModal(); closeEditTaskModal(); } });
     window.addEventListener('DOMContentLoaded', init);
   </script>
 </body>
