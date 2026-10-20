@@ -1872,24 +1872,14 @@
         });
       }
 
-      // Upgrade any tasks with outdated generic 'Draft rough framework' microStep
+      // Ensure any tasks with outdated generic 'Draft rough framework' microStep are updated, without auto-generating subtasks
       state.tasks.forEach(t => {
-        const titleLower = (t.title || '').toLowerCase();
-        if (titleLower.includes('nail') || titleLower.includes('polish')) {
-          t.microStep = 'Gather nail polish, remover, file & buffer at clean table';
-          if (!t.subtasks || t.subtasks.length === 0) {
-            t.subtasks = [
-              { text: 'Remove old polish & shape/file nails to desired length', done: false },
-              { text: 'Apply protective base coat & 2 thin color layers', done: false },
-              { text: 'Apply quick-dry top coat & allow 15m to fully set', done: false }
-            ];
-          }
-        } else if (!t.microStep || t.microStep === 'Draft rough framework' || t.microStep.includes('Draft rough framework')) {
+        if (!t.subtasks) {
+          t.subtasks = [];
+        }
+        if (!t.microStep || t.microStep === 'Draft rough framework' || t.microStep.includes('Draft rough framework')) {
           const smart = generateSmartBreakdown(t.title, t.type, t.energy);
           t.microStep = smart.microStep;
-          if (!t.subtasks || t.subtasks.length === 0) {
-            t.subtasks = smart.subtasks;
-          }
         }
       });
 
@@ -5992,7 +5982,7 @@
         completed: false,
         recurring,
         recurrence,
-        subtasks: smart.subtasks.map(st => ({ text: st.text, done: false }))
+        subtasks: []
       });
       document.getElementById('taskTitleInput').value = '';
       document.getElementById('taskMicroInput').value = '';

@@ -103,20 +103,7 @@
       "completed": false,
       "recurring": false,
       "recurrence": null,
-      "subtasks": [
-        {
-          "text": "5-Min Setup: Prep essentials and clear workspace",
-          "done": false
-        },
-        {
-          "text": "Core Sprint: 20-min focused progress block on \"Stop by Makeshift Crafts for new embroidery floss for craft night\"",
-          "done": false
-        },
-        {
-          "text": "Wrap-Up: Review outcome, tidy tools & log next step",
-          "done": false
-        }
-      ],
+      "subtasks": [],
       "manuallyPositioned": true
     },
     {
