@@ -767,7 +767,7 @@
               <span class="text-xl">🌐</span>
               <div>
                 <h3 class="font-bold text-slate-900 dark:text-white">Direct Google Workspace Integration</h3>
-                <p class="text-[11px] text-slate-500 dark:text-slate-400">Pulls today's Google Calendar meetings and unread Gmail action items automatically without copy-pasting.</p>
+                <p class="text-[11px] text-slate-500 dark:text-slate-400">Pulls today's Google Calendar meetings (including personal & A&S Events) and unread Gmail action items automatically.</p>
               </div>
             </div>
             <div id="googleAuthBadge" class="px-2 py-0.5 rounded text-[10px] font-mono border dark:border-slate-800 border-slate-300 text-slate-500">Not Connected</div>
@@ -7876,7 +7876,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         ? `<button onclick="openRecurrenceModal('${t.id}')" class="text-[10px] font-mono px-1.5 py-0.5 rounded border border-indigo-400/40 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20 transition flex items-center gap-1" title="Click to customize repeat pattern (Google-style)">🔁 ${formatRecurrenceLabel(t)}</button>` 
         : '';
       const rolloverBadge = t.rolledOver ? '<span class="text-[10px] font-mono px-1.5 py-0.5 rounded border border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400" title="Rolled over from previous day">↩ Rolled</span>' : '';
-      const calendarBadge = t.fromCalendar ? '<span class="text-[10px] font-mono px-1.5 py-0.5 rounded border border-indigo-400/40 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400" title="Pulled from Google Calendar">🗓️ Calendar</span>' : '';
+      const calendarBadge = t.fromCalendar ? `<span class="text-[10px] font-mono px-1.5 py-0.5 rounded border border-indigo-400/40 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400" title="Pulled from Google Calendar (${t.calendarName || 'Calendar'})">🗓️ ${t.calendarName || 'Calendar'}</span>` : '';
       const subs = t.subtasks?.map((st, i) => `<label class="flex items-center gap-2 text-xs ${st.done ? 'line-through text-slate-400' : 'dark:text-slate-300 text-slate-700'} cursor-pointer"><input type="checkbox" ${st.done ? 'checked' : ''} onchange="toggleSubtask('${t.id}', ${i})" class="accent-emerald-500 rounded" /><span>${st.text}</span></label>`).join('') || '';
 
       const reviewBanner = t.needsReview ? `
@@ -8240,7 +8240,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
                 <div class="flex items-center gap-1.5 flex-wrap">
                   <span onclick="openEditTaskModal('${t.id}')" class="text-xs font-semibold cursor-pointer hover:underline hover:text-indigo-500 transition dark:text-white text-slate-900 ${t.completed ? 'line-through text-slate-400 dark:text-slate-500' : ''}" title="Click to edit task details">${t.title}</span>
                   <span class="text-[10px] font-mono px-1 rounded border ${p.color}">${p.label}</span>
-                  ${t.fromCalendar ? '<span class="text-[10px] font-mono px-1.5 py-0.2 rounded border border-indigo-400/40 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">🗓️ Calendar</span>' : ''}
+                  ${t.fromCalendar ? `<span class="text-[10px] font-mono px-1.5 py-0.2 rounded border border-indigo-400/40 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400" title="${t.calendarName || 'Google Calendar'}">🗓️ ${t.calendarName || 'Calendar'}</span>` : ''}
                   ${t.needsReview ? `
                     <div class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-500/35 text-amber-700 dark:text-amber-300 text-[10px] font-semibold">
                       <span>🤨 Review:</span>
@@ -9012,39 +9012,100 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       }
 
       try {
-        if (showFeedback) showGoogleFeedback('⏳ Fetching today\'s meetings from Google Calendar...');
+        if (showFeedback) showGoogleFeedback('⏳ Discovering calendars (Personal & A&S Events)...');
         const today = new Date();
         const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0).toISOString();
         const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59).toISOString();
 
-        const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(startOfDay)}&timeMax=${encodeURIComponent(endOfDay)}&singleEvents=true&orderBy=startTime`;
-        const res = await fetch(url, {
-          headers: { 'Authorization': `Bearer ${googleAccessToken}` }
-        });
+        // 1. Discover all active calendars from user's account (Personal + A&S Events + Selected calendars)
+        let targetCalendars = [{ id: 'primary', summary: 'Personal', isAsEvents: false }];
+        try {
+          const listRes = await fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=100', {
+            headers: { 'Authorization': `Bearer ${googleAccessToken}` }
+          });
 
-        if (res.status === 401) {
-          googleAccessToken = null;
-          updateGoogleAuthUI(false);
-          showGoogleFeedback('⚠️ Google session expired. Please click "Sign In with Google" again.', true);
-          return;
+          if (listRes.status === 401) {
+            googleAccessToken = null;
+            updateGoogleAuthUI(false);
+            showGoogleFeedback('⚠️ Google session expired. Please click "Sign In with Google" again.', true);
+            return;
+          }
+
+          if (listRes.ok) {
+            const listData = await listRes.json();
+            const calItems = listData.items || [];
+            const foundCals = [];
+            const seenCalIds = new Set();
+
+            calItems.forEach(cal => {
+              const summary = (cal.summary || '').trim();
+              const isPrimary = !!cal.primary || cal.id === 'primary';
+              const isAsEvents = /a\s*&\s*s/i.test(summary) || summary.toLowerCase().includes('a&s');
+              const isSelected = cal.selected !== false && !cal.hidden;
+
+              // Always include Primary and A&S Events, plus any calendars selected in Google Calendar
+              if (isPrimary || isAsEvents || isSelected) {
+                if (!seenCalIds.has(cal.id)) {
+                  seenCalIds.add(cal.id);
+                  foundCals.push({
+                    id: cal.id,
+                    summary: isAsEvents ? 'A&S Events' : (summary || (isPrimary ? 'Personal' : 'Calendar')),
+                    isAsEvents
+                  });
+                }
+              }
+            });
+
+            if (foundCals.length > 0) {
+              targetCalendars = foundCals;
+            }
+          }
+        } catch (listErr) {
+          console.warn('Could not list Google calendars, defaulting to primary:', listErr);
         }
 
-        if (!res.ok) {
-          throw new Error(`Google Calendar API error ${res.status}`);
+        if (showFeedback) {
+          const calNames = targetCalendars.map(c => c.summary).join(', ');
+          showGoogleFeedback(`⏳ Fetching today's events from ${calNames}...`);
         }
 
-        const data = await res.json();
-        const items = data.items || [];
+        // 2. Fetch events across all target calendars in parallel
+        const allEvents = [];
         const activeGcalIds = new Set();
         let addedCount = 0;
         let updatedCount = 0;
 
-        items.forEach(ev => {
+        await Promise.all(targetCalendars.map(async (cal) => {
+          try {
+            const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(cal.id)}/events?timeMin=${encodeURIComponent(startOfDay)}&timeMax=${encodeURIComponent(endOfDay)}&singleEvents=true&orderBy=startTime`;
+            const res = await fetch(url, {
+              headers: { 'Authorization': `Bearer ${googleAccessToken}` }
+            });
+
+            if (res.status === 401) {
+              throw new Error('401_EXPIRED');
+            }
+
+            if (res.ok) {
+              const data = await res.json();
+              (data.items || []).forEach(ev => {
+                ev._calendarName = cal.summary;
+                ev._isAsEvents = cal.isAsEvents;
+                allEvents.push(ev);
+              });
+            }
+          } catch (err) {
+            if (err.message === '401_EXPIRED') throw err;
+            console.warn(`Failed fetching events for calendar "${cal.summary}":`, err);
+          }
+        }));
+
+        // 3. Process and deduplicate events across calendars
+        const seenFingerprints = new Set();
+
+        allEvents.forEach(ev => {
           if (!ev.start || (!ev.start.dateTime && !ev.start.date)) return;
           if (ev.status === 'cancelled') return;
-
-          const gcalId = 'gcal_' + ev.id;
-          activeGcalIds.add(gcalId);
 
           const startDt = ev.start.dateTime ? new Date(ev.start.dateTime) : new Date(ev.start.date + 'T09:00:00');
           const endDt = ev.end && ev.end.dateTime ? new Date(ev.end.dateTime) : new Date(startDt.getTime() + 45 * 60000);
@@ -9053,8 +9114,20 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
           let duration = Math.round((endDt - startDt) / 60000);
           if (duration <= 0 || duration > 360) duration = 45;
 
-          const title = ev.summary || 'Google Calendar Event';
-          const microStep = ev.hangoutLink ? `Join Meet: ${ev.hangoutLink}` : (ev.location ? `Location: ${ev.location}` : 'Review agenda & join on time');
+          const title = ev.summary || (ev._isAsEvents ? 'A&S Event' : 'Calendar Event');
+          const calName = ev._isAsEvents ? 'A&S Events' : (ev._calendarName || 'Calendar');
+
+          // Prevent duplicate cards if the same event was returned on both calendars
+          const fingerprint = `${title.toLowerCase().trim()}_${startMin}_${duration}`;
+          if (seenFingerprints.has(fingerprint)) return;
+          seenFingerprints.add(fingerprint);
+
+          const gcalId = 'gcal_' + ev.id;
+          activeGcalIds.add(gcalId);
+
+          const microStep = ev.hangoutLink 
+            ? `Join Meet: ${ev.hangoutLink}` 
+            : (ev.location ? `Location: ${ev.location}` : `Review agenda for ${calName} & join on time`);
 
           // Check if already in tasks
           const existing = state.tasks.find(t => t.id === gcalId || (t.fromCalendar && t.title.toLowerCase() === title.toLowerCase()));
@@ -9062,6 +9135,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
           if (existing) {
             existing.id = gcalId;
             existing.fromCalendar = true;
+            existing.calendarName = calName;
             if (existing.type === 'FIXED' || !existing.type) {
               const pInfo = classifyTaskPriority(title, duration, 'steady');
               existing.type = pInfo.type;
@@ -9089,6 +9163,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
               type: pInfo.type,
               needsReview: pInfo.needsReview,
               fromCalendar: true,
+              calendarName: calName,
               locked: false,
               energy: 'steady',
               duration,
@@ -9103,7 +9178,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
           }
         });
 
-        // Prune any gcal_ tasks deleted from Google Calendar
+        // 4. Prune any gcal_ tasks deleted from Google Calendar
         const prevCount = state.tasks.length;
         state.tasks = state.tasks.filter(t => {
           if (t.id && t.id.startsWith('gcal_')) {
@@ -9121,10 +9196,17 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
             updatedCount > 0 ? `${updatedCount} updated` : null,
             deletedCount > 0 ? `${deletedCount} pruned` : null
           ].filter(Boolean).join(', ');
-          showGoogleFeedback(`✓ Synced ${items.length} calendar events${detailMsg ? ` (${detailMsg})` : ''}.`, false);
-          showRippleNotice(`🗓️ Calendar synced${detailMsg ? `: ${detailMsg}` : ''}.`);
+          const calSummary = targetCalendars.map(c => c.summary).join(', ');
+          showGoogleFeedback(`✓ Synced ${allEvents.length} events across ${calSummary}${detailMsg ? ` (${detailMsg})` : ''}.`, false);
+          showRippleNotice(`🗓️ Calendar synced (${calSummary})${detailMsg ? `: ${detailMsg}` : ''}.`);
         }
       } catch (err) {
+        if (err.message === '401_EXPIRED') {
+          googleAccessToken = null;
+          updateGoogleAuthUI(false);
+          showGoogleFeedback('⚠️ Google session expired. Please click "Sign In with Google" again.', true);
+          return;
+        }
         console.error('fetchGoogleCalendarLive error:', err);
         if (showFeedback) showGoogleFeedback(`❌ Failed to pull calendar: ${err.message}`, true);
       }
