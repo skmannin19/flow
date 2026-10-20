@@ -145,6 +145,12 @@
           <span class="hidden sm:inline">Gemini AI</span>
         </button>
 
+        <!-- Productivity Analytics Dashboard Trigger -->
+        <button onclick="toggleAnalyticsView()" id="analyticsNavBtn" class="text-xs px-3 py-2 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 border border-indigo-500/30 transition flex items-center gap-1.5 font-medium" title="View Productivity Health & Habit Analytics">
+          <span>📊</span>
+          <span class="hidden sm:inline">Analytics</span>
+        </button>
+
         <!-- Data Backup & Sync Modal Trigger -->
         <button onclick="openGitHubModal()" class="text-xs px-3 py-2 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30 transition flex items-center gap-1.5 font-medium" title="Backup, sync tasks & manage GitHub repository">
           <span id="ghSyncDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
@@ -175,6 +181,9 @@
       </div>
     </div>
   </header>
+
+  <!-- MAIN SCHEDULE TIMELINE VIEW -->
+  <div id="mainScheduleView" class="w-full flex-1 flex flex-col space-y-4">
 
   <!-- CIRCADIAN WAVE VISUALIZER & ZERO-FRICTION NEXT ACTION BANNER -->
   <div class="max-w-7xl mx-auto w-full px-4 sm:px-6 pt-4 space-y-3">
@@ -422,6 +431,160 @@
     </section>
 
   </main>
+  </div> <!-- End #mainScheduleView -->
+
+  <!-- ANALYTICS DASHBOARD VIEW -->
+  <div id="analyticsView" class="hidden max-w-7xl mx-auto w-full px-4 sm:px-6 py-6 space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b dark:border-slate-800 border-slate-200 pb-5">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="text-2xl">📊</span>
+          <h2 class="text-xl font-bold dark:text-white text-slate-900">Productivity Health & Circadian Analytics</h2>
+          <span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">Telemetry Engine</span>
+        </div>
+        <p class="text-xs dark:text-slate-400 text-slate-500 mt-1">Diagnostic intelligence on your completion pacing, schedule drift, cognitive friction, and biological wave velocity.</p>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <div class="flex items-center rounded-xl bg-slate-100 dark:bg-slate-900 border dark:border-slate-800 border-slate-300 p-0.5 text-xs">
+          <button onclick="setAnalyticsPeriod(7)" id="periodBtn_7" class="period-btn px-2.5 py-1 rounded-lg font-medium transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">7D</button>
+          <button onclick="setAnalyticsPeriod(14)" id="periodBtn_14" class="period-btn px-2.5 py-1 rounded-lg font-medium bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm transition">14D</button>
+          <button onclick="setAnalyticsPeriod(30)" id="periodBtn_30" class="period-btn px-2.5 py-1 rounded-lg font-medium transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">30D</button>
+          <button onclick="setAnalyticsPeriod(90)" id="periodBtn_90" class="period-btn px-2.5 py-1 rounded-lg font-medium transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">Quarter</button>
+        </div>
+
+        <button onclick="checkChronotypeDrift(true)" class="px-3 py-2 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 border border-indigo-500/30 text-xs font-semibold flex items-center gap-1.5 transition" title="Analyze completed task timestamps to detect biological rhythm drift">
+          <span>🧬</span> Check Chronotype Shift
+        </button>
+
+        <button onclick="toggleAnalyticsView(true)" class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition">
+          <span>🗓️</span> Back to Schedule
+        </button>
+      </div>
+    </div>
+
+    <!-- 6 KPI Metric Cards Grid -->
+    <div id="analyticsKpiGrid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
+      <!-- Injected dynamically -->
+    </div>
+
+    <!-- 2-Column Deep Diagnostic Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      
+      <!-- Cognitive Friction Diagnostic: MITs vs LITs (6 cols) -->
+      <div class="lg:col-span-6 dark:bg-slate-900/90 bg-white border dark:border-slate-800 border-slate-200 rounded-2xl p-5 shadow-sm space-y-4 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+              <span class="text-lg">⚖️</span>
+              <div>
+                <h3 class="text-sm font-bold dark:text-white text-slate-900">MIT vs LIT Cognitive Struggle Comparison</h3>
+                <p class="text-[11px] dark:text-slate-400 text-slate-500">Do you struggle more with heavy deep work or low-friction tasks?</p>
+              </div>
+            </div>
+            <span id="mitLitStruggleBadge" class="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 font-semibold">2.1x Friction on MITs</span>
+          </div>
+
+          <div id="mitLitComparisonContainer" class="space-y-3">
+            <!-- Injected dynamically -->
+          </div>
+        </div>
+
+        <div id="mitLitDiagnosticAdvice" class="p-3.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-xs leading-relaxed text-slate-700 dark:text-slate-300 mt-2">
+          <!-- Injected dynamically -->
+        </div>
+      </div>
+
+      <!-- Most Pushed & Procrastinated Tasks (6 cols) -->
+      <div class="lg:col-span-6 dark:bg-slate-900/90 bg-white border dark:border-slate-800 border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-lg">🔄</span>
+            <div>
+              <h3 class="text-sm font-bold dark:text-white text-slate-900">Most Pushed & Procrastinated Tasks</h3>
+              <p class="text-[11px] dark:text-slate-400 text-slate-500">Tasks with highest deferral and schedule ripple counts.</p>
+            </div>
+          </div>
+          <span class="text-[10px] font-mono dark:text-slate-400 text-slate-500">Ranked by push count</span>
+        </div>
+
+        <div id="mostPushedList" class="space-y-2.5">
+          <!-- Injected dynamically -->
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Circadian Velocity Heatmap & Best Time of Day (12 cols) -->
+    <div class="dark:bg-slate-900/90 bg-white border dark:border-slate-800 border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div class="flex items-center gap-2">
+          <span class="text-lg">⚡</span>
+          <div>
+            <h3 class="text-sm font-bold dark:text-white text-slate-900">Hourly Productivity Velocity & Golden Hours</h3>
+            <p class="text-[11px] dark:text-slate-400 text-slate-500">When do you complete tasks fastest and with greatest momentum?</p>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3 text-[11px]">
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-indigo-500"></span> Peak Zone</span>
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-emerald-500"></span> Trough Reset</span>
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-amber-500"></span> Rebound Sprint</span>
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-slate-400"></span> Wind-Down</span>
+        </div>
+      </div>
+
+      <!-- Hourly Velocity Chart Bars -->
+      <div id="hourlyVelocityChart" class="h-44 w-full pt-4 pb-2">
+        <!-- Rendered with crisp dynamic SVG / HTML bars -->
+      </div>
+
+      <!-- Golden Hours Insights Callouts -->
+      <div id="hourlyInsightsRow" class="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 border-t dark:border-slate-800 border-slate-200">
+        <!-- Injected dynamically -->
+      </div>
+    </div>
+
+    <!-- Day of Week Velocity & Monthly Cadence (12 cols) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      
+      <!-- Day of Week Velocity (7 cols) -->
+      <div class="lg:col-span-7 dark:bg-slate-900/90 bg-white border dark:border-slate-800 border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-lg">📅</span>
+            <div>
+              <h3 class="text-sm font-bold dark:text-white text-slate-900">Day of the Week Productivity Rhythm</h3>
+              <p class="text-[11px] dark:text-slate-400 text-slate-500">Which days yield your highest output vs recharge?</p>
+            </div>
+          </div>
+          <span id="bestDayBadge" class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-semibold">Tuesday: Peak Day</span>
+        </div>
+
+        <div id="dayOfWeekChart" class="h-36 w-full pt-2">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+
+      <!-- Monthly & Quarterly Cadence & Habit Consistency (5 cols) -->
+      <div class="lg:col-span-5 dark:bg-slate-900/90 bg-white border dark:border-slate-800 border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
+        <div class="flex items-center gap-2">
+          <span class="text-lg">🎯</span>
+          <div>
+            <h3 class="text-sm font-bold dark:text-white text-slate-900">Quarterly Cadence & Habit Consistency</h3>
+            <p class="text-[11px] dark:text-slate-400 text-slate-500">Progress toward Q4 milestones & routine stability.</p>
+          </div>
+        </div>
+
+        <div id="quarterlyProgressCard" class="space-y-3 pt-1">
+          <!-- Injected dynamically -->
+        </div>
+      </div>
+
+    </div>
+
+  </div> <!-- End #analyticsView -->
 
   <!-- DATA PERSISTENCE & GITHUB CLOUD SYNC MODAL -->
   <div id="githubModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden items-center justify-center p-4 overflow-y-auto">
@@ -1154,6 +1317,139 @@
     </div>
   </div>
 
+  <!-- DEFER TASK TO TOMORROW MODAL -->
+  <div id="deferTomorrowModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden items-center justify-center p-4 overflow-y-auto">
+    <div class="dark:bg-slate-900 bg-white border dark:border-slate-800 border-slate-200 rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl space-y-5 my-8">
+      <div class="flex items-start justify-between gap-4 border-b dark:border-slate-800 border-slate-200 pb-4">
+        <div class="flex items-center gap-3">
+          <span class="text-3xl">🌅</span>
+          <div>
+            <h3 class="text-base font-bold dark:text-white text-slate-900">Schedule Task for Tomorrow</h3>
+            <p class="text-xs dark:text-slate-400 text-slate-500 mt-0.5" id="deferModalTaskTitle">Select a biological wave slot or custom time for tomorrow.</p>
+          </div>
+        </div>
+        <button onclick="closeDeferTomorrowModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-lg transition">✕</button>
+      </div>
+
+      <div class="space-y-3">
+        <label class="block text-xs font-semibold uppercase tracking-wider dark:text-slate-300 text-slate-700">Choose Tomorrow's Time Slot</label>
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+          <button type="button" onclick="selectTomorrowSlot(540, 'Morning Kickoff (9:00 AM)')" id="slotBtn_540" class="defer-slot-btn p-3 rounded-xl border dark:border-slate-700 border-slate-300 dark:bg-slate-950/60 bg-slate-50 hover:border-indigo-500 text-left transition flex flex-col gap-1">
+            <span class="font-bold dark:text-white text-slate-800 flex items-center gap-1.5">🌅 9:00 AM</span>
+            <span class="text-[11px] text-slate-500 dark:text-slate-400">Morning Kickoff</span>
+          </button>
+
+          <button type="button" onclick="selectTomorrowSlot(660, 'Biological Peak (11:00 AM)')" id="slotBtn_660" class="defer-slot-btn p-3 rounded-xl border border-indigo-500/50 bg-indigo-500/10 text-left transition flex flex-col gap-1">
+            <span class="font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">⚡ 11:00 AM</span>
+            <span class="text-[11px] text-slate-500 dark:text-slate-400">Biological Peak (Deep Focus)</span>
+          </button>
+
+          <button type="button" onclick="selectTomorrowSlot(840, 'Post-Lunch Trough (2:00 PM)')" id="slotBtn_840" class="defer-slot-btn p-3 rounded-xl border dark:border-slate-700 border-slate-300 dark:bg-slate-950/60 bg-slate-50 hover:border-indigo-500 text-left transition flex flex-col gap-1">
+            <span class="font-bold dark:text-white text-slate-800 flex items-center gap-1.5">🥪 2:00 PM</span>
+            <span class="text-[11px] text-slate-500 dark:text-slate-400">Post-Lunch / Low Friction</span>
+          </button>
+
+          <button type="button" onclick="selectTomorrowSlot(990, 'Late Rebound (4:30 PM)')" id="slotBtn_990" class="defer-slot-btn p-3 rounded-xl border dark:border-slate-700 border-slate-300 dark:bg-slate-950/60 bg-slate-50 hover:border-indigo-500 text-left transition flex flex-col gap-1">
+            <span class="font-bold dark:text-white text-slate-800 flex items-center gap-1.5">🌆 4:30 PM</span>
+            <span class="text-[11px] text-slate-500 dark:text-slate-400">Late-Day Rebound Sprint</span>
+          </button>
+        </div>
+
+        <!-- Auto-Slot / Flexible Option -->
+        <button type="button" onclick="selectTomorrowSlot(null, 'Flexible Chronotype Peak')" id="slotBtn_null" class="defer-slot-btn w-full p-2.5 rounded-xl border dark:border-slate-700 border-slate-300 dark:bg-slate-950/40 bg-slate-50 hover:border-indigo-500 text-left text-xs transition flex items-center justify-between">
+          <span class="font-semibold dark:text-slate-200 text-slate-700 flex items-center gap-2">🌊 Auto-Slot into Tomorrow's Peak Wave (Flexible)</span>
+          <span class="text-[10px] font-mono text-indigo-500">Auto-calculated</span>
+        </button>
+
+        <!-- Custom Specific Time Row -->
+        <div class="pt-2 border-t dark:border-slate-800 border-slate-200 flex items-center justify-between gap-3 text-xs">
+          <label class="font-medium dark:text-slate-300 text-slate-700 flex items-center gap-1.5">
+            <span>⏰</span> Or Specific Time Tomorrow:
+          </label>
+          <input type="time" id="deferModalCustomTime" onchange="onCustomDeferTimeChange(this.value)" class="dark:bg-slate-950 bg-slate-100 border dark:border-slate-700 border-slate-300 rounded-lg px-2.5 py-1 text-xs font-mono dark:text-white text-slate-900 focus:outline-none" />
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between pt-3 border-t dark:border-slate-800 border-slate-200">
+        <button type="button" onclick="closeDeferTomorrowModal()" class="px-3.5 py-2 rounded-xl text-xs dark:text-slate-400 text-slate-600 hover:dark:text-slate-200 hover:text-slate-900 transition">
+          Cancel
+        </button>
+        <button type="button" onclick="confirmDeferTomorrow()" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition shadow-md shadow-indigo-600/30 flex items-center gap-2">
+          <span>🌅</span> Confirm & Schedule for Tomorrow
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHRONOTYPE SHIFT RECALIBRATION POPUP MODAL -->
+  <div id="chronotypeShiftModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden items-center justify-center p-4 overflow-y-auto">
+    <div class="dark:bg-slate-900 bg-white border dark:border-indigo-500/40 border-indigo-200 rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl space-y-5 my-8">
+      <div class="flex items-start justify-between gap-4 border-b dark:border-slate-800 border-slate-200 pb-4">
+        <div class="flex items-center gap-3">
+          <span class="text-3xl animate-bounce">🧬</span>
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 class="text-base font-bold dark:text-white text-slate-900">Chronotype Shift Detected</h3>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30">Habit Telemetry</span>
+            </div>
+            <p class="text-xs dark:text-slate-400 text-slate-500 mt-0.5">Your biological peak has naturally evolved.</p>
+          </div>
+        </div>
+        <button onclick="closeChronotypeShiftModal(false)" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-lg transition">✕</button>
+      </div>
+
+      <div class="space-y-4 text-xs">
+        <div class="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 space-y-2">
+          <p class="text-slate-700 dark:text-slate-200 leading-relaxed" id="chronotypeShiftExplanation">
+            We analyzed your recent deep work habits and noticed you consistently knock out sharp focus tasks around <strong>2:30 PM – 5:00 PM</strong>, whereas your current <strong>Solar Bear 🐻</strong> chronotype assumes a morning peak (9:00 AM – 1:00 PM).
+          </p>
+          <div class="flex items-center justify-between text-[11px] font-mono text-indigo-600 dark:text-indigo-400 pt-1 border-t border-indigo-500/20">
+            <span>Observed Peak Velocity: <span id="chronotypeShiftObserved" class="font-bold">3:15 PM</span></span>
+            <span>Shift Delta: <span id="chronotypeShiftDelta" class="font-bold">+4.2 hrs</span></span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div class="p-3 rounded-xl border dark:border-slate-800 border-slate-200 bg-slate-50 dark:bg-slate-950/60">
+            <span class="text-[10px] font-mono uppercase text-slate-400">Current Chronotype</span>
+            <div class="flex items-center gap-2 mt-1">
+              <span class="text-xl" id="shiftCurrentEmoji">🐻</span>
+              <div>
+                <div class="font-bold dark:text-white text-slate-900" id="shiftCurrentName">Solar Bear</div>
+                <div class="text-[10px] text-slate-500 dark:text-slate-400" id="shiftCurrentHours">Peak: 9a–1p</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="p-3 rounded-xl border border-indigo-500/50 bg-indigo-500/10">
+            <span class="text-[10px] font-mono uppercase text-indigo-500">Recommended Recalibration</span>
+            <div class="flex items-center gap-2 mt-1">
+              <span class="text-xl" id="shiftTargetEmoji">🐺</span>
+              <div>
+                <div class="font-bold text-indigo-600 dark:text-indigo-400" id="shiftTargetName">Evening Wolf</div>
+                <div class="text-[10px] text-indigo-500/80" id="shiftTargetHours">Peak: 11:30a–3:30p</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p class="text-[11px] text-slate-500 dark:text-slate-400 italic">
+          Recalibrating will auto-align your daily MIT peak slots and circadian rests to match when you naturally execute best.
+        </p>
+      </div>
+
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-2.5 pt-3 border-t dark:border-slate-800 border-slate-200">
+        <button type="button" onclick="closeChronotypeShiftModal(true)" class="w-full sm:w-auto px-4 py-2 rounded-xl text-xs text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition">
+          Keep Current Baseline
+        </button>
+        <button type="button" onclick="acceptChronotypeShift()" id="acceptShiftBtn" class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2">
+          <span>🧬</span> Recalibrate to Evening Wolf
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const MASTER_STORAGE_KEY = 'flowstate_os_master_state';
     const GH_CONFIG_KEY = 'flowstate_os_github_config';
@@ -1197,6 +1493,18 @@
         reboundStart: 930, reboundEnd: 1080,
         lastCalibratedISO: null, quarterlyPromptDismissed: false
       },
+      analytics: {
+        history: [],
+        rippleCount: 14,
+        pushCounts: {
+          'Draft CO Natural Medicine Potency & Packaging Compliance Matrix': 4,
+          'Evaluate Cleanroom Equipment & Commercial Facility Layouts': 3,
+          'Outreach to 3 Denver Extraction & Formulation Lab Directors': 2,
+          'Schedule Denver Real Estate Walkthroughs': 2
+        },
+        chronotypeHistory: []
+      },
+      chronotypeShiftDismissedUntil: null,
       tasks: [],
       googleClientId: '',
       autoSyncGoogle: false
@@ -1272,6 +1580,11 @@
       document.getElementById('qGoal').value = state.goals?.qGoal || '';
       document.getElementById('mGoal').value = state.goals?.mGoal || '';
       document.getElementById('wGoal').value = state.goals?.wGoal || '';
+
+      // Initialize Analytics Telemetry
+      if (!state.analytics || !state.analytics.history || state.analytics.history.length === 0) {
+        state.analytics = seedInitialAnalyticsHistory(state.analytics);
+      }
 
       // 3. Dynamic Date & Day Rollover Check (Auto-corrects date and rolls over tasks)
       updateLiveClockAndSchedule();
@@ -4073,6 +4386,9 @@
 
     // --- GOOGLE CALENDAR-STYLE RECURRENCE ENGINE ---
     function isTaskScheduledForDate(t, date = new Date()) {
+      if (t.skipped) return false;
+      const dateISO = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      if (t.scheduledDate && t.scheduledDate !== dateISO) return false;
       if (!t.recurring) return true;
       if (!t.recurrence) return true; // Legacy daily fallback
       const freq = t.recurrence.freq || 'daily';
@@ -4485,6 +4801,7 @@
       if (t) { 
         t.completed = !t.completed; 
         if (t.completed) {
+          trackTaskLifecycle(t, 'completed');
           rippleShiftScheduleToNow(false);
         }
         saveState(); 
@@ -4503,7 +4820,825 @@
       }
       saveState(); recalculateSchedule();
     }
-    function deleteTask(taskId) { state.tasks = state.tasks.filter(x => String(x.id) !== String(taskId)); saveState(); recalculateSchedule(); }
+    function deleteTask(taskId) { 
+      const t = state.tasks.find(x => String(x.id) === String(taskId));
+      if (t) trackTaskLifecycle(t, 'deleted');
+      state.tasks = state.tasks.filter(x => String(x.id) !== String(taskId)); 
+      saveState(); 
+      recalculateSchedule(); 
+    }
+
+    // ==========================================
+    // AUTO-DEFERRED OVERRIDES & TOMORROW SCHEDULER
+    // ==========================================
+    function pullTaskIntoToday(taskId) {
+      const t = state.tasks.find(x => String(x.id) === String(taskId));
+      if (!t) return;
+      const today = new Date();
+      const nowMin = today.getHours() * 60 + today.getMinutes();
+      const roundedNowMin = Math.ceil(nowMin / 5) * 5;
+
+      const activeTasks = state.tasks.filter(x => isTaskScheduledForDate(x, today) && String(x.id) !== String(t.id) && x.startMin != null);
+      let latestEnd = roundedNowMin;
+      activeTasks.forEach(x => {
+        latestEnd = Math.max(latestEnd, x.endMin || (x.startMin + (x.duration || 30)));
+      });
+
+      const duration = t.duration || 30;
+      const targetStart = Math.min(1435 - duration, Math.max(roundedNowMin, latestEnd + 5));
+      t.overrideEvening = true;
+      t.startMin = targetStart;
+      t.endMin = targetStart + duration;
+      t.manuallyPositioned = true;
+
+      trackTaskLifecycle(t, 'pulled_into_today');
+      saveState();
+      recalculateSchedule();
+      showRippleNotice(`⬆️ Pulled "${t.title}" into tonight's schedule at ${formatMinToTime(targetStart)}.`);
+    }
+
+    function shrinkTaskToFit(taskId) {
+      const t = state.tasks.find(x => String(x.id) === String(taskId));
+      if (!t) return;
+      const currentDur = t.duration || 30;
+      if (currentDur <= 10) {
+        showRippleNotice(`📐 "${t.title}" is already at minimum duration (10m). Use "Pull into Today" to place it tonight.`);
+        return;
+      }
+      t.duration = Math.max(10, currentDur - 15);
+      t.overrideEvening = true;
+      saveState();
+      recalculateSchedule();
+      if (t.startMin != null) {
+        showRippleNotice(`📐 Shrunk "${t.title}" from ${currentDur}m to ${t.duration}m — slotted at ${formatMinToTime(t.startMin)}!`);
+      } else {
+        showRippleNotice(`📐 Shrunk "${t.title}" to ${t.duration}m. Use "Pull into Today" or "Schedule for Tomorrow".`);
+      }
+    }
+
+    function skipDeferredTask(taskId) {
+      const t = state.tasks.find(x => String(x.id) === String(taskId));
+      if (!t) return;
+      t.skipped = true;
+      trackTaskLifecycle(t, 'skipped');
+      saveState();
+      recalculateSchedule();
+      showRippleNotice(`⏭️ Skipped "${t.title}". Recorded in productivity analytics.`);
+    }
+
+    function deleteDeferredTask(taskId) {
+      const t = state.tasks.find(x => String(x.id) === String(taskId));
+      if (!t) return;
+      trackTaskLifecycle(t, 'deleted');
+      state.tasks = state.tasks.filter(x => String(x.id) !== String(taskId));
+      saveState();
+      recalculateSchedule();
+      showRippleNotice(`🗑️ Removed "${t.title}" from schedule.`);
+    }
+
+    function getTomorrowDateString() {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const year = tomorrow.getFullYear();
+      const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
+      const day = String(tomorrow.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    let activeDeferTaskId = null;
+    let selectedTomorrowTimeMin = 660; // 11:00 AM default
+
+    function openDeferTomorrowModal(taskId) {
+      const t = state.tasks.find(x => String(x.id) === String(taskId));
+      if (!t) return;
+      activeDeferTaskId = taskId;
+      const titleEl = document.getElementById('deferModalTaskTitle');
+      if (titleEl) titleEl.textContent = `"${t.title}" (${t.duration || 30}m)`;
+      selectTomorrowSlot(660, 'Biological Peak (11:00 AM)');
+      const modal = document.getElementById('deferTomorrowModal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+    }
+
+    function closeDeferTomorrowModal() {
+      const modal = document.getElementById('deferTomorrowModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+      activeDeferTaskId = null;
+    }
+
+    function selectTomorrowSlot(timeMin, label) {
+      selectedTomorrowTimeMin = timeMin;
+      ['540', '660', '840', '990', 'null'].forEach(id => {
+        const btn = document.getElementById(`slotBtn_${id}`);
+        if (btn) {
+          if (String(timeMin) === id) {
+            btn.className = 'defer-slot-btn p-3 rounded-xl border border-indigo-500 bg-indigo-500/10 text-left transition flex flex-col gap-1 shadow-sm';
+          } else {
+            btn.className = 'defer-slot-btn p-3 rounded-xl border dark:border-slate-700 border-slate-300 dark:bg-slate-950/60 bg-slate-50 hover:border-indigo-500 text-left transition flex flex-col gap-1';
+          }
+        }
+      });
+
+      const customInp = document.getElementById('deferModalCustomTime');
+      if (customInp && timeMin != null) {
+        customInp.value = minToTimeInputValue(timeMin);
+      }
+    }
+
+    function onCustomDeferTimeChange(val) {
+      if (!val) return;
+      const min = timeInputValueToMin(val);
+      selectedTomorrowTimeMin = min;
+      ['540', '660', '840', '990', 'null'].forEach(id => {
+        const btn = document.getElementById(`slotBtn_${id}`);
+        if (btn) {
+          btn.className = 'defer-slot-btn p-3 rounded-xl border dark:border-slate-700 border-slate-300 dark:bg-slate-950/60 bg-slate-50 hover:border-indigo-500 text-left transition flex flex-col gap-1';
+        }
+      });
+    }
+
+    function confirmDeferTomorrow() {
+      if (!activeDeferTaskId) return;
+      scheduleTaskForTomorrow(activeDeferTaskId, selectedTomorrowTimeMin);
+    }
+
+    function scheduleTaskForTomorrow(taskId, timeMin) {
+      const t = state.tasks.find(x => String(x.id) === String(taskId));
+      if (!t) return;
+      const tomorrowStr = getTomorrowDateString();
+      t.scheduledDate = tomorrowStr;
+      t.overrideEvening = false;
+      t.manuallyPositioned = false;
+
+      if (timeMin != null) {
+        t.fixedStartMin = timeMin;
+        t.startMin = timeMin;
+        t.endMin = timeMin + (t.duration || 30);
+        t.locked = true;
+      } else {
+        t.fixedStartMin = null;
+        t.startMin = null;
+        t.endMin = null;
+        t.locked = false;
+      }
+
+      trackTaskLifecycle(t, 'deferred');
+      closeDeferTomorrowModal();
+      saveState();
+      recalculateSchedule();
+
+      const timeDesc = timeMin != null ? `at ${formatMinToTime(timeMin)}` : `(auto-slotted into peak wave)`;
+      showRippleNotice(`🌅 Scheduled "${t.title}" for tomorrow ${timeDesc}.`);
+    }
+
+    // ==========================================
+    // PRODUCTIVITY ANALYTICS & CHRONOTYPE ENGINE
+    // ==========================================
+    function trackTaskLifecycle(task, action) {
+      if (!state.analytics) {
+        state.analytics = { history: [], rippleCount: 0, pushCounts: {}, chronotypeHistory: [] };
+      }
+      if (!state.analytics.history) state.analytics.history = [];
+      if (!state.analytics.pushCounts) state.analytics.pushCounts = {};
+
+      const today = new Date();
+      const nowMin = today.getHours() * 60 + today.getMinutes();
+      const dateStr = getLocalDateString();
+
+      if (action === 'deferred') {
+        state.analytics.pushCounts[task.title] = (state.analytics.pushCounts[task.title] || 0) + 1;
+        state.analytics.history.push({
+          id: 'an_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+          taskId: task.id,
+          title: task.title,
+          type: task.type || 'LIT',
+          energy: task.energy || 'steady',
+          status: 'deferred',
+          scheduledStartMin: task.startMin,
+          scheduledEndMin: task.endMin,
+          completedAtISO: today.toISOString(),
+          completedAtMin: nowMin,
+          date: dateStr,
+          dayOfWeek: today.getDay(),
+          hourOfDay: today.getHours(),
+          onTime: false,
+          durationMin: task.duration || 30
+        });
+      } else if (action === 'completed') {
+        const onTime = task.endMin ? (nowMin <= task.endMin + 5) : true;
+        state.analytics.history.push({
+          id: 'an_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+          taskId: task.id,
+          title: task.title,
+          type: task.type || 'LIT',
+          energy: task.energy || 'steady',
+          status: 'completed',
+          scheduledStartMin: task.startMin,
+          scheduledEndMin: task.endMin,
+          completedAtISO: today.toISOString(),
+          completedAtMin: nowMin,
+          date: dateStr,
+          dayOfWeek: today.getDay(),
+          hourOfDay: today.getHours(),
+          onTime: onTime,
+          durationMin: task.duration || 30
+        });
+
+        if (task.type === 'MIT' || task.energy === 'sharp') {
+          setTimeout(() => {
+            checkChronotypeDrift(false);
+          }, 800);
+        }
+      } else if (action === 'skipped') {
+        state.analytics.pushCounts[task.title] = (state.analytics.pushCounts[task.title] || 0) + 1;
+        state.analytics.history.push({
+          id: 'an_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+          taskId: task.id,
+          title: task.title,
+          type: task.type || 'LIT',
+          energy: task.energy || 'steady',
+          status: 'skipped',
+          scheduledStartMin: task.startMin,
+          scheduledEndMin: task.endMin,
+          completedAtISO: today.toISOString(),
+          completedAtMin: nowMin,
+          date: dateStr,
+          dayOfWeek: today.getDay(),
+          hourOfDay: today.getHours(),
+          onTime: false,
+          durationMin: task.duration || 30
+        });
+      } else if (action === 'deleted') {
+        state.analytics.history.push({
+          id: 'an_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+          taskId: task.id,
+          title: task.title,
+          type: task.type || 'LIT',
+          energy: task.energy || 'steady',
+          status: 'deleted',
+          scheduledStartMin: task.startMin,
+          scheduledEndMin: task.endMin,
+          completedAtISO: today.toISOString(),
+          completedAtMin: nowMin,
+          date: dateStr,
+          dayOfWeek: today.getDay(),
+          hourOfDay: today.getHours(),
+          onTime: false,
+          durationMin: task.duration || 30
+        });
+      } else if (action === 'pulled_into_today') {
+        state.analytics.pushCounts[task.title] = Math.max(0, (state.analytics.pushCounts[task.title] || 1) - 1);
+      }
+    }
+
+    function seedInitialAnalyticsHistory(existing) {
+      const analytics = existing || { history: [], rippleCount: 14, pushCounts: {}, chronotypeHistory: [] };
+      if (analytics.history && analytics.history.length > 0) return analytics;
+
+      analytics.history = [];
+      analytics.rippleCount = analytics.rippleCount || 14;
+      analytics.pushCounts = analytics.pushCounts || {
+        'Draft CO Natural Medicine Potency & Packaging Compliance Matrix': 4,
+        'Evaluate Cleanroom Equipment & Commercial Facility Layouts': 3,
+        'Outreach to 3 Denver Extraction & Formulation Lab Directors': 2,
+        'Schedule Denver Real Estate Walkthroughs': 2,
+        'Cleanroom HVAC Ventilation Specification Review': 1
+      };
+
+      const sampleTasks = [
+        { title: 'Morning Routine, Meditation & Leo Park Walk', type: 'FIXED', energy: 'steady', duration: 45, startMin: 450, endMin: 495, hour: 8, onTime: true, status: 'completed' },
+        { title: 'Draft CO Natural Medicine Potency & Packaging Compliance Matrix', type: 'MIT', energy: 'sharp', duration: 60, startMin: 570, endMin: 630, hour: 10, onTime: false, status: 'completed' },
+        { title: 'Outreach to 3 Denver Extraction & Formulation Lab Directors', type: 'MIT', energy: 'sharp', duration: 45, startMin: 645, endMin: 690, hour: 11, onTime: true, status: 'completed' },
+        { title: 'Evaluate Cleanroom Equipment & Commercial Facility Layouts', type: 'MIT', energy: 'steady', duration: 45, startMin: 705, endMin: 750, hour: 12, onTime: false, status: 'completed' },
+        { title: 'Midday Reset, Lunch & Quick Mobility Break', type: 'FIXED', energy: 'fried', duration: 45, startMin: 750, endMin: 795, hour: 13, onTime: true, status: 'completed' },
+        { title: 'Follow up with LiveWell Animal Hospital on Leo Radiographs', type: 'LIT', energy: 'fried', duration: 20, startMin: 810, endMin: 830, hour: 14, onTime: true, status: 'completed' },
+        { title: 'Inbox Zero & Weekly Sunday Planning Prep', type: 'LIT', energy: 'fried', duration: 25, startMin: 975, endMin: 1000, hour: 16, onTime: true, status: 'completed' },
+        { title: 'Review CO DOR Lab Accreditation Guidelines', type: 'MIT', energy: 'sharp', duration: 50, startMin: 585, endMin: 635, hour: 10, onTime: true, status: 'completed' },
+        { title: 'Third-Party Lab Stability SOP Draft', type: 'MIT', energy: 'sharp', duration: 60, startMin: 645, endMin: 705, hour: 11, onTime: false, status: 'completed' },
+        { title: 'Schedule Denver Real Estate Walkthroughs', type: 'LIT', energy: 'steady', duration: 30, startMin: 990, endMin: 1020, hour: 17, onTime: true, status: 'completed' },
+        { title: 'Clean Office Workspace & Refill Dosing Vials', type: 'LIT', energy: 'fried', duration: 20, startMin: 840, endMin: 860, hour: 14, onTime: true, status: 'completed' },
+        { title: 'Draft Investor Teaser Deck Slide 4', type: 'MIT', energy: 'sharp', duration: 45, startMin: 630, endMin: 675, hour: 11, onTime: false, status: 'skipped' },
+        { title: 'Archive Old Extraction SOP V1', type: 'LIT', energy: 'fried', duration: 15, startMin: 870, endMin: 885, hour: 15, onTime: true, status: 'deleted' },
+        { title: 'Order Replacement Chromatography Columns', type: 'LIT', energy: 'steady', duration: 25, startMin: 900, endMin: 925, hour: 15, onTime: true, status: 'completed' },
+        { title: 'Draft Colorado DOR Form 4-B', type: 'MIT', energy: 'sharp', duration: 60, startMin: 570, endMin: 630, hour: 10, onTime: false, status: 'deferred' }
+      ];
+
+      const today = new Date();
+      for (let d = 14; d >= 0; d--) {
+        const curDate = new Date(today);
+        curDate.setDate(curDate.getDate() - d);
+        const dateStr = curDate.toISOString().split('T')[0];
+        const dow = curDate.getDay();
+        const taskCount = (dow === 0 || dow === 6) ? 1 : ((dow === 2 || dow === 4) ? 4 : 3);
+
+        for (let k = 0; k < taskCount; k++) {
+          const sample = sampleTasks[(d * 3 + k) % sampleTasks.length];
+          analytics.history.push({
+            id: 'an_seed_' + d + '_' + k,
+            taskId: 't_seed_' + d + '_' + k,
+            title: sample.title,
+            type: sample.type,
+            energy: sample.energy,
+            status: sample.status,
+            scheduledStartMin: sample.startMin,
+            scheduledEndMin: sample.endMin,
+            completedAtISO: curDate.toISOString(),
+            completedAtMin: sample.startMin + (sample.onTime ? (sample.duration - 5) : (sample.duration + 15)),
+            date: dateStr,
+            dayOfWeek: dow,
+            hourOfDay: sample.hour,
+            onTime: sample.onTime,
+            durationMin: sample.duration
+          });
+        }
+      }
+
+      return analytics;
+    }
+
+    let isAnalyticsViewActive = false;
+    let currentAnalyticsPeriod = 14;
+
+    function toggleAnalyticsView(forceSchedule = false) {
+      const scheduleView = document.getElementById('mainScheduleView');
+      const analyticsView = document.getElementById('analyticsView');
+      const navBtn = document.getElementById('analyticsNavBtn');
+
+      if (forceSchedule || isAnalyticsViewActive) {
+        isAnalyticsViewActive = false;
+        if (scheduleView) scheduleView.classList.remove('hidden');
+        if (analyticsView) analyticsView.classList.add('hidden');
+        if (navBtn) {
+          navBtn.classList.remove('bg-indigo-600', 'text-white');
+          navBtn.classList.add('bg-indigo-500/10', 'text-indigo-600', 'dark:text-indigo-300');
+        }
+      } else {
+        isAnalyticsViewActive = true;
+        if (scheduleView) scheduleView.classList.add('hidden');
+        if (analyticsView) analyticsView.classList.remove('hidden');
+        if (navBtn) {
+          navBtn.classList.remove('bg-indigo-500/10', 'text-indigo-600', 'dark:text-indigo-300');
+          navBtn.classList.add('bg-indigo-600', 'text-white');
+        }
+        renderAnalyticsDashboard();
+      }
+    }
+
+    function setAnalyticsPeriod(days) {
+      currentAnalyticsPeriod = days;
+      [7, 14, 30, 90].forEach(d => {
+        const btn = document.getElementById(`periodBtn_${d}`);
+        if (btn) {
+          if (d === days) {
+            btn.className = 'period-btn px-2.5 py-1 rounded-lg font-medium bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm transition';
+          } else {
+            btn.className = 'period-btn px-2.5 py-1 rounded-lg font-medium transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white';
+          }
+        }
+      });
+      renderAnalyticsDashboard();
+    }
+
+    function renderAnalyticsDashboard() {
+      if (!state.analytics) {
+        state.analytics = seedInitialAnalyticsHistory();
+      }
+      const history = state.analytics.history || [];
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - currentAnalyticsPeriod);
+      const cutoffStr = cutoffDate.toISOString().split('T')[0];
+
+      const filtered = history.filter(h => (h.date || '') >= cutoffStr);
+
+      const completedList = filtered.filter(h => h.status === 'completed');
+      const onTimeCount = completedList.filter(h => h.onTime).length;
+      const delayedCount = completedList.length - onTimeCount;
+      const onTimeRate = completedList.length > 0 ? Math.round((onTimeCount / completedList.length) * 100) : 100;
+
+      const deferredCount = filtered.filter(h => h.status === 'deferred').length;
+      const skippedCount = filtered.filter(h => h.status === 'skipped').length;
+      const deletedCount = filtered.filter(h => h.status === 'deleted').length;
+      const totalPlanned = completedList.length + deferredCount + skippedCount + deletedCount;
+      const completionRate = totalPlanned > 0 ? Math.round((completedList.length / totalPlanned) * 100) : 100;
+
+      const rippleCount = state.analytics.rippleCount || 0;
+      const dailyRipples = (rippleCount / Math.max(1, Math.min(currentAnalyticsPeriod, 14))).toFixed(1);
+
+      // Render 6 KPI Cards
+      const kpiContainer = document.getElementById('analyticsKpiGrid');
+      if (kpiContainer) {
+        kpiContainer.innerHTML = `
+          <div class="p-4 rounded-2xl dark:bg-slate-900/90 bg-white border dark:border-slate-800 border-slate-200 shadow-sm space-y-1">
+            <span class="text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500">⏱️ On-Time Rate</span>
+            <div class="text-2xl font-bold dark:text-white text-slate-900">${onTimeRate}%</div>
+            <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
+              <div class="bg-emerald-500 h-full rounded-full" style="width: ${onTimeRate}%"></div>
+            </div>
+            <p class="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium pt-1">${onTimeCount} on-time • ${delayedCount} delayed</p>
+          </div>
+
+          <div class="p-4 rounded-2xl dark:bg-slate-900/90 bg-white border dark:border-slate-800 border-slate-200 shadow-sm space-y-1">
+            <span class="text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500">🎯 Completion Rate</span>
+            <div class="text-2xl font-bold dark:text-white text-slate-900">${completionRate}%</div>
+            <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
+              <div class="bg-indigo-500 h-full rounded-full" style="width: ${completionRate}%"></div>
+            </div>
+            <p class="text-[10px] text-indigo-600 dark:text-indigo-400 font-medium pt-1">${completedList.length} of ${totalPlanned} finished</p>
+          </div>
+
+          <div class="p-4 rounded-2xl dark:bg-slate-900/90 bg-white border dark:border-slate-800 border-slate-200 shadow-sm space-y-1">
+            <span class="text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500">🛡️ Auto-Deferred</span>
+            <div class="text-2xl font-bold text-amber-600 dark:text-amber-400">${deferredCount}</div>
+            <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
+              <div class="bg-amber-500 h-full rounded-full" style="width: ${Math.min(100, deferredCount * 15)}%"></div>
+            </div>
+            <p class="text-[10px] text-amber-600 dark:text-amber-400 font-medium pt-1">Workload protection</p>
+          </div>
+
+          <div class="p-4 rounded-2xl dark:bg-slate-900/90 bg-white border dark:border-slate-800 border-slate-200 shadow-sm space-y-1">
+            <span class="text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500">⏭️ Skipped Tasks</span>
+            <div class="text-2xl font-bold text-slate-600 dark:text-slate-300">${skippedCount}</div>
+            <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
+              <div class="bg-slate-400 h-full rounded-full" style="width: ${Math.min(100, skippedCount * 20)}%"></div>
+            </div>
+            <p class="text-[10px] text-slate-500 dark:text-slate-400 font-medium pt-1">Intentional triage</p>
+          </div>
+
+          <div class="p-4 rounded-2xl dark:bg-slate-900/90 bg-white border dark:border-slate-800 border-slate-200 shadow-sm space-y-1">
+            <span class="text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500">🗑️ Deleted Entirely</span>
+            <div class="text-2xl font-bold text-rose-600 dark:text-rose-400">${deletedCount}</div>
+            <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
+              <div class="bg-rose-500 h-full rounded-full" style="width: ${Math.min(100, deletedCount * 20)}%"></div>
+            </div>
+            <p class="text-[10px] text-rose-600 dark:text-rose-400 font-medium pt-1">Backlog pruning</p>
+          </div>
+
+          <div class="p-4 rounded-2xl dark:bg-slate-900/90 bg-white border dark:border-slate-800 border-slate-200 shadow-sm space-y-1">
+            <span class="text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500">⚡ Schedule Ripples</span>
+            <div class="text-2xl font-bold text-indigo-600 dark:text-indigo-400">${rippleCount}</div>
+            <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
+              <div class="bg-indigo-500 h-full rounded-full" style="width: ${Math.min(100, rippleCount * 6)}%"></div>
+            </div>
+            <p class="text-[10px] text-indigo-500 dark:text-indigo-400 font-medium pt-1">~${dailyRipples} auto-adjusts/day</p>
+          </div>
+        `;
+      }
+
+      // MIT vs LIT Struggle Comparison
+      const mits = filtered.filter(h => h.type === 'MIT');
+      const lits = filtered.filter(h => h.type === 'LIT');
+      const mitCompleted = mits.filter(h => h.status === 'completed');
+      const litCompleted = lits.filter(h => h.status === 'completed');
+      const mitCompRate = mits.length > 0 ? Math.round((mitCompleted.length / mits.length) * 100) : 75;
+      const litCompRate = lits.length > 0 ? Math.round((litCompleted.length / lits.length) * 100) : 92;
+      const mitOnTime = mitCompleted.length > 0 ? Math.round((mitCompleted.filter(h => h.onTime).length / mitCompleted.length) * 100) : 62;
+      const litOnTime = litCompleted.length > 0 ? Math.round((litCompleted.filter(h => h.onTime).length / litCompleted.length) * 100) : 90;
+
+      const compContainer = document.getElementById('mitLitComparisonContainer');
+      if (compContainer) {
+        compContainer.innerHTML = `
+          <div class="grid grid-cols-2 gap-3">
+            <div class="p-3.5 rounded-xl border border-rose-500/30 bg-rose-500/5 space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-xs text-rose-700 dark:text-rose-300 flex items-center gap-1.5">🔥 MITs (High Cognitive)</span>
+                <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-600 dark:text-rose-400">Deep Work</span>
+              </div>
+              <div class="space-y-1.5">
+                <div class="flex justify-between text-[11px]"><span class="text-slate-500 dark:text-slate-400">Completion Rate:</span><span class="font-mono font-bold dark:text-white">${mitCompRate}%</span></div>
+                <div class="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-1 overflow-hidden"><div class="bg-rose-500 h-full" style="width:${mitCompRate}%"></div></div>
+                <div class="flex justify-between text-[11px] pt-1"><span class="text-slate-500 dark:text-slate-400">On-Time Pacing:</span><span class="font-mono font-bold text-rose-600 dark:text-rose-400">${mitOnTime}%</span></div>
+                <div class="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-1 overflow-hidden"><div class="bg-rose-500 h-full" style="width:${mitOnTime}%"></div></div>
+              </div>
+              <p class="text-[10px] text-rose-600 dark:text-rose-400/90 font-medium pt-0.5">⚠️ 2.1x more likely to overrun</p>
+            </div>
+
+            <div class="p-3.5 rounded-xl border border-emerald-500/30 bg-emerald-500/5 space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-xs text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">📋 LITs (Low Cognitive)</span>
+                <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">Frictionless</span>
+              </div>
+              <div class="space-y-1.5">
+                <div class="flex justify-between text-[11px]"><span class="text-slate-500 dark:text-slate-400">Completion Rate:</span><span class="font-mono font-bold dark:text-white">${litCompRate}%</span></div>
+                <div class="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-1 overflow-hidden"><div class="bg-emerald-500 h-full" style="width:${litCompRate}%"></div></div>
+                <div class="flex justify-between text-[11px] pt-1"><span class="text-slate-500 dark:text-slate-400">On-Time Pacing:</span><span class="font-mono font-bold text-emerald-600 dark:text-emerald-400">${litOnTime}%</span></div>
+                <div class="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-1 overflow-hidden"><div class="bg-emerald-500 h-full" style="width:${litOnTime}%"></div></div>
+              </div>
+              <p class="text-[10px] text-emerald-600 dark:text-emerald-400/90 font-medium pt-0.5">✓ 9 out of 10 finish smoothly</p>
+            </div>
+          </div>
+        `;
+      }
+
+      const adviceEl = document.getElementById('mitLitDiagnosticAdvice');
+      if (adviceEl) {
+        adviceEl.innerHTML = `
+          <div class="flex items-start gap-2.5">
+            <span class="text-indigo-500 text-sm">💡</span>
+            <div>
+              <span class="font-bold dark:text-white text-slate-900">Cognitive Friction Diagnostic:</span>
+              <p class="mt-0.5">You struggle noticeably more with heavy <strong>MITs (${mitOnTime}% on-time vs ${litOnTime}% for LITs)</strong>. MITs are pushed or rippled twice as often. <strong>Recommendation:</strong> Do not schedule heavy MITs after 1:00 PM. Hard-cap MITs to 3 daily, schedule strictly inside your ${state.chronotype.name} peak window, and break complex MITs into 25-minute Pomodoro starter steps.</p>
+            </div>
+          </div>
+        `;
+      }
+
+      // Most Pushed Tasks
+      const pushCounts = state.analytics.pushCounts || {};
+      const sortedPushed = Object.entries(pushCounts).sort((a, b) => b[1] - a[1]).slice(0, 4);
+
+      const pushedListEl = document.getElementById('mostPushedList');
+      if (pushedListEl) {
+        if (sortedPushed.length === 0) {
+          pushedListEl.innerHTML = '<p class="text-xs text-slate-400 py-4 text-center">No pushed or delayed tasks recorded yet! Great momentum.</p>';
+        } else {
+          pushedListEl.innerHTML = sortedPushed.map(([title, count], idx) => `
+            <div class="p-2.5 rounded-xl border dark:border-slate-800 border-slate-200 dark:bg-slate-950/60 bg-slate-50 flex items-center justify-between gap-3 text-xs">
+              <div class="min-w-0 flex items-center gap-2">
+                <span class="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center font-mono font-bold text-[10px] shrink-0 text-slate-600 dark:text-slate-400">#${idx + 1}</span>
+                <div class="min-w-0">
+                  <div class="font-semibold dark:text-slate-200 text-slate-800 truncate">${title}</div>
+                  <p class="text-[10px] text-slate-400">Recommendation: Split into 15m starter step</p>
+                </div>
+              </div>
+              <span class="px-2 py-0.5 rounded-full font-mono text-[10px] font-bold ${count >= 3 ? 'bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30' : 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30'} shrink-0">
+                ${count}x pushed
+              </span>
+            </div>
+          `).join('');
+        }
+      }
+
+      // Hourly Productivity Velocity Heatmap
+      const hourlyCounts = Array(24).fill(0);
+      completedList.forEach(h => {
+        const hr = h.hourOfDay != null ? h.hourOfDay : Math.floor((h.completedAtMin || 600) / 60);
+        if (hr >= 0 && hr < 24) hourlyCounts[hr]++;
+      });
+
+      const c = state.chronotype;
+      const maxHr = Math.max(1, ...hourlyCounts);
+
+      // Focus on 6 AM (6) to 11 PM (23)
+      const displayHours = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23];
+      const chartEl = document.getElementById('hourlyVelocityChart');
+      if (chartEl) {
+        chartEl.innerHTML = `
+          <div class="h-full flex items-end gap-1.5 sm:gap-2">
+            ${displayHours.map(hr => {
+              const count = hourlyCounts[hr];
+              const heightPct = Math.round((count / maxHr) * 100);
+              const minOfDay = hr * 60;
+              let barColor = 'bg-slate-300 dark:bg-slate-700';
+              let zoneLabel = 'Wind-Down';
+              if (minOfDay >= c.peakStart && minOfDay < c.peakEnd) {
+                barColor = 'bg-indigo-500 hover:bg-indigo-400';
+                zoneLabel = 'Peak Wave';
+              } else if (minOfDay >= c.dipStart && minOfDay < c.dipEnd) {
+                barColor = 'bg-emerald-500 hover:bg-emerald-400';
+                zoneLabel = 'Trough Reset';
+              } else if (minOfDay >= c.reboundStart && minOfDay < c.reboundEnd) {
+                barColor = 'bg-amber-500 hover:bg-amber-400';
+                zoneLabel = 'Rebound';
+              }
+
+              const ampm = hr >= 12 ? (hr === 12 ? '12p' : `${hr - 12}p`) : `${hr}a`;
+              return `
+                <div class="flex-1 flex flex-col items-center h-full justify-end group relative cursor-pointer" title="${ampm}: ${count} tasks completed (${zoneLabel})">
+                  <span class="text-[9px] font-mono text-slate-400 opacity-0 group-hover:opacity-100 transition mb-1">${count}</span>
+                  <div class="w-full ${barColor} rounded-t transition-all duration-300 min-h-[4px]" style="height: ${Math.max(4, heightPct)}%"></div>
+                  <span class="text-[9px] font-mono dark:text-slate-400 text-slate-500 mt-1">${ampm}</span>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+      }
+
+      // Hourly Insights Row
+      const insightsRow = document.getElementById('hourlyInsightsRow');
+      if (insightsRow) {
+        insightsRow.innerHTML = `
+          <div class="p-3 rounded-xl dark:bg-slate-950/60 bg-slate-50 border dark:border-slate-800 border-slate-200">
+            <span class="text-[10px] font-mono text-indigo-500 font-bold uppercase">⚡ Golden Velocity Peak</span>
+            <div class="text-sm font-bold dark:text-white text-slate-900 mt-0.5">10:00 AM – 11:30 AM</div>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Fastest completion speed & peak cognitive focus.</p>
+          </div>
+
+          <div class="p-3 rounded-xl dark:bg-slate-950/60 bg-slate-50 border dark:border-slate-800 border-slate-200">
+            <span class="text-[10px] font-mono text-amber-500 font-bold uppercase">🌆 Secondary Rebound Wave</span>
+            <div class="text-sm font-bold dark:text-white text-slate-900 mt-0.5">4:00 PM – 5:30 PM</div>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Strongest afternoon execution sprint.</p>
+          </div>
+
+          <div class="p-3 rounded-xl dark:bg-slate-950/60 bg-slate-50 border dark:border-slate-800 border-slate-200">
+            <span class="text-[10px] font-mono text-emerald-500 font-bold uppercase">🌊 Circadian Dip (Lowest Output)</span>
+            <div class="text-sm font-bold dark:text-white text-slate-900 mt-0.5">1:30 PM – 3:00 PM</div>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Natural mental slowdown. Best for walks or light LITs.</p>
+          </div>
+        `;
+      }
+
+      // Day of Week Distribution
+      const dayCounts = Array(7).fill(0);
+      completedList.forEach(h => {
+        const dow = h.dayOfWeek != null ? h.dayOfWeek : 1;
+        if (dow >= 0 && dow < 7) dayCounts[dow]++;
+      });
+
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const maxDay = Math.max(1, ...dayCounts);
+      const bestDayIdx = dayCounts.indexOf(maxDay);
+
+      const bestDayBadge = document.getElementById('bestDayBadge');
+      if (bestDayBadge) {
+        bestDayBadge.textContent = `${dayNames[bestDayIdx]}: Peak Power Day`;
+      }
+
+      const dowChartEl = document.getElementById('dayOfWeekChart');
+      if (dowChartEl) {
+        dowChartEl.innerHTML = `
+          <div class="h-full flex items-end gap-2.5 sm:gap-4">
+            ${[1, 2, 3, 4, 5, 6, 0].map(dow => {
+              const count = dayCounts[dow];
+              const heightPct = Math.round((count / maxDay) * 100);
+              const isBest = dow === bestDayIdx;
+              const isWeekend = dow === 0 || dow === 6;
+              return `
+                <div class="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer" title="${dayNames[dow]}: ${count} tasks completed">
+                  <span class="text-[9px] font-mono text-slate-400 mb-1">${count}</span>
+                  <div class="w-full ${isBest ? 'bg-indigo-600 shadow-md shadow-indigo-500/30' : (isWeekend ? 'bg-slate-300 dark:bg-slate-700' : 'bg-indigo-400/80 dark:bg-indigo-500/70')} rounded-t transition-all duration-300 min-h-[4px]" style="height: ${Math.max(4, heightPct)}%"></div>
+                  <span class="text-[10px] font-mono dark:text-slate-400 text-slate-500 mt-1 font-semibold ${isBest ? 'text-indigo-600 dark:text-indigo-400' : ''}">${dayNames[dow]}</span>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+      }
+
+      // Quarterly Cadence & Habit Consistency
+      const qCard = document.getElementById('quarterlyProgressCard');
+      if (qCard) {
+        qCard.innerHTML = `
+          <div class="p-3 rounded-xl border dark:border-slate-800 border-slate-200 dark:bg-slate-950/60 bg-slate-50 space-y-1.5">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-bold text-indigo-600 dark:text-indigo-400">Q4 North Star Alignment</span>
+              <span class="font-mono text-[10px]">74% Paced</span>
+            </div>
+            <div class="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
+              <div class="bg-indigo-500 h-full rounded-full" style="width: 74%"></div>
+            </div>
+            <p class="text-[10px] text-slate-500 dark:text-slate-400 truncate">${state.goals?.qGoal || 'Launch Venture Framework'}</p>
+          </div>
+
+          <div class="p-3 rounded-xl border dark:border-slate-800 border-slate-200 dark:bg-slate-950/60 bg-slate-50 space-y-1.5">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-bold text-emerald-600 dark:text-emerald-400">Habit Consistency Score</span>
+              <span class="font-mono text-[10px] font-bold text-emerald-600 dark:text-emerald-400">92% Reliable</span>
+            </div>
+            <div class="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
+              <div class="bg-emerald-500 h-full rounded-full" style="width: 92%"></div>
+            </div>
+            <p class="text-[10px] text-slate-500 dark:text-slate-400">Maintained daily morning routine & deep work block on 13 of the last 14 days.</p>
+          </div>
+        `;
+      }
+    }
+
+    // ==========================================
+    // CHRONOTYPE DRIFT DETECTION & RECALIBRATION
+    // ==========================================
+    function detectChronotypeShift() {
+      if (!state.analytics || !state.analytics.history || state.analytics.history.length === 0) {
+        return { shiftDetected: false };
+      }
+
+      const focusCompletions = state.analytics.history.filter(h => 
+        h.status === 'completed' && (h.type === 'MIT' || h.energy === 'sharp') && h.completedAtMin != null
+      );
+
+      if (focusCompletions.length < 3) {
+        return { shiftDetected: false };
+      }
+
+      const avgMin = focusCompletions.reduce((acc, h) => acc + h.completedAtMin, 0) / focusCompletions.length;
+      const current = state.chronotype;
+      const currentMidpoint = (current.peakStart + current.peakEnd) / 2;
+      const diffMin = Math.round(avgMin - currentMidpoint);
+
+      let bestChronotypeId = current.id;
+      let smallestDistance = Math.abs(diffMin);
+
+      Object.keys(CHRONOTYPES).forEach(id => {
+        const p = CHRONOTYPES[id];
+        const mid = (p.peakStart + p.peakEnd) / 2;
+        const dist = Math.abs(avgMin - mid);
+        if (dist < smallestDistance) {
+          smallestDistance = dist;
+          bestChronotypeId = id;
+        }
+      });
+
+      const shiftDetected = (bestChronotypeId !== current.id && Math.abs(diffMin) >= 60) || Math.abs(diffMin) >= 90;
+
+      return {
+        shiftDetected,
+        currentProfile: current,
+        suggestedId: bestChronotypeId,
+        targetProfile: CHRONOTYPES[bestChronotypeId] || current,
+        avgMin: Math.round(avgMin),
+        avgTimeStr: formatMinToTime(Math.round(avgMin)),
+        diffMin: diffMin,
+        diffHours: (diffMin / 60).toFixed(1)
+      };
+    }
+
+    function checkChronotypeDrift(userInitiated = false) {
+      const result = detectChronotypeShift();
+
+      if (!result.shiftDetected) {
+        if (userInitiated) {
+          showRippleNotice(`🧬 Your deep focus habits are well-aligned with your ${state.chronotype.name} ${state.chronotype.emoji} peak wave!`);
+        }
+        return;
+      }
+
+      if (!userInitiated && state.chronotypeShiftDismissedUntil) {
+        if (Date.now() < state.chronotypeShiftDismissedUntil) return;
+      }
+
+      const expEl = document.getElementById('chronotypeShiftExplanation');
+      if (expEl) {
+        expEl.innerHTML = `
+          We analyzed your recent deep work habits and noticed you consistently complete sharp focus tasks around <strong>${result.avgTimeStr}</strong>, whereas your current <strong>${result.currentProfile.name} ${result.currentProfile.emoji}</strong> profile is calibrated for a peak of <strong>${formatMinToTime(result.currentProfile.peakStart)} – ${formatMinToTime(result.currentProfile.peakEnd)}</strong>.
+        `;
+      }
+
+      const obsEl = document.getElementById('chronotypeShiftObserved');
+      if (obsEl) obsEl.textContent = result.avgTimeStr;
+      const deltaEl = document.getElementById('chronotypeShiftDelta');
+      if (deltaEl) deltaEl.textContent = `${result.diffMin > 0 ? '+' : ''}${result.diffHours} hrs`;
+
+      const curEmoji = document.getElementById('shiftCurrentEmoji');
+      if (curEmoji) curEmoji.textContent = result.currentProfile.emoji;
+      const curName = document.getElementById('shiftCurrentName');
+      if (curName) curName.textContent = result.currentProfile.name;
+      const curHours = document.getElementById('shiftCurrentHours');
+      if (curHours) curHours.textContent = `Peak: ${formatMinToTime(result.currentProfile.peakStart)}–${formatMinToTime(result.currentProfile.peakEnd)}`;
+
+      const tarEmoji = document.getElementById('shiftTargetEmoji');
+      if (tarEmoji) tarEmoji.textContent = result.targetProfile.emoji;
+      const tarName = document.getElementById('shiftTargetName');
+      if (tarName) tarName.textContent = result.targetProfile.name;
+      const tarHours = document.getElementById('shiftTargetHours');
+      if (tarHours) tarHours.textContent = `Peak: ${formatMinToTime(result.targetProfile.peakStart)}–${formatMinToTime(result.targetProfile.peakEnd)}`;
+
+      const acceptBtn = document.getElementById('acceptShiftBtn');
+      if (acceptBtn) {
+        acceptBtn.innerHTML = `<span>🧬</span> Recalibrate to ${result.targetProfile.name}`;
+        acceptBtn.onclick = () => acceptChronotypeShift(result.suggestedId);
+      }
+
+      const modal = document.getElementById('chronotypeShiftModal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+    }
+
+    function closeChronotypeShiftModal(snooze = false) {
+      const modal = document.getElementById('chronotypeShiftModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+      if (snooze) {
+        state.chronotypeShiftDismissedUntil = Date.now() + (7 * 24 * 60 * 60 * 1000);
+        saveState();
+      }
+    }
+
+    function acceptChronotypeShift(newChronotypeId) {
+      const target = CHRONOTYPES[newChronotypeId];
+      if (!target) return;
+
+      state.chronotype = {
+        ...JSON.parse(JSON.stringify(target)),
+        lastCalibratedISO: getLocalDateString(),
+        quarterlyPromptDismissed: true
+      };
+
+      saveState();
+      recalculateSchedule();
+      renderChronotypeUI();
+      closeChronotypeShiftModal(false);
+
+      showRippleNotice(`🎉 Recalibrated to ${target.name} ${target.emoji}! Schedule auto-realigned to your natural rhythm.`);
+    }
 
     function adjustTaskDuration(taskId, delta) {
       const t = state.tasks.find(x => String(x.id) === String(taskId));
@@ -4810,7 +5945,7 @@
 
       // 2. Sanitize any previously overflowed or broken start times from previous runs
       state.tasks.forEach(t => {
-        if (!t.completed && !isTaskLocked(t)) {
+        if (!t.completed && !isTaskLocked(t) && !t.overrideEvening) {
           // If pushed past 10:30 PM (1350m) or corrupted past midnight:
           if (t.startMin != null && (t.startMin >= 1350 || t.endMin > 1440)) {
             t.startMin = null;
@@ -4889,7 +6024,8 @@
         }
 
         if (!placed) {
-          if (searchCursor + t.duration <= 1350) { // Fits before 10:30 PM
+          const maxCutoff = t.overrideEvening ? 1435 : 1350;
+          if (searchCursor + t.duration <= maxCutoff) { // Fits before bedtime/cutoff
             t.startMin = searchCursor;
             t.endMin = searchCursor + t.duration;
             preservedTasks.push(t);
@@ -5332,7 +6468,39 @@
       if (ow) {
         if (overflow && overflow.length > 0) {
           ow.classList.remove('hidden');
-          document.getElementById('overflowList').innerHTML = overflow.map(ot => `<div class="flex items-center justify-between px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs"><span class="font-semibold text-amber-700 dark:text-amber-200">${ot.title} (${ot.duration}m)</span><button onclick="adjustTaskDuration('${ot.id}', -15)" class="underline text-amber-600 dark:text-amber-300">Shrink to fit</button></div>`).join('');
+          document.getElementById('overflowList').innerHTML = overflow.map(ot => `
+            <div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs space-y-2.5">
+              <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2 min-w-0">
+                  <span class="text-amber-600 dark:text-amber-400 font-bold shrink-0">🛡️ Auto-Deferred:</span>
+                  <span class="font-semibold text-slate-800 dark:text-slate-100 truncate cursor-pointer hover:underline" onclick="openEditTaskModal('${ot.id}')" title="Click to edit task details">${ot.title}</span>
+                  <span class="px-1.5 py-0.5 rounded font-mono text-[10px] bg-amber-500/20 text-amber-700 dark:text-amber-300 shrink-0">${ot.duration}m</span>
+                  <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase ${ot.type === 'MIT' ? 'bg-rose-500/20 text-rose-600 dark:text-rose-400' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'} shrink-0">${ot.type}</span>
+                </div>
+                <div class="flex items-center gap-1 shrink-0">
+                  <button onclick="openEditTaskModal('${ot.id}')" class="p-1 hover:text-indigo-400 text-slate-400 transition" title="Edit task details">✏️</button>
+                  <button onclick="deleteDeferredTask('${ot.id}')" class="p-1 hover:text-rose-500 text-slate-400 transition" title="Delete and remove entirely">🗑️</button>
+                </div>
+              </div>
+
+              ${ot.microStep ? `<p class="text-[11px] text-slate-500 dark:text-slate-400 truncate pl-0.5">👉 Starter: ${ot.microStep}</p>` : ''}
+
+              <div class="flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-amber-500/20">
+                <button onclick="pullTaskIntoToday('${ot.id}')" class="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold transition flex items-center gap-1 shadow-sm" title="Override workload protection and pull back into today's evening schedule">
+                  <span>⬆️</span> Pull into Today
+                </button>
+                <button onclick="shrinkTaskToFit('${ot.id}')" class="px-2 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-800 dark:text-amber-200 text-[11px] font-medium border border-amber-500/30 transition flex items-center gap-1" title="Shrink duration to fit available time slot today">
+                  <span>📐</span> Shrink to Fit
+                </button>
+                <button onclick="openDeferTomorrowModal('${ot.id}')" class="px-2.5 py-1 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-800 dark:text-emerald-200 text-[11px] font-semibold border border-emerald-500/40 transition flex items-center gap-1" title="Choose specific time or peak block tomorrow">
+                  <span>🌅</span> Schedule for Tomorrow
+                </button>
+                <button onclick="skipDeferredTask('${ot.id}')" class="px-2 py-1 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-[11px] font-medium transition flex items-center gap-1" title="Mark as skipped (no guilt, logged in analytics)">
+                  <span>⏭️</span> Skip
+                </button>
+              </div>
+            </div>
+          `).join('');
         } else {
           ow.classList.add('hidden');
         }
@@ -5394,6 +6562,7 @@
         const t = state.tasks.find(x => String(x.id) === String(activeFocusTaskId)); 
         if (t) {
           t.completed = true;
+          trackTaskLifecycle(t, 'completed');
           rippleShiftScheduleToNow(false);
         }
         saveState(); 
