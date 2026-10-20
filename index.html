@@ -151,6 +151,12 @@
           <span class="hidden sm:inline">Analytics</span>
         </button>
 
+        <!-- Searchable Completed Tasks Archive Trigger -->
+        <button onclick="openArchiveModal()" id="archiveNavBtn" class="text-xs px-3 py-2 rounded-lg bg-slate-500/10 hover:bg-slate-500/20 text-slate-700 dark:text-slate-300 border border-slate-500/30 transition flex items-center gap-1.5 font-medium" title="Search & review previously completed tasks across all past dates">
+          <span>🗄️</span>
+          <span class="hidden sm:inline">Archive</span>
+        </button>
+
         <!-- Data Backup & Sync Modal Trigger -->
         <button onclick="openGitHubModal()" class="text-xs px-3 py-2 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30 transition flex items-center gap-1.5 font-medium" title="Backup, sync tasks & manage GitHub repository">
           <span id="ghSyncDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
@@ -255,9 +261,9 @@
             <div>
               <label class="block text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500 mb-1">Priority Tier</label>
               <select id="taskTypeInput" class="w-full dark:bg-slate-950 bg-slate-50 border dark:border-slate-800 border-slate-300 rounded-lg px-2.5 py-1.5 text-xs dark:text-slate-200 text-slate-800 focus:outline-none">
+                <option value="AUTO" selected>✨ Auto-Assign (Smart)</option>
                 <option value="MIT">🔥 MIT (Max 3/day)</option>
                 <option value="LIT">📋 LIT (Batch/Admin)</option>
-                <option value="FIXED">🔒 Fixed Routine</option>
               </select>
             </div>
             <div>
@@ -896,9 +902,8 @@
           <div>
             <label class="block text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500 mb-1">Priority Tier</label>
             <select id="editTaskType" class="w-full dark:bg-slate-950 bg-slate-50 border dark:border-slate-700 border-slate-300 rounded-xl px-3 py-2 text-xs dark:text-slate-200 text-slate-800 focus:outline-none focus:border-indigo-500">
-              <option value="MIT">🔴 MIT (Most Important Task — Max 3)</option>
-              <option value="LIT">🟡 LIT (Low-Intensity Task)</option>
-              <option value="FIXED">🔒 Fixed Routine / Calendar Event</option>
+              <option value="MIT">🔥 MIT (Most Important Task — Max 3/day)</option>
+              <option value="LIT">📋 LIT (Low-Intensity Task)</option>
             </select>
           </div>
           <div>
@@ -1455,6 +1460,63 @@
     </div>
   </div>
 
+  <!-- COMPLETED TASKS SEARCHABLE ARCHIVE MODAL -->
+  <div id="archiveModal" onclick="if(event.target === this) closeArchiveModal()" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden items-center justify-center p-4 overflow-y-auto">
+    <div class="dark:bg-slate-900 bg-white border dark:border-slate-800 border-slate-200 rounded-3xl max-w-3xl w-full p-6 sm:p-7 shadow-2xl space-y-4 my-8 max-h-[90vh] flex flex-col">
+      <div class="flex items-start justify-between gap-4 border-b dark:border-slate-800 border-slate-200 pb-3 shrink-0">
+        <div class="flex items-center gap-3">
+          <span class="text-3xl">🗄️</span>
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 class="text-lg font-bold dark:text-white text-slate-900">Completed Tasks Archive</h3>
+              <span id="archiveTotalBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">0 Completed</span>
+            </div>
+            <p class="text-xs dark:text-slate-400 text-slate-500 mt-0.5">Search, review, or restore previously completed tasks across all past dates.</p>
+          </div>
+        </div>
+        <button onclick="closeArchiveModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-lg transition">✕</button>
+      </div>
+
+      <!-- Search & Filter Controls -->
+      <div class="space-y-2.5 shrink-0">
+        <div class="relative">
+          <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">🔍</span>
+          <input id="archiveSearchInput" oninput="renderArchiveList()" type="text" placeholder="Search archive by task title, 2m starter step, or date (e.g., 'compliance', 'Denver', 'Oct 18')..." class="w-full pl-10 pr-10 py-2.5 rounded-xl border dark:border-slate-700 border-slate-300 dark:bg-slate-950 bg-slate-50 text-xs dark:text-white text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition" />
+          <button onclick="document.getElementById('archiveSearchInput').value=''; renderArchiveList();" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs">✕</button>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div class="flex flex-wrap items-center gap-1.5" id="archiveFilterChips">
+            <button type="button" onclick="setArchiveFilter('all')" id="archFilter_all" class="px-3 py-1 rounded-lg text-xs font-semibold bg-indigo-600 text-white transition">All Tasks</button>
+            <button type="button" onclick="setArchiveFilter('MIT')" id="archFilter_MIT" class="px-3 py-1 rounded-lg text-xs font-medium dark:bg-slate-800 bg-slate-100 dark:text-slate-300 text-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition">🔥 MITs</button>
+            <button type="button" onclick="setArchiveFilter('LIT')" id="archFilter_LIT" class="px-3 py-1 rounded-lg text-xs font-medium dark:bg-slate-800 bg-slate-100 dark:text-slate-300 text-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition">📋 LITs</button>
+            <button type="button" onclick="setArchiveFilter('calendar')" id="archFilter_calendar" class="px-3 py-1 rounded-lg text-xs font-medium dark:bg-slate-800 bg-slate-100 dark:text-slate-300 text-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition">🗓️ Calendar</button>
+            <button type="button" onclick="setArchiveFilter('recurring')" id="archFilter_recurring" class="px-3 py-1 rounded-lg text-xs font-medium dark:bg-slate-800 bg-slate-100 dark:text-slate-300 text-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition">🔁 Routines</button>
+          </div>
+          <div class="text-[11px] font-mono text-slate-400" id="archiveResultCount">Showing 0 items</div>
+        </div>
+      </div>
+
+      <!-- Scrollable Archive List Area -->
+      <div id="archiveTasksContainer" class="flex-1 overflow-y-auto space-y-3.5 pr-1 min-h-[260px]">
+        <!-- Injected via renderArchiveList() -->
+      </div>
+
+      <!-- Footer Info & Actions -->
+      <div class="pt-3 border-t dark:border-slate-800 border-slate-200 flex items-center justify-between text-xs shrink-0">
+        <span class="text-slate-500 dark:text-slate-400 text-[11px]">Tasks completed on previous days are archived here permanently and excluded from today's timeline.</span>
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="exportArchiveJSON()" class="px-3 py-1.5 rounded-xl border dark:border-slate-700 border-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition text-[11px] font-medium flex items-center gap-1">
+            <span>📥</span> Export JSON
+          </button>
+          <button type="button" onclick="closeArchiveModal()" class="px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition text-xs">
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     const MASTER_STORAGE_KEY = 'flowstate_os_master_state';
     const GH_CONFIG_KEY = 'flowstate_os_github_config';
@@ -1467,15 +1529,15 @@
     };
 
     const DEFAULT_TASKS = [
-      { id: 't1', title: 'Morning Routine, Meditation & Leo Park Walk', microStep: 'Leash up & head out for 20-min low-impact walk', type: 'FIXED', energy: 'steady', duration: 45, fixedStartMin: 450, locked: false, completed: true, recurring: true, recurrence: { freq: 'daily', daysOfWeek: [0, 1, 2, 3, 4, 5, 6], interval: 1, unit: 'days' }, subtasks: [] },
+      { id: 't1', title: 'Morning Routine, Meditation & Leo Park Walk', microStep: 'Leash up & head out for 20-min low-impact walk', type: 'LIT', energy: 'steady', duration: 45, fixedStartMin: 450, locked: false, completed: true, recurring: true, recurrence: { freq: 'daily', daysOfWeek: [0, 1, 2, 3, 4, 5, 6], interval: 1, unit: 'days' }, subtasks: [] },
       { id: 't2', title: 'Draft CO Natural Medicine Potency & Packaging Compliance Matrix', microStep: 'Open state DOR compliance rules PDF and extract Section 4 table', type: 'MIT', energy: 'sharp', duration: 60, fixedStartMin: null, locked: false, completed: false, recurring: false, subtasks: [{ text: 'Define standardized capsule homogenizing SOP requirements', done: true }, { text: 'Map third-party lab stability & microbial testing intervals', done: false }] },
       { id: 't3', title: 'Outreach to 3 Denver Extraction & Formulation Lab Directors', microStep: 'Draft concise 4-sentence intro note to first founder on LinkedIn', type: 'MIT', energy: 'sharp', duration: 45, fixedStartMin: null, locked: false, completed: false, recurring: false, subtasks: [] },
       { id: 't4', title: 'Evaluate Cleanroom Equipment & Commercial Facility Layouts', microStep: 'Compare square footage & HVAC specs on top 2 saved industrial listings', type: 'MIT', energy: 'steady', duration: 45, fixedStartMin: null, locked: false, completed: false, recurring: false, subtasks: [] },
-      { id: 't5', title: 'Midday Reset, Lunch & Quick Mobility Break', microStep: 'Step away from screens for 45 mins', type: 'FIXED', energy: 'fried', duration: 45, fixedStartMin: 750, locked: false, completed: false, recurring: true, recurrence: { freq: 'weekdays', daysOfWeek: [1, 2, 3, 4, 5], interval: 1, unit: 'days' }, subtasks: [] },
+      { id: 't5', title: 'Midday Reset, Lunch & Quick Mobility Break', microStep: 'Step away from screens for 45 mins', type: 'LIT', energy: 'fried', duration: 45, fixedStartMin: 750, locked: false, completed: false, recurring: true, recurrence: { freq: 'weekdays', daysOfWeek: [1, 2, 3, 4, 5], interval: 1, unit: 'days' }, subtasks: [] },
       { id: 't6', title: 'Follow up with LiveWell Animal Hospital on Leo Radiographs', microStep: 'Reply to Patsy Mitch email confirming next mobility check-in', type: 'LIT', energy: 'fried', duration: 20, fixedStartMin: null, locked: false, completed: false, recurring: false, subtasks: [] },
       { id: 't7', title: 'Inbox Zero & Weekly Sunday Planning Prep', microStep: 'Clear starred emails and archive newsletters', type: 'LIT', energy: 'fried', duration: 25, fixedStartMin: null, locked: false, completed: false, recurring: true, recurrence: { freq: 'weekly', daysOfWeek: [0, 5], interval: 1, unit: 'weeks' }, subtasks: [] },
       { id: 't8', title: 'Review West Denver / Lakewood Real Estate Comps & Inspection Notes', microStep: 'Archive non-matching listings & flag top main-floor primary contender', type: 'LIT', energy: 'steady', duration: 30, fixedStartMin: null, locked: false, completed: false, recurring: false, subtasks: [] },
-      { id: 't9', title: 'Late Afternoon Workout / Pickleball Court Session', microStep: 'Change gear & head out on time', type: 'FIXED', energy: 'steady', duration: 60, fixedStartMin: 1020, locked: false, completed: false, recurring: true, recurrence: { freq: 'weekly', daysOfWeek: [1, 2, 3, 4, 5], interval: 1, unit: 'days' }, subtasks: [] }
+      { id: 't9', title: 'Late Afternoon Workout / Pickleball Court Session', microStep: 'Change gear & head out on time', type: 'LIT', energy: 'steady', duration: 60, fixedStartMin: 1020, locked: false, completed: false, recurring: true, recurrence: { freq: 'weekly', daysOfWeek: [1, 2, 3, 4, 5], interval: 1, unit: 'days' }, subtasks: [] }
     ];
 
     let state = {
@@ -1485,7 +1547,50 @@
       theme: 'system', // 'dark', 'light', or 'system'
       soundEnabled: true, // Master auditory switch
       lastActiveDate: null, // Tracks date for auto-rollover
-      archivedTasks: [],
+      archivedTasks: [
+        {
+          id: 'arch_sample_1',
+          title: 'Draft Natural Medicine Advisory Board Feedback Summary',
+          microStep: 'Summarize 5 member comments into executive bullets',
+          type: 'MIT',
+          energy: 'sharp',
+          duration: 60,
+          completed: true,
+          completedDate: '2026-10-18',
+          completedAtISO: '2026-10-18T16:45:00.000Z',
+          recurring: false,
+          fromCalendar: false,
+          archivedAt: '2026-10-19T00:00:00.000Z'
+        },
+        {
+          id: 'arch_sample_2',
+          title: 'Denver Cleanroom HEPA Filtration Quote Analysis',
+          microStep: 'Compare vendor pricing matrix across 3 quotes',
+          type: 'MIT',
+          energy: 'sharp',
+          duration: 45,
+          completed: true,
+          completedDate: '2026-10-18',
+          completedAtISO: '2026-10-18T14:15:00.000Z',
+          recurring: false,
+          fromCalendar: false,
+          archivedAt: '2026-10-19T00:00:00.000Z'
+        },
+        {
+          id: 'arch_sample_3',
+          title: 'LiveWell Veterinary Medical Records Retrieval',
+          microStep: 'Download Leo diagnostic imaging PDF from portal',
+          type: 'LIT',
+          energy: 'fried',
+          duration: 20,
+          completed: true,
+          completedDate: '2026-10-17',
+          completedAtISO: '2026-10-17T11:20:00.000Z',
+          recurring: false,
+          fromCalendar: false,
+          archivedAt: '2026-10-18T00:00:00.000Z'
+        }
+      ],
       goals: {
         qGoal: 'Launch Downstream Formulation Venture & Compliance Framework',
         mGoal: 'Complete CO Natural Medicine Lab Standards & 8 Founder Coffee Chats',
@@ -1589,6 +1694,47 @@
       // Initialize Analytics Telemetry
       if (!state.analytics || !state.analytics.history || state.analytics.history.length === 0) {
         state.analytics = seedInitialAnalyticsHistory(state.analytics);
+      }
+
+      // Ensure all loaded tasks have intelligent priority (MIT or LIT)
+      state.tasks.forEach(t => {
+        if (!t.type || (t.type !== 'MIT' && t.type !== 'LIT')) {
+          const res = classifyTaskPriority(t.title, t.duration, t.energy);
+          t.type = res.type;
+          if (res.needsReview && t.needsReview === undefined) {
+            t.needsReview = true;
+          }
+        }
+      });
+
+      // Safety check: prune any past-completed non-recurring tasks into archivedTasks
+      const todayKey = getLocalDateString();
+      const pastCompleted = state.tasks.filter(t => !t.recurring && t.completed && (
+        (t.completedDate && t.completedDate < todayKey) ||
+        (t.completedAtISO && t.completedAtISO.slice(0, 10) < todayKey) ||
+        (t.scheduledDate && t.scheduledDate < todayKey)
+      ));
+      if (pastCompleted.length > 0) {
+        state.archivedTasks = state.archivedTasks || [];
+        pastCompleted.forEach(pct => {
+          state.archivedTasks.push({
+            id: pct.id,
+            title: pct.title,
+            microStep: pct.microStep || '',
+            type: pct.type || 'LIT',
+            energy: pct.energy || 'steady',
+            duration: pct.duration || 30,
+            completed: true,
+            completedDate: pct.completedDate || pct.scheduledDate || state.lastActiveDate || todayKey,
+            completedAtISO: pct.completedAtISO || new Date().toISOString(),
+            recurring: false,
+            fromCalendar: !!pct.fromCalendar,
+            archivedAt: new Date().toISOString()
+          });
+        });
+        const pastIds = new Set(pastCompleted.map(p => String(p.id)));
+        state.tasks = state.tasks.filter(t => !pastIds.has(String(t.id)));
+        saveState();
       }
 
       // 3. Dynamic Date & Day Rollover Check (Auto-corrects date and rolls over tasks)
@@ -4393,6 +4539,14 @@
     function isTaskScheduledForDate(t, date = new Date()) {
       if (t.skipped) return false;
       const dateISO = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      
+      // Safety guarantee: If a one-off task was completed on a prior date, it must never appear on today or future dates
+      if (t.completed && !t.recurring) {
+        const compDate = t.completedDate || (t.completedAtISO ? t.completedAtISO.slice(0, 10) : null);
+        if (compDate && compDate < dateISO) return false;
+      }
+      if (t.scheduledDate && t.scheduledDate < dateISO && t.completed) return false;
+
       if (t.scheduledDate && t.scheduledDate !== dateISO) return false;
       if (!t.recurring) return true;
       if (!t.recurrence) return true; // Legacy daily fallback
@@ -4432,6 +4586,102 @@
         }
       }
       return true;
+    }
+
+    // --- INTELLIGENT PRIORITY CLASSIFIER (MIT vs LIT vs 🤨 Unsure) ---
+    function classifyTaskPriority(title = '', duration = 30, energy = 'steady') {
+      const t = (title || '').toLowerCase().trim();
+      
+      // 1. High-Stakes / Strategic MIT terms
+      const mitKeywords = [
+        'proposal', 'pitch', 'investor', 'board', 'client', 'contract', 'compliance', 
+        'matrix', 'dor', 'cleanroom', 'hvac', 'formulation', 'presentation', 'architecture', 
+        'strategy', 'quarterly', 'q1', 'q2', 'q3', 'q4', 'okr', 'roadmap', 'deep work', 
+        'interview', 'performance review', 'closing', 'negotiation', 'launch', 'deploy', 
+        'ship', 'release', 'budget', 'financial', 'deliverable', 'audit', 'rfp', 'spec',
+        'potency', 'packaging', 'extraction', 'lab director', 'sponsor'
+      ];
+
+      // 2. Routine / Low-Intensity LIT terms
+      const litKeywords = [
+        'sync', 'standup', 'quick', 'check-in', 'touch base', 'catch up', 'email', 'reply', 
+        'inbox', 'messages', 'slack', 'discord', 'vet', 'walk', 'leo', 'dog', 'groceries', 
+        'dishes', 'laundry', 'errands', 'billing', 'invoice', 'receipts', 'admin', 'expenses', 
+        'order', 'pickup', 'dropoff', 'nails', 'haircut', 'workout', 'gym', 'pickleball', 'run', 
+        'stretching', 'mobility', 'meditation', 'routine', 'lunch', 'breakfast', 'dinner', 
+        'break', 'coffee', 'snack', 'clean', 'trash', 'notes', 'minutes', 'recap', 'chores'
+      ];
+
+      // 3. Ambiguous / Terse titles where context is uncertain (flag with 🤨)
+      const ambiguousPatterns = [
+        /^meeting$/i, /^call$/i, /^discussion$/i, /^chat$/i, /^touchpoint$/i, 
+        /^1:1$/i, /^one-on-one$/i, /^session$/i, /^appointment$/i, /^weekly$/i, 
+        /^catch up$/i, /^review$/i, /^check$/i, /^team$/i, /^touchbase$/i,
+        /^(call with|meeting with|chat with|sync with)\s+[a-z]+$/i,
+        /^[a-z]+$/i // Single-word titles like "Scott", "Denver", "Check"
+      ];
+
+      const hasMit = mitKeywords.some(kw => t.includes(kw));
+      const hasLit = litKeywords.some(kw => t.includes(kw));
+
+      // Strong MIT match without competing low-intensity signals
+      if (hasMit && !hasLit) {
+        return { type: 'MIT', needsReview: false, confidence: 'high' };
+      }
+
+      // Strong LIT match
+      if (hasLit && !hasMit) {
+        return { type: 'LIT', needsReview: false, confidence: 'high' };
+      }
+
+      // If conflicting keywords present
+      if (hasMit && hasLit) {
+        if (duration >= 45 || energy === 'sharp') {
+          return { type: 'MIT', needsReview: false, confidence: 'medium' };
+        }
+        return { type: 'LIT', needsReview: false, confidence: 'medium' };
+      }
+
+      // Check ambiguous patterns
+      const isAmbiguous = ambiguousPatterns.some(p => p.test(t));
+      if (isAmbiguous) {
+        const provisional = (duration >= 45 || energy === 'sharp') ? 'MIT' : 'LIT';
+        return { type: provisional, needsReview: true, confidence: 'unsure' };
+      }
+
+      // Heuristic fallback based on energy and duration
+      if (energy === 'sharp' || duration >= 60) {
+        return { type: 'MIT', needsReview: false, confidence: 'medium' };
+      }
+      if (energy === 'fried' || duration <= 25) {
+        return { type: 'LIT', needsReview: false, confidence: 'medium' };
+      }
+
+      // Borderline mid-length task without explicit keywords: mark for user review with 🤨
+      return { 
+        type: duration >= 45 ? 'MIT' : 'LIT', 
+        needsReview: true, 
+        confidence: 'unsure' 
+      };
+    }
+
+    function setTaskPriority(taskId, newType) {
+      const t = state.tasks.find(x => String(x.id) === String(taskId));
+      if (!t) return;
+      if (newType === 'MIT') {
+        const today = new Date();
+        const activeMits = state.tasks.filter(x => x.type === 'MIT' && String(x.id) !== String(taskId) && !x.completed && isTaskScheduledForDate(x, today));
+        if (activeMits.length >= 3) {
+          showRippleNotice('⚠️ MIT Cap reached (3 active). Demote an existing MIT first or keep as LIT.');
+          return;
+        }
+      }
+      t.type = newType;
+      t.needsReview = false;
+      saveState();
+      recalculateSchedule();
+      renderPriorityLists();
+      showRippleNotice(`✓ Assigned "${t.title}" as ${newType === 'MIT' ? '🔥 MIT' : '📋 LIT'}`);
     }
 
     function formatRecurrenceLabel(t) {
@@ -5045,8 +5295,17 @@
       const recurring = document.getElementById('taskRecurringInput') ? document.getElementById('taskRecurringInput').checked : false;
       if (!title) return;
 
+      let needsReview = false;
+      if (type === 'AUTO' || !type || type === 'FIXED') {
+        const pInfo = classifyTaskPriority(title, duration, energy);
+        type = pInfo.type;
+        needsReview = pInfo.needsReview;
+      }
+
       if (type === 'MIT' && state.tasks.filter(t => t.type === 'MIT' && !t.completed && isTaskScheduledForDate(t, new Date())).length >= 3) {
-        type = 'LIT'; showRippleNotice('🛡️ MIT Cap Reached (Max 3/day). Added as LIT.');
+        type = 'LIT'; 
+        needsReview = false;
+        showRippleNotice('🛡️ MIT Cap Reached (Max 3/day). Added as LIT.');
       }
 
       let recurrence = null;
@@ -5073,9 +5332,10 @@
         title,
         microStep: micro || smart.microStep,
         type,
+        needsReview,
         energy,
         duration,
-        fixedStartMin: type === 'FIXED' ? Math.max(540, roundedNowMin) : null,
+        fixedStartMin: null,
         startMin: null,
         endMin: null,
         locked: false,
@@ -5250,8 +5510,13 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       if (t) { 
         t.completed = !t.completed; 
         if (t.completed) {
+          t.completedAtISO = new Date().toISOString();
+          t.completedDate = getLocalDateString();
           trackTaskLifecycle(t, 'completed');
           rippleShiftScheduleToNow(false);
+        } else {
+          t.completedAtISO = null;
+          t.completedDate = null;
         }
         saveState(); 
         recalculateSchedule(); 
@@ -5261,13 +5526,19 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
     function promoteDemoteTask(taskId) {
       const t = state.tasks.find(x => String(x.id) === String(taskId));
       if (!t) return;
-      if (t.type === 'LIT') {
-        if (state.tasks.filter(x => x.type === 'MIT' && !x.completed && isTaskScheduledForDate(x, new Date())).length >= 3) { showRippleNotice('⚠️ Max 3 MITs reached.'); return; }
+      t.needsReview = false;
+      if (t.type === 'LIT' || t.type === 'FIXED' || !t.type) {
+        if (state.tasks.filter(x => x.type === 'MIT' && String(x.id) !== String(taskId) && !x.completed && isTaskScheduledForDate(x, new Date())).length >= 3) { 
+          showRippleNotice('⚠️ Max 3 MITs reached.'); 
+          return; 
+        }
         t.type = 'MIT';
       } else if (t.type === 'MIT') {
         t.type = 'LIT';
       }
-      saveState(); recalculateSchedule();
+      saveState(); 
+      recalculateSchedule();
+      renderPriorityLists();
     }
     function deleteTask(taskId) { 
       const t = state.tasks.find(x => String(x.id) === String(taskId));
@@ -6286,6 +6557,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       } else {
         t.type = newType;
       }
+      t.needsReview = false;
 
       t.title = newTitle;
       t.microStep = newMicro || generateSmartBreakdown(newTitle, t.type, t.energy).microStep;
@@ -6389,10 +6661,40 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       const roundedNowMin = Math.ceil(nowMin / 5) * 5;
       window._lastRenderedMinute = nowMin;
 
+      // 0. Safety Archive Prune: Ensure non-recurring tasks completed on previous days are archived & excluded from today
+      const todayKey = getLocalDateString();
+      const pastCompleted = state.tasks.filter(t => !t.recurring && t.completed && (
+        (t.completedDate && t.completedDate < todayKey) ||
+        (t.completedAtISO && t.completedAtISO.slice(0, 10) < todayKey) ||
+        (t.scheduledDate && t.scheduledDate < todayKey)
+      ));
+      if (pastCompleted.length > 0) {
+        state.archivedTasks = state.archivedTasks || [];
+        pastCompleted.forEach(pct => {
+          state.archivedTasks.push({
+            id: pct.id,
+            title: pct.title,
+            microStep: pct.microStep || '',
+            type: pct.type || 'LIT',
+            energy: pct.energy || 'steady',
+            duration: pct.duration || 30,
+            completed: true,
+            completedDate: pct.completedDate || pct.scheduledDate || state.lastActiveDate || todayKey,
+            completedAtISO: pct.completedAtISO || new Date().toISOString(),
+            recurring: false,
+            fromCalendar: !!pct.fromCalendar,
+            archivedAt: new Date().toISOString()
+          });
+        });
+        const pastIds = new Set(pastCompleted.map(p => String(p.id)));
+        state.tasks = state.tasks.filter(t => !pastIds.has(String(t.id)));
+        saveState();
+      }
+
       // 1. Deduplicate any identical calendar tasks (same start time & title)
       const seenFixed = new Set();
       state.tasks = state.tasks.filter(t => {
-        if (!t.fromCalendar && t.type !== 'FIXED') return true;
+        if (!t.fromCalendar) return true;
         const key = `${t.fixedStartMin || t.startMin}_${(t.title || '').trim().toLowerCase()}`;
         if (seenFixed.has(key)) return false;
         seenFixed.add(key);
@@ -6545,12 +6847,27 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
     }
 
     function renderCard(t) {
-      const badges = { sharp: '🔴 Peak', steady: '🟡 Rebound', fried: '🟢 Trough' }[t.energy];
+      const badges = { sharp: '🔴 Peak', steady: '🟡 Rebound', fried: '🟢 Trough' }[t.energy] || '🟡 Rebound';
       const recurringBadge = t.recurring 
         ? `<button onclick="openRecurrenceModal('${t.id}')" class="text-[10px] font-mono px-1.5 py-0.5 rounded border border-indigo-400/40 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20 transition flex items-center gap-1" title="Click to customize repeat pattern (Google-style)">🔁 ${formatRecurrenceLabel(t)}</button>` 
         : '';
       const rolloverBadge = t.rolledOver ? '<span class="text-[10px] font-mono px-1.5 py-0.5 rounded border border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400" title="Rolled over from previous day">↩ Rolled</span>' : '';
+      const calendarBadge = t.fromCalendar ? '<span class="text-[10px] font-mono px-1.5 py-0.5 rounded border border-indigo-400/40 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400" title="Pulled from Google Calendar">🗓️ Calendar</span>' : '';
       const subs = t.subtasks?.map((st, i) => `<label class="flex items-center gap-2 text-xs ${st.done ? 'line-through text-slate-400' : 'dark:text-slate-300 text-slate-700'} cursor-pointer"><input type="checkbox" ${st.done ? 'checked' : ''} onchange="toggleSubtask('${t.id}', ${i})" class="accent-emerald-500 rounded" /><span>${st.text}</span></label>`).join('') || '';
+
+      const reviewBanner = t.needsReview ? `
+        <div class="mt-2.5 pt-2 border-t dark:border-amber-500/30 border-amber-500/30 flex items-center justify-between gap-1.5 bg-amber-500/10 dark:bg-amber-500/15 -mx-3 -mb-3 p-2.5 rounded-b-xl">
+          <span class="text-[11px] font-semibold text-amber-700 dark:text-amber-300 flex items-center gap-1">
+            <span>🤨</span>
+            <span>Assign Priority:</span>
+          </span>
+          <div class="flex items-center gap-1.5 shrink-0">
+            <button onclick="setTaskPriority('${t.id}', 'MIT')" class="px-2 py-0.5 rounded text-[10px] font-bold transition shadow-sm ${t.type === 'MIT' ? 'bg-rose-600 text-white ring-1 ring-rose-400' : 'bg-white dark:bg-slate-900 border border-rose-400/50 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-slate-800'}" title="Assign to Most Important Tasks (Max 3/day)">🔥 MIT</button>
+            <button onclick="setTaskPriority('${t.id}', 'LIT')" class="px-2 py-0.5 rounded text-[10px] font-bold transition shadow-sm ${t.type === 'LIT' ? 'bg-indigo-600 text-white ring-1 ring-indigo-400' : 'bg-white dark:bg-slate-900 border border-indigo-400/50 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-slate-800'}" title="Assign to Low-Intensity Tasks">📋 LIT</button>
+          </div>
+        </div>
+      ` : '';
+
       return `
         <div ondblclick="openEditTaskModal('${t.id}')" class="p-3 rounded-xl dark:bg-slate-950/90 bg-white border dark:border-slate-800 border-slate-200 shadow-sm transition">
           <div class="flex items-start justify-between gap-2">
@@ -6560,6 +6877,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
                 <div class="flex flex-wrap items-center gap-1.5">
                   <span onclick="openEditTaskModal('${t.id}')" class="text-xs font-semibold cursor-pointer hover:underline hover:text-indigo-500 transition ${t.completed ? 'line-through text-slate-400' : 'dark:text-slate-100 text-slate-900'}" title="Click to edit task details">${t.title}</span>
                   <span class="text-[10px] px-1.5 py-0.5 rounded border">${badges}</span>
+                  ${calendarBadge}
                   ${recurringBadge}
                   ${rolloverBadge}
                   <span class="text-[10px] font-mono dark:text-slate-400 text-slate-500">${t.duration}m</span>
@@ -6577,6 +6895,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
             </div>
           </div>
           ${subs ? `<div class="mt-2.5 pt-2 border-t dark:border-slate-800 border-slate-100 space-y-1.5">${subs}</div>` : ''}
+          ${reviewBanner}
         </div>`;
     }
 
@@ -6892,7 +7211,16 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
               <div class="min-w-0 ml-1">
                 <div class="flex items-center gap-1.5 flex-wrap">
                   <span onclick="openEditTaskModal('${t.id}')" class="text-xs font-semibold cursor-pointer hover:underline hover:text-indigo-500 transition dark:text-white text-slate-900 ${t.completed ? 'line-through text-slate-400 dark:text-slate-500' : ''}" title="Click to edit task details">${t.title}</span>
-                  ${(t.fromCalendar || t.type === 'FIXED') ? '<span class="text-[10px] font-mono px-1.5 py-0.2 rounded border border-indigo-400/40 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">🗓️ Calendar</span>' : `<span class="text-[10px] font-mono px-1 rounded border ${p.color}">${p.label}</span>`}
+                  <span class="text-[10px] font-mono px-1 rounded border ${p.color}">${p.label}</span>
+                  ${t.fromCalendar ? '<span class="text-[10px] font-mono px-1.5 py-0.2 rounded border border-indigo-400/40 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">🗓️ Calendar</span>' : ''}
+                  ${t.needsReview ? `
+                    <div class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-500/35 text-amber-700 dark:text-amber-300 text-[10px] font-semibold">
+                      <span>🤨 Review:</span>
+                      <button onclick="setTaskPriority('${t.id}', 'MIT')" class="px-1 py-0.2 rounded hover:bg-rose-500 hover:text-white text-rose-600 dark:text-rose-400 font-bold transition">🔥 MIT</button>
+                      <span>|</span>
+                      <button onclick="setTaskPriority('${t.id}', 'LIT')" class="px-1 py-0.2 rounded hover:bg-indigo-500 hover:text-white text-indigo-600 dark:text-indigo-400 font-bold transition">📋 LIT</button>
+                    </div>
+                  ` : ''}
                   <button onclick="toggleTaskLock('${t.id}')" class="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold transition flex items-center gap-1 ${locked ? 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-300 border border-amber-500/30' : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-300 dark:border-slate-700'}" title="${locked ? 'Locked anchor (immovable). Click to unlock & make flexible.' : 'Flexible (ripples). Click to lock in place.'}">
                     ${locked ? '🔒 Locked' : '🔓 Flexible'}
                   </button>
@@ -7028,6 +7356,8 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         const t = state.tasks.find(x => String(x.id) === String(activeFocusTaskId)); 
         if (t) {
           t.completed = true;
+          t.completedAtISO = new Date().toISOString();
+          t.completedDate = getLocalDateString();
           trackTaskLifecycle(t, 'completed');
           rippleShiftScheduleToNow(false);
         }
@@ -7109,33 +7439,67 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
     function executeDayRollover(lastDate, todayKey, dateStr, silent = false) {
       let lingeringCount = 0;
       let recurringResetCount = 0;
+      let archivedCount = 0;
 
-      // 1. Reset completion on all recurring routines & count lingering tasks
+      state.archivedTasks = state.archivedTasks || [];
+
+      // 1. Reset completion on all recurring routines & snapshot completed routines into archive
       const todayDate = new Date();
       state.tasks.forEach(t => {
         if (t.recurring) {
-          if (isTaskScheduledForDate(t, todayDate)) {
-            if (t.completed) {
-              t.completed = false;
-              recurringResetCount++;
-            }
-            if (t.subtasks && t.subtasks.length > 0) {
-              t.subtasks.forEach(st => st.done = false);
-            }
+          if (t.completed) {
+            state.archivedTasks.push({
+              id: 'arch_' + t.id + '_' + (t.completedDate || lastDate || Date.now()),
+              title: t.title,
+              microStep: t.microStep || '',
+              type: t.type || 'LIT',
+              energy: t.energy || 'steady',
+              duration: t.duration || 30,
+              completed: true,
+              completedDate: t.completedDate || lastDate,
+              completedAtISO: t.completedAtISO || new Date().toISOString(),
+              recurring: true,
+              fromCalendar: !!t.fromCalendar,
+              archivedAt: new Date().toISOString()
+            });
+            t.completed = false;
+            t.completedAtISO = null;
+            t.completedDate = null;
+            recurringResetCount++;
+            archivedCount++;
+          }
+          if (t.subtasks && t.subtasks.length > 0) {
+            t.subtasks.forEach(st => st.done = false);
           }
         } else if (!t.completed) {
           lingeringCount++;
           t.rolledOver = true;
+          if (!isTaskLocked(t)) {
+            t.startMin = null;
+            t.endMin = null;
+          }
         }
       });
 
       // 2. Archive completed one-off tasks from previous days so today's workspace is clean
       const completedOneOff = state.tasks.filter(t => t.completed && !t.recurring);
       if (completedOneOff.length > 0) {
-        state.archivedTasks = state.archivedTasks || [];
-        state.archivedTasks.push({
-          date: lastDate,
-          tasks: completedOneOff
+        completedOneOff.forEach(t => {
+          state.archivedTasks.push({
+            id: t.id,
+            title: t.title,
+            microStep: t.microStep || '',
+            type: t.type || 'LIT',
+            energy: t.energy || 'steady',
+            duration: t.duration || 30,
+            completed: true,
+            completedDate: t.completedDate || lastDate,
+            completedAtISO: t.completedAtISO || new Date().toISOString(),
+            recurring: false,
+            fromCalendar: !!t.fromCalendar,
+            archivedAt: new Date().toISOString()
+          });
+          archivedCount++;
         });
         state.tasks = state.tasks.filter(t => !t.completed || t.recurring);
       }
@@ -7151,8 +7515,251 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       }
 
       if (!silent) {
-        showRippleNotice(`🌅 Auto-rolled to ${dateStr}! Kept ${lingeringCount} pending tasks & refreshed ${recurringResetCount} daily routines.`);
+        showRippleNotice(`🌅 Auto-rolled to ${dateStr}! Archived ${archivedCount} completed tasks & kept ${lingeringCount} pending.`);
       }
+    }
+
+    // --- SEARCHABLE COMPLETED TASKS ARCHIVE ENGINE ---
+    let currentArchiveFilter = 'all';
+
+    function openArchiveModal() {
+      const modal = document.getElementById('archiveModal');
+      if (!modal) return;
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      renderArchiveList();
+      setTimeout(() => {
+        document.getElementById('archiveSearchInput')?.focus();
+      }, 80);
+    }
+
+    function closeArchiveModal() {
+      const modal = document.getElementById('archiveModal');
+      if (!modal) return;
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function setArchiveFilter(filter) {
+      currentArchiveFilter = filter;
+      ['all', 'MIT', 'LIT', 'calendar', 'recurring'].forEach(f => {
+        const btn = document.getElementById('archFilter_' + f);
+        if (!btn) return;
+        if (f === filter) {
+          btn.className = 'px-3 py-1 rounded-lg text-xs font-semibold bg-indigo-600 text-white transition';
+        } else {
+          btn.className = 'px-3 py-1 rounded-lg text-xs font-medium dark:bg-slate-800 bg-slate-100 dark:text-slate-300 text-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition';
+        }
+      });
+      renderArchiveList();
+    }
+
+    function getNormalizedArchivedTasks() {
+      if (!state.archivedTasks) return [];
+      const normalized = [];
+      state.archivedTasks.forEach(item => {
+        if (!item) return;
+        if (item.tasks && Array.isArray(item.tasks)) {
+          item.tasks.forEach(t => {
+            normalized.push({
+              ...t,
+              completedDate: t.completedDate || item.date || 'prior',
+              completedAtISO: t.completedAtISO || (item.date ? item.date + 'T17:00:00.000Z' : new Date().toISOString())
+            });
+          });
+        } else if (item.title) {
+          normalized.push(item);
+        }
+      });
+      return normalized;
+    }
+
+    function renderArchiveList() {
+      const container = document.getElementById('archiveTasksContainer');
+      const badge = document.getElementById('archiveTotalBadge');
+      const resultCountEl = document.getElementById('archiveResultCount');
+      if (!container) return;
+
+      const allArchived = getNormalizedArchivedTasks();
+      if (badge) badge.textContent = `${allArchived.length} Completed`;
+
+      const query = (document.getElementById('archiveSearchInput')?.value || '').toLowerCase().trim();
+
+      // Filter by search query
+      let filtered = allArchived.filter(t => {
+        if (!query) return true;
+        const titleMatch = (t.title || '').toLowerCase().includes(query);
+        const microMatch = (t.microStep || '').toLowerCase().includes(query);
+        const dateMatch = (t.completedDate || '').toLowerCase().includes(query);
+        return titleMatch || microMatch || dateMatch;
+      });
+
+      // Filter by Category Chip
+      if (currentArchiveFilter === 'MIT') {
+        filtered = filtered.filter(t => t.type === 'MIT');
+      } else if (currentArchiveFilter === 'LIT') {
+        filtered = filtered.filter(t => t.type === 'LIT');
+      } else if (currentArchiveFilter === 'calendar') {
+        filtered = filtered.filter(t => t.fromCalendar);
+      } else if (currentArchiveFilter === 'recurring') {
+        filtered = filtered.filter(t => t.recurring);
+      }
+
+      if (resultCountEl) {
+        resultCountEl.textContent = `Showing ${filtered.length} of ${allArchived.length} items`;
+      }
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="py-12 text-center space-y-2 border border-dashed dark:border-slate-800 border-slate-300 rounded-2xl">
+            <span class="text-3xl block">📭</span>
+            <div class="text-xs font-semibold dark:text-slate-300 text-slate-700">No archived completed tasks found</div>
+            <p class="text-[11px] text-slate-400 max-w-sm mx-auto">
+              ${query ? `No items matched "${query}". Try another search term or filter.` : 'Tasks completed in previous days automatically move here so your active day is always clean.'}
+            </p>
+          </div>
+        `;
+        return;
+      }
+
+      // Group tasks by completedDate (descending)
+      const groups = {};
+      filtered.forEach(t => {
+        const d = t.completedDate || (t.completedAtISO ? t.completedAtISO.slice(0, 10) : 'Earlier');
+        if (!groups[d]) groups[d] = [];
+        groups[d].push(t);
+      });
+
+      const sortedDates = Object.keys(groups).sort((a, b) => b.localeCompare(a));
+      const todayKey = getLocalDateString();
+
+      const html = sortedDates.map(dateKey => {
+        const items = groups[dateKey];
+        let displayDate = dateKey;
+        if (dateKey === todayKey) {
+          displayDate = `Today (${dateKey})`;
+        } else {
+          try {
+            const parsed = new Date(dateKey + 'T12:00:00');
+            displayDate = parsed.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+          } catch (e) {}
+        }
+
+        const cardsHtml = items.map(t => {
+          const isMit = t.type === 'MIT';
+          const priorityPill = isMit 
+            ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">🔥 MIT</span>`
+            : `<span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30">📋 LIT</span>`;
+          const energyBadge = { sharp: '🔴 Peak', steady: '🟡 Rebound', fried: '🟢 Trough' }[t.energy] || '🟡 Rebound';
+          const calBadge = t.fromCalendar ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-mono border border-indigo-400/40 bg-indigo-500/10 text-indigo-500">🗓️ GCal</span>` : '';
+          const recBadge = t.recurring ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-mono border border-emerald-400/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">🔁 Routine</span>` : '';
+
+          let timeStr = '';
+          if (t.completedAtISO) {
+            try {
+              const dt = new Date(t.completedAtISO);
+              timeStr = dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+            } catch (e) {}
+          }
+
+          return `
+            <div class="p-3 rounded-2xl dark:bg-slate-950/80 bg-slate-50 border dark:border-slate-800 border-slate-200 transition hover:border-indigo-500/40 flex items-start justify-between gap-3 shadow-sm">
+              <div class="flex items-start gap-2.5 min-w-0">
+                <span class="text-emerald-500 text-sm mt-0.5 shrink-0">✓</span>
+                <div class="min-w-0">
+                  <div class="flex flex-wrap items-center gap-1.5">
+                    <span class="text-xs font-semibold dark:text-slate-200 text-slate-800 line-through opacity-85">${t.title}</span>
+                    ${priorityPill}
+                    <span class="text-[10px] px-1.5 py-0.5 rounded border dark:border-slate-800 border-slate-200 text-slate-500 dark:text-slate-400">${energyBadge}</span>
+                    <span class="text-[10px] font-mono text-slate-400">${t.duration || 30}m</span>
+                    ${calBadge}
+                    ${recBadge}
+                  </div>
+                  ${t.microStep ? `<p class="text-[11px] text-emerald-600 dark:text-emerald-400 mt-0.5 truncate">↳ 2m Starter: ${t.microStep}</p>` : ''}
+                  ${timeStr ? `<div class="text-[10px] text-slate-400 font-mono mt-1">Completed at ${timeStr}</div>` : ''}
+                </div>
+              </div>
+
+              <div class="flex items-center gap-1.5 shrink-0">
+                <button type="button" onclick="restoreArchivedTask('${t.id}')" class="px-2.5 py-1 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 text-[10px] font-semibold transition flex items-center gap-1" title="Pull back into today's active schedule">
+                  <span>↩</span> <span>Restore</span>
+                </button>
+                <button type="button" onclick="deleteArchivedTask('${t.id}')" class="p-1 text-slate-400 hover:text-rose-500 text-xs transition" title="Delete permanently from archive">
+                  ✕
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        return `
+          <div class="space-y-2">
+            <div class="flex items-center gap-2 sticky top-0 bg-white dark:bg-slate-900 py-1 z-10">
+              <span class="text-[11px] font-mono font-semibold uppercase tracking-wider text-slate-400">📅 ${displayDate}</span>
+              <span class="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-mono">${items.length} done</span>
+              <div class="flex-1 h-px bg-slate-200 dark:bg-slate-800"></div>
+            </div>
+            <div class="space-y-2">
+              ${cardsHtml}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      container.innerHTML = html;
+    }
+
+    function restoreArchivedTask(taskId) {
+      const normalized = getNormalizedArchivedTasks();
+      const target = normalized.find(x => String(x.id) === String(taskId));
+      if (!target) return;
+
+      state.archivedTasks = normalized.filter(x => String(x.id) !== String(taskId));
+
+      const todayKey = getLocalDateString();
+      const restored = {
+        id: 'restored_' + Date.now(),
+        title: target.title,
+        microStep: target.microStep || '',
+        type: target.type || 'LIT',
+        energy: target.energy || 'steady',
+        duration: target.duration || 30,
+        completed: false,
+        recurring: !!target.recurring,
+        fromCalendar: !!target.fromCalendar,
+        locked: false,
+        fixedStartMin: null,
+        startMin: null,
+        endMin: null,
+        scheduledDate: todayKey,
+        subtasks: target.subtasks ? JSON.parse(JSON.stringify(target.subtasks)) : []
+      };
+
+      state.tasks.push(restored);
+      saveState();
+      recalculateSchedule();
+      renderArchiveList();
+      showRippleNotice(`↩ Restored "${target.title}" to today's active schedule!`);
+    }
+
+    function deleteArchivedTask(taskId) {
+      if (!confirm('Permanently remove this task from archive?')) return;
+      const normalized = getNormalizedArchivedTasks();
+      state.archivedTasks = normalized.filter(x => String(x.id) !== String(taskId));
+      saveState();
+      renderArchiveList();
+      showRippleNotice('🗑️ Task removed from archive.');
+    }
+
+    function exportArchiveJSON() {
+      const tasks = getNormalizedArchivedTasks();
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(tasks, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `flow-archived-tasks-${getLocalDateString()}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
     }
 
     // --- GEMINI AI & SMART ASSISTANT FUNCTIONS ---
@@ -7354,6 +7961,11 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
           if (existing) {
             existing.id = gcalId;
             existing.fromCalendar = true;
+            if (existing.type === 'FIXED' || !existing.type) {
+              const pInfo = classifyTaskPriority(title, duration, 'steady');
+              existing.type = pInfo.type;
+              existing.needsReview = pInfo.needsReview;
+            }
             if (existing.duration !== duration || existing.title !== title) {
               existing.duration = duration;
               existing.title = title;
@@ -7368,11 +7980,13 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
               updatedCount++;
             }
           } else {
+            const pInfo = classifyTaskPriority(title, duration, 'steady');
             state.tasks.push({
               id: gcalId,
               title,
               microStep,
-              type: 'FIXED',
+              type: pInfo.type,
+              needsReview: pInfo.needsReview,
               fromCalendar: true,
               locked: false,
               energy: 'steady',
@@ -7694,12 +8308,14 @@ Format strictly as JSON array of objects with keys:
           }
 
           const title = l.replace(timeMatch[0], '').replace(/^[:\s\-–]+/, '').trim() || 'Calendar Event';
+          const pInfo = classifyTaskPriority(title, duration, 'steady');
 
           state.tasks.push({
             id: 't_' + Date.now() + '_' + added,
             title,
             microStep: `Log in / arrive on time & review agenda`,
-            type: 'FIXED',
+            type: pInfo.type,
+            needsReview: pInfo.needsReview,
             fromCalendar: true,
             locked: false,
             energy: 'steady',
@@ -7726,7 +8342,7 @@ Format strictly as JSON array of objects with keys:
       }
     }
 
-    window.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeFocusModal(); closeChronotypeModal(); closeGitHubModal(); closeGeminiModal(); closeRecurrenceModal(); closeSoundscapeModal(); closeEditTaskModal(); } });
+    window.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeFocusModal(); closeChronotypeModal(); closeGitHubModal(); closeGeminiModal(); closeRecurrenceModal(); closeSoundscapeModal(); closeEditTaskModal(); closeArchiveModal(); } });
     window.addEventListener('DOMContentLoaded', init);
   </script>
 </body>
