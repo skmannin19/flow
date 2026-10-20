@@ -5064,6 +5064,9 @@
         };
       }
 
+      const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+      const roundedNowMin = Math.ceil(nowMin / 5) * 5;
+
       const smart = generateSmartBreakdown(title, type, energy);
       state.tasks.push({
         id: 't_' + Date.now(),
@@ -5072,7 +5075,9 @@
         type,
         energy,
         duration,
-        fixedStartMin: type === 'FIXED' ? 840 : null,
+        fixedStartMin: type === 'FIXED' ? Math.max(540, roundedNowMin) : null,
+        startMin: null,
+        endMin: null,
         locked: false,
         completed: false,
         recurring,
@@ -6172,7 +6177,11 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       document.getElementById('editTaskEnergy').value = t.energy || 'steady';
       document.getElementById('editTaskDuration').value = t.duration || 30;
 
-      const currentStart = isTaskLocked(t) ? (t.fixedStartMin ?? t.startMin ?? 540) : (t.startMin ?? 540);
+      const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+      const roundedNowMin = Math.ceil(nowMin / 5) * 5;
+      const currentStart = isTaskLocked(t) 
+        ? (t.fixedStartMin ?? t.startMin ?? roundedNowMin) 
+        : (t.startMin != null && t.startMin >= roundedNowMin ? t.startMin : roundedNowMin);
       document.getElementById('editTaskStartTime').value = minToTimeInputValue(currentStart);
 
       const lockedCheck = document.getElementById('editTaskLocked');
@@ -6294,8 +6303,11 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         t.endMin = newStartMin + newDuration;
       } else {
         t.fixedStartMin = null;
-        t.startMin = newStartMin;
-        t.endMin = newStartMin + newDuration;
+        const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+        const roundedNowMin = Math.ceil(nowMin / 5) * 5;
+        const validStart = (newStartMin != null && newStartMin >= roundedNowMin) ? newStartMin : roundedNowMin;
+        t.startMin = validStart;
+        t.endMin = validStart + newDuration;
       }
 
       // If start time was explicitly updated, ripple subsequent flexible tasks
@@ -6387,11 +6399,16 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         return true;
       });
 
-      // 2. Sanitize any previously overflowed or broken start times from previous runs
+      // 2. Sanitize any previously overflowed, broken, or historical start times from previous runs
       state.tasks.forEach(t => {
-        if (!t.completed && !isTaskLocked(t) && !t.overrideEvening) {
+        if (!t.completed && !isTaskLocked(t)) {
+          // If in the past (historical time block) and flexible: clear startMin so it is re-slotted into current/future time or deferred
+          if (t.startMin != null && t.startMin < roundedNowMin && !t.overrideEvening) {
+            t.startMin = null;
+            t.endMin = null;
+          }
           // If pushed past 10:30 PM (1350m) or corrupted past midnight:
-          if (t.startMin != null && (t.startMin >= 1350 || t.endMin > 1440)) {
+          if (!t.overrideEvening && t.startMin != null && (t.startMin >= 1350 || t.endMin > 1440)) {
             t.startMin = null;
             t.endMin = null;
           }
@@ -6419,16 +6436,18 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
 
       const flexible = activeTasks.filter(t => !isTaskLocked(t));
 
-      // 3. Separate preserved tasks (completed or already scheduled in a valid daytime slot) from unassigned tasks
+      // 3. Separate preserved tasks (completed or already scheduled in a valid upcoming slot) from unassigned tasks
       const preservedTasks = [];
       const unassignedTasks = [];
 
       flexible.forEach(t => {
         if (t.completed && t.startMin != null) {
           preservedTasks.push(t);
-        } else if (!t.completed && t.startMin != null && t.startMin < 1350) {
+        } else if (!t.completed && t.startMin != null && t.startMin >= roundedNowMin && (t.startMin < 1350 || t.overrideEvening)) {
           preservedTasks.push(t);
         } else {
+          t.startMin = null;
+          t.endMin = null;
           unassignedTasks.push(t);
         }
       });
@@ -6765,8 +6784,11 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
     function slideTaskTime(taskId, deltaMin) {
       const t = state.tasks.find(x => String(x.id) === String(taskId));
       if (!t) return;
-      if (t.startMin == null) t.startMin = 540;
-      const newStart = Math.max(360, Math.min(1380 - (t.duration || 30), t.startMin + deltaMin));
+      const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+      const roundedNowMin = Math.ceil(nowMin / 5) * 5;
+      if (t.startMin == null || (!isTaskLocked(t) && t.startMin < roundedNowMin)) t.startMin = roundedNowMin;
+      const minBound = isTaskLocked(t) ? 360 : roundedNowMin;
+      const newStart = Math.max(minBound, Math.min(1380 - (t.duration || 30), t.startMin + deltaMin));
       t.startMin = newStart;
       t.endMin = newStart + (t.duration || 30);
       t.manuallyPositioned = true;
