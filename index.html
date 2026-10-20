@@ -224,7 +224,7 @@
         </div>
       </div>
 
-      <div id="waveSegmentsContainer" class="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full md:w-auto flex-1 max-w-2xl text-[11px]"></div>
+      <div id="waveSegmentsContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 w-full md:w-auto flex-1 max-w-3xl text-[11px]"></div>
 
       <button onclick="openChronotypeModal('quiz')" class="text-xs font-mono text-indigo-600 dark:text-indigo-400 hover:underline shrink-0 font-medium">
         Recalibrate Wave
@@ -1600,10 +1600,74 @@
     const GH_CONFIG_KEY = 'flowstate_os_github_config';
 
     const CHRONOTYPES = {
-      lion: { id: 'lion', name: 'Early Lion', emoji: '🦁', tagline: 'Dawn Analytical Peak • Early Afternoon Trough', peakStart: 450, peakEnd: 690, dipStart: 780, dipEnd: 900, reboundStart: 900, reboundEnd: 1050 },
-      bear: { id: 'bear', name: 'Solar Bear', emoji: '🐻', tagline: 'Mid-Morning Peak • Classic 2:00 PM Trough • Late-Day Rebound', peakStart: 540, peakEnd: 780, dipStart: 840, dipEnd: 930, reboundStart: 930, reboundEnd: 1080 },
-      wolf: { id: 'wolf', name: 'Evening Wolf', emoji: '🐺', tagline: 'Slow Morning Ramp • Afternoon & Evening Creative Surge', peakStart: 690, peakEnd: 930, dipStart: 510, dipEnd: 660, reboundStart: 960, reboundEnd: 1140 },
-      dolphin: { id: 'dolphin', name: 'Burst Dolphin', emoji: '🐬', tagline: 'Late-Morning Precision Burst • Midday Recovery • Late Rebound', peakStart: 570, peakEnd: 750, dipStart: 810, dipEnd: 930, reboundStart: 930, reboundEnd: 1080 }
+      lion: {
+        id: 'lion',
+        name: 'Early Lion',
+        emoji: '🦁',
+        tagline: 'Dawn Awakening • Morning Analytical Peak • Early Afternoon Trough • Evening Wind-Down',
+        wakeMin: 330,          // 5:30 AM
+        rampStart: 330,        // 5:30 AM
+        rampEnd: 450,          // 7:30 AM
+        peakStart: 450,        // 7:30 AM
+        peakEnd: 720,          // 12:00 PM
+        dipStart: 720,         // 12:00 PM
+        dipEnd: 930,           // 3:30 PM
+        reboundStart: 930,     // 3:30 PM
+        reboundEnd: 1140,      // 7:00 PM
+        windDownStart: 1140,   // 7:00 PM
+        windDownEnd: 1320      // 10:00 PM
+      },
+      bear: {
+        id: 'bear',
+        name: 'Solar Bear',
+        emoji: '🐻',
+        tagline: 'Solar Alignment • Mid-Morning Peak • Classic 1:00 PM Trough • Late-Day Rebound',
+        wakeMin: 420,          // 7:00 AM
+        rampStart: 420,        // 7:00 AM
+        rampEnd: 540,          // 9:00 AM
+        peakStart: 540,        // 9:00 AM
+        peakEnd: 780,          // 1:00 PM
+        dipStart: 780,         // 1:00 PM
+        dipEnd: 960,           // 4:00 PM
+        reboundStart: 960,     // 4:00 PM
+        reboundEnd: 1200,      // 8:00 PM
+        windDownStart: 1200,   // 8:00 PM
+        windDownEnd: 1380      // 11:00 PM
+      },
+      wolf: {
+        id: 'wolf',
+        name: 'Evening Wolf',
+        emoji: '🐺',
+        tagline: 'Gentle Morning Warm-up (8a–1:30p) • Afternoon Rest Trough (1:30p–4:30p) • Sunset Peak Surge (4:30p–9p) • Night Rebound (9p–12a)',
+        wakeMin: 480,          // 8:00 AM
+        rampStart: 480,        // 8:00 AM
+        rampEnd: 810,          // 1:30 PM
+        dipStart: 810,         // 1:30 PM
+        dipEnd: 990,           // 4:30 PM
+        peakStart: 990,        // 4:30 PM
+        peakEnd: 1260,         // 9:00 PM
+        reboundStart: 1260,    // 9:00 PM
+        reboundEnd: 1440,      // 12:00 AM
+        windDownStart: 1440,   // 12:00 AM
+        windDownEnd: 1560      // 2:00 AM
+      },
+      dolphin: {
+        id: 'dolphin',
+        name: 'Burst Dolphin',
+        emoji: '🐬',
+        tagline: 'Late-Morning Precision Burst • Midday Recovery Trough • Evening Second Wind',
+        wakeMin: 420,          // 7:00 AM
+        rampStart: 420,        // 7:00 AM
+        rampEnd: 600,          // 10:00 AM
+        peakStart: 600,        // 10:00 AM
+        peakEnd: 810,          // 1:30 PM
+        dipStart: 810,         // 1:30 PM
+        dipEnd: 990,           // 4:30 PM
+        reboundStart: 990,     // 4:30 PM
+        reboundEnd: 1230,      // 8:30 PM
+        windDownStart: 1230,   // 8:30 PM
+        windDownEnd: 1410      // 11:30 PM
+      }
     };
 
     const DEFAULT_TASKS = [
@@ -1679,9 +1743,13 @@
       },
       chronotype: {
         id: 'wolf', name: 'Evening Wolf', emoji: '🐺',
-        tagline: 'Slow Morning Ramp • Afternoon & Evening Creative Surge',
-        peakStart: 690, peakEnd: 930, dipStart: 510, dipEnd: 660,
-        reboundStart: 960, reboundEnd: 1140,
+        tagline: 'Gentle Morning Warm-up (8a–1:30p) • Afternoon Rest Trough (1:30p–4:30p) • Sunset Peak Surge (4:30p–9p) • Night Rebound (9p–12a)',
+        wakeMin: 480,
+        rampStart: 480, rampEnd: 810,
+        dipStart: 810, dipEnd: 990,
+        peakStart: 990, peakEnd: 1260,
+        reboundStart: 1260, reboundEnd: 1440,
+        windDownStart: 1440, windDownEnd: 1560,
         lastCalibratedISO: '2026-10-19T22:00:00.000Z', quarterlyPromptDismissed: false
       },
       analytics: {
@@ -1763,8 +1831,8 @@
         }
       }
 
-      // Ensure active chronotype is Evening Wolf if missing or defaulted to bear
-      if (!state.chronotype || state.chronotype.id === 'bear') {
+      // Ensure active chronotype is Evening Wolf with full-day mapping
+      if (!state.chronotype || state.chronotype.id === 'bear' || state.chronotype.dipStart === 510) {
         state.chronotype = { ...CHRONOTYPES.wolf, lastCalibratedISO: state.chronotype?.lastCalibratedISO || new Date().toISOString() };
       }
 
@@ -1784,6 +1852,27 @@
           subtasks: []
         });
       }
+
+      // Upgrade any tasks with outdated generic 'Draft rough framework' microStep
+      state.tasks.forEach(t => {
+        const titleLower = (t.title || '').toLowerCase();
+        if (titleLower.includes('nail') || titleLower.includes('polish')) {
+          t.microStep = 'Gather nail polish, remover, file & buffer at clean table';
+          if (!t.subtasks || t.subtasks.length === 0) {
+            t.subtasks = [
+              { text: 'Remove old polish & shape/file nails to desired length', done: false },
+              { text: 'Apply protective base coat & 2 thin color layers', done: false },
+              { text: 'Apply quick-dry top coat & allow 15m to fully set', done: false }
+            ];
+          }
+        } else if (!t.microStep || t.microStep === 'Draft rough framework' || t.microStep.includes('Draft rough framework')) {
+          const smart = generateSmartBreakdown(t.title, t.type, t.energy);
+          t.microStep = smart.microStep;
+          if (!t.subtasks || t.subtasks.length === 0) {
+            t.subtasks = smart.subtasks;
+          }
+        }
+      });
 
       // Initialize Theme & Audio
       applyTheme(state.theme || 'system');
@@ -4630,18 +4719,35 @@
       const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
       const c = state.chronotype;
       let inferred = 'steady';
-      if (nowMins >= c.peakStart && nowMins < c.peakEnd) inferred = 'sharp';
-      else if (nowMins >= c.dipStart && nowMins < c.dipEnd) inferred = 'fried';
-      else if (nowMins >= c.reboundStart && nowMins < c.reboundEnd) inferred = 'steady';
+      if (nowMins >= c.peakStart && nowMins < c.peakEnd) {
+        inferred = 'sharp';
+      } else if (nowMins >= c.dipStart && nowMins < c.dipEnd) {
+        inferred = 'fried';
+      } else if (nowMins >= c.reboundStart && nowMins < c.reboundEnd) {
+        inferred = 'steady';
+      } else if (c.rampStart !== undefined && nowMins >= c.rampStart && nowMins < c.rampEnd) {
+        inferred = 'steady';
+      } else {
+        inferred = 'fried';
+      }
       setEnergy(inferred, false);
     }
 
     function getCircadianPhaseForMinute(min) {
       const c = state.chronotype;
-      if (min >= c.peakStart && min < c.peakEnd) return { zone: 'PEAK', label: '🔥 Peak Wave', color: 'text-rose-600 dark:text-rose-300 bg-rose-500/15 border-rose-500/30' };
-      if (min >= c.dipStart && min < c.dipEnd) return { zone: 'DIP', label: '🌊 Trough Window', color: 'text-emerald-600 dark:text-emerald-300 bg-emerald-500/15 border-emerald-500/30' };
-      if (min >= c.reboundStart && min < c.reboundEnd) return { zone: 'REBOUND', label: '🔋 Rebound Wave', color: 'text-amber-600 dark:text-amber-300 bg-amber-500/15 border-amber-500/30' };
-      return { zone: 'RAMP', label: '☀️ Transition', color: 'text-slate-500 dark:text-slate-400 bg-slate-200 dark:bg-slate-800 border-slate-300 dark:border-slate-700' };
+      if (min >= c.peakStart && min < c.peakEnd) {
+        return { zone: 'PEAK', label: '🔥 Peak Wave', color: 'text-rose-600 dark:text-rose-300 bg-rose-500/15 border-rose-500/30' };
+      }
+      if (min >= c.dipStart && min < c.dipEnd) {
+        return { zone: 'DIP', label: '🌊 Trough Window', color: 'text-emerald-600 dark:text-emerald-300 bg-emerald-500/15 border-emerald-500/30' };
+      }
+      if (min >= c.reboundStart && min < c.reboundEnd) {
+        return { zone: 'REBOUND', label: '🔋 Rebound Wave', color: 'text-amber-600 dark:text-amber-300 bg-amber-500/15 border-amber-500/30' };
+      }
+      if (c.rampStart !== undefined && min >= c.rampStart && min < c.rampEnd) {
+        return { zone: 'RAMP', label: '☀️ Morning Warm-up', color: 'text-blue-600 dark:text-blue-300 bg-blue-500/15 border-blue-500/30' };
+      }
+      return { zone: 'WIND_DOWN', label: '🌙 Evening Wind-down', color: 'text-slate-500 dark:text-slate-400 bg-slate-200 dark:bg-slate-800 border-slate-300 dark:border-slate-700' };
     }
 
     function renderChronotypeUI() {
@@ -4659,20 +4765,45 @@
       document.getElementById('lastCalibratedText').textContent = `Last calibrated: ${calDate.toLocaleDateString()}`;
       document.getElementById('nextQuarterlyReviewText').textContent = `Next review: ${nextDate.toLocaleDateString()}`;
 
-      document.getElementById('waveSegmentsContainer').innerHTML = `
-        <div class="px-3 py-2 rounded-xl bg-rose-500/10 border border-rose-500/30 flex flex-col justify-between">
-          <div class="flex items-center justify-between"><span class="font-semibold text-rose-600 dark:text-rose-300">🔥 Peak Wave</span><span class="font-mono text-[10px] text-rose-500 dark:text-rose-200">${formatMinShort(c.peakStart)}–${formatMinShort(c.peakEnd)}</span></div>
-          <span class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Schedule: Deep MITs</span>
+      const rampHtml = c.rampStart !== undefined ? `
+        <div class="px-3 py-2 rounded-xl bg-blue-500/10 border border-blue-500/30 flex flex-col justify-between">
+          <div class="flex items-center justify-between">
+            <span class="font-semibold text-blue-600 dark:text-blue-300">☀️ Morning Warm-up</span>
+            <span class="font-mono text-[10px] text-blue-500 dark:text-blue-200">${formatMinShort(c.rampStart)}–${formatMinShort(c.rampEnd)}</span>
+          </div>
+          <span class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Gentle Start & Admin</span>
         </div>
+      ` : '';
+
+      const dipHtml = `
         <div class="px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex flex-col justify-between">
           <div class="flex items-center justify-between"><span class="font-semibold text-emerald-600 dark:text-emerald-300">🌊 Trough Window</span><span class="font-mono text-[10px] text-emerald-500 dark:text-emerald-200">${formatMinShort(c.dipStart)}–${formatMinShort(c.dipEnd)}</span></div>
           <span class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Schedule: Rest & LITs</span>
         </div>
+      `;
+
+      const peakHtml = `
+        <div class="px-3 py-2 rounded-xl bg-rose-500/10 border border-rose-500/30 flex flex-col justify-between">
+          <div class="flex items-center justify-between"><span class="font-semibold text-rose-600 dark:text-rose-300">🔥 Peak Wave</span><span class="font-mono text-[10px] text-rose-500 dark:text-rose-200">${formatMinShort(c.peakStart)}–${formatMinShort(c.peakEnd)}</span></div>
+          <span class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Schedule: Deep MITs</span>
+        </div>
+      `;
+
+      const reboundHtml = `
         <div class="px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 flex flex-col justify-between">
           <div class="flex items-center justify-between"><span class="font-semibold text-amber-600 dark:text-amber-300">🔋 Rebound Wave</span><span class="font-mono text-[10px] text-amber-500 dark:text-amber-200">${formatMinShort(c.reboundStart)}–${formatMinShort(c.reboundEnd)}</span></div>
           <span class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Schedule: Steady</span>
         </div>
       `;
+
+      const cards = [
+        { start: c.rampStart || 0, html: rampHtml },
+        { start: c.dipStart, html: dipHtml },
+        { start: c.peakStart, html: peakHtml },
+        { start: c.reboundStart, html: reboundHtml }
+      ].sort((a, b) => a.start - b.start);
+
+      document.getElementById('waveSegmentsContainer').innerHTML = cards.map(x => x.html).join('');
 
       document.getElementById('presetCardsContainer').innerHTML = Object.values(CHRONOTYPES).map(arch => `
         <div onclick="applyChronotypePreset('${arch.id}')" class="p-3.5 rounded-2xl border ${c.id === arch.id ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30' : 'dark:border-slate-800 border-slate-200 dark:bg-slate-950/80 bg-slate-50 hover:border-slate-400'} cursor-pointer transition">
@@ -4747,6 +4878,8 @@
       let offset = shiftMod === 'early_shift' ? -30 : (shiftMod === 'late_shift' ? 30 : 0);
       pendingQuizChronotype = {
         ...base,
+        rampStart: base.rampStart ? base.rampStart + offset : base.rampStart,
+        rampEnd: base.rampEnd ? base.rampEnd + offset : base.rampEnd,
         peakStart: base.peakStart + offset,
         peakEnd: base.peakEnd + offset,
         dipStart: base.dipStart + offset,
@@ -5257,14 +5390,29 @@
       const rec = getRecommendedTask();
       const icons = { sharp: '🔴', steady: '🟡', fried: '🟢' };
       const c = state.chronotype;
-      const labels = {
-        sharp: `${c.emoji} ${c.name} Peak Wave (${formatMinShort(c.peakStart)}–${formatMinShort(c.peakEnd)})`,
-        steady: `${c.emoji} ${c.name} Rebound Wave (${formatMinShort(c.reboundStart)}–${formatMinShort(c.reboundEnd)})`,
-        fried: `${c.emoji} ${c.name} Trough Window (${formatMinShort(c.dipStart)}–${formatMinShort(c.dipEnd)})`
-      };
-      document.getElementById('recIcon').textContent = icons[state.energy];
-      document.getElementById('recEnergyStatus').textContent = labels[state.energy];
-      if (!rec) { document.getElementById('recTaskTitle').textContent = '🎉 All scheduled work blocks complete!'; document.getElementById('recSubStep').textContent = 'Enjoy your evening wind-down.'; return; }
+      const now = new Date();
+      const nowMins = now.getHours() * 60 + now.getMinutes();
+      const phase = getCircadianPhaseForMinute(nowMins);
+
+      let phaseLabel = `${c.emoji} ${c.name} • ${phase.label}`;
+      if (phase.zone === 'PEAK') phaseLabel += ` (${formatMinShort(c.peakStart)}–${formatMinShort(c.peakEnd)})`;
+      else if (phase.zone === 'DIP') phaseLabel += ` (${formatMinShort(c.dipStart)}–${formatMinShort(c.dipEnd)})`;
+      else if (phase.zone === 'REBOUND') phaseLabel += ` (${formatMinShort(c.reboundStart)}–${formatMinShort(c.reboundEnd)})`;
+      else if (phase.zone === 'RAMP' && c.rampStart !== undefined) phaseLabel += ` (${formatMinShort(c.rampStart)}–${formatMinShort(c.rampEnd)})`;
+      else if (phase.zone === 'WIND_DOWN') phaseLabel += ` (Night Rest)`;
+
+      if (state.manualEnergyOverride) {
+        const bandwidthNames = { sharp: 'Sharp', steady: 'Steady', fried: 'Fried' };
+        phaseLabel += ` • Manual Bandwidth: ${bandwidthNames[state.energy] || state.energy}`;
+      }
+
+      document.getElementById('recIcon').textContent = icons[state.energy] || '🟡';
+      document.getElementById('recEnergyStatus').textContent = phaseLabel;
+      if (!rec) {
+        document.getElementById('recTaskTitle').textContent = '🎉 All scheduled work blocks complete!';
+        document.getElementById('recSubStep').textContent = 'Enjoy your evening wind-down.';
+        return;
+      }
       document.getElementById('recTaskTitle').textContent = rec.title;
       document.getElementById('recSubStep').textContent = `👉 2-Min Starter Step: ${rec.microStep || 'Open workspace & set 10m timer'}`;
     }
