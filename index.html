@@ -1466,6 +1466,50 @@
     </div>
   </div>
 
+  <!-- TASK COMPLETION TIMING CONFIRMATION MODAL -->
+  <div id="completionTimingModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden items-center justify-center p-4 overflow-y-auto">
+    <div class="dark:bg-slate-900 bg-white border dark:border-slate-800 border-slate-200 rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl space-y-5 my-8">
+      <div class="flex items-start justify-between gap-4 border-b dark:border-slate-800 border-slate-200 pb-4">
+        <div class="flex items-center gap-3">
+          <span class="text-3xl" id="completionModalIcon">⏱️</span>
+          <div>
+            <h3 class="text-base font-bold dark:text-white text-slate-900" id="completionModalTitle">Task Completion Timing</h3>
+            <p class="text-xs dark:text-slate-400 text-slate-500 mt-0.5" id="completionModalSubtitle">Confirm when this task was actually finished so your timeline stays accurate.</p>
+          </div>
+        </div>
+        <button type="button" onclick="cancelCompletionTiming()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-lg transition">✕</button>
+      </div>
+
+      <div class="p-3.5 rounded-2xl dark:bg-slate-950/70 bg-slate-50 border dark:border-slate-800 border-slate-200 space-y-1">
+        <div class="text-xs font-bold dark:text-white text-slate-900" id="completionTaskName">Task Title</div>
+        <div class="text-[11px] text-slate-500 dark:text-slate-400 font-mono" id="completionTaskScheduledInfo">Original schedule: 9:00 AM – 9:45 AM</div>
+      </div>
+
+      <div class="space-y-2.5" id="completionModalOptions">
+        <!-- Injected dynamically based on whether late completion or early completion -->
+      </div>
+
+      <!-- Optional Custom Time Picker -->
+      <div id="completionCustomTimeRow" class="pt-2 border-t dark:border-slate-800 border-slate-200 flex items-center justify-between gap-3 text-xs">
+        <label class="font-medium dark:text-slate-300 text-slate-700 flex items-center gap-1.5">
+          <span>🕒</span> Custom Finished Time:
+        </label>
+        <div class="flex items-center gap-2">
+          <input type="time" id="completionCustomTimeInput" class="dark:bg-slate-950 bg-slate-100 border dark:border-slate-700 border-slate-300 rounded-lg px-2.5 py-1 text-xs font-mono dark:text-white text-slate-900 focus:outline-none" />
+          <button type="button" onclick="applyCustomCompletionTime()" class="px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition">
+            Apply
+          </button>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between pt-3 border-t dark:border-slate-800 border-slate-200 text-xs">
+        <button type="button" onclick="cancelCompletionTiming()" class="px-3 py-1.5 rounded-xl text-xs dark:text-slate-400 text-slate-600 hover:dark:text-slate-200 hover:text-slate-900 transition">
+          Cancel (Keep Unfinished)
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- CHRONOTYPE SHIFT RECALIBRATION POPUP MODAL -->
   <div id="chronotypeShiftModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden items-center justify-center p-4 overflow-y-auto">
     <div class="dark:bg-slate-900 bg-white border dark:border-indigo-500/40 border-indigo-200 rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl space-y-5 my-8">
@@ -6152,23 +6196,273 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
     }
 
     function toggleSubtask(taskId, idx) { const t = state.tasks.find(x => String(x.id) === String(taskId)); if (t && t.subtasks[idx]) { t.subtasks[idx].done = !t.subtasks[idx].done; saveState(); renderPriorityLists(); } }
+    let activeCompletionTimingTaskId = null;
+
     function toggleTaskComplete(taskId) { 
       const t = state.tasks.find(x => String(x.id) === String(taskId)); 
-      if (t) { 
-        t.completed = !t.completed; 
-        if (t.completed) {
-          t.completedAtISO = new Date().toISOString();
-          t.completedDate = getLocalDateString();
-          trackTaskLifecycle(t, 'completed');
-          rippleShiftScheduleToNow(false);
-        } else {
-          t.completedAtISO = null;
-          t.completedDate = null;
-        }
+      if (!t) return;
+
+      // 1. If currently completed, uncomplete it immediately
+      if (t.completed) {
+        t.completed = false;
+        t.completedAtISO = null;
+        t.completedDate = null;
         saveState(); 
         recalculateSchedule(); 
         updateRecommendationBanner(); 
-      } 
+        return;
+      }
+
+      // 2. Marking as completed: evaluate timing
+      const now = new Date();
+      const nowMin = now.getHours() * 60 + now.getMinutes();
+      const roundedNowMin = Math.ceil(nowMin / 5) * 5;
+
+      // Case A: Unscheduled task (no start/end min, e.g. from queue or deferred)
+      if (t.startMin == null || t.endMin == null) {
+        t.endMin = roundedNowMin;
+        t.startMin = Math.max(0, roundedNowMin - (t.duration || 30));
+        t.manuallyPositioned = true;
+        t.completed = true;
+        t.completedAtISO = now.toISOString();
+        t.completedDate = getLocalDateString();
+        trackTaskLifecycle(t, 'completed');
+        saveState();
+        recalculateSchedule();
+        updateRecommendationBanner();
+        showRippleNotice(`✓ Completed "${t.title}" (slotted ending at ${formatMinToTime(roundedNowMin)}).`);
+        return;
+      }
+
+      // Case 1: Task scheduled earlier in the day and marked completed at / near its end time
+      // (within 15 minutes of scheduled end, and task started prior to now + 15m)
+      if (nowMin <= t.endMin + 15 && t.startMin <= nowMin + 15) {
+        t.completed = true;
+        t.completedAtISO = now.toISOString();
+        t.completedDate = getLocalDateString();
+        trackTaskLifecycle(t, 'completed');
+        saveState();
+        recalculateSchedule();
+        updateRecommendationBanner();
+        showRippleNotice(`✓ Completed "${t.title}" at scheduled time (${formatMinToTime(t.startMin)} – ${formatMinToTime(t.endMin)}).`);
+        return;
+      }
+
+      // Case 2: Task was due earlier and completed a bit after the original end time
+      if (nowMin > t.endMin + 15) {
+        openCompletionTimingModal(taskId, 'late');
+        return;
+      }
+
+      // Case 3: Future task completed earlier than original due time
+      if (t.startMin > nowMin + 15) {
+        openCompletionTimingModal(taskId, 'early');
+        return;
+      }
+
+      // General fallback
+      t.completed = true;
+      t.completedAtISO = now.toISOString();
+      t.completedDate = getLocalDateString();
+      trackTaskLifecycle(t, 'completed');
+      saveState();
+      recalculateSchedule();
+      updateRecommendationBanner();
+    }
+
+    function openCompletionTimingModal(taskId, mode) {
+      activeCompletionTimingTaskId = taskId;
+      const t = state.tasks.find(x => String(x.id) === String(taskId));
+      if (!t) return;
+
+      const modal = document.getElementById('completionTimingModal');
+      const iconEl = document.getElementById('completionModalIcon');
+      const titleEl = document.getElementById('completionModalTitle');
+      const subtitleEl = document.getElementById('completionModalSubtitle');
+      const taskNameEl = document.getElementById('completionTaskName');
+      const taskInfoEl = document.getElementById('completionTaskScheduledInfo');
+      const optionsContainer = document.getElementById('completionModalOptions');
+      const customTimeInput = document.getElementById('completionCustomTimeInput');
+
+      const now = new Date();
+      const nowMin = now.getHours() * 60 + now.getMinutes();
+      const nowMinRounded = Math.ceil(nowMin / 5) * 5;
+      const duration = t.duration || 30;
+      const recentStart = Math.max(0, nowMinRounded - duration);
+
+      if (taskNameEl) taskNameEl.textContent = t.title;
+      if (taskInfoEl) {
+        taskInfoEl.textContent = `Original schedule: ${formatMinToTime(t.startMin)} – ${formatMinToTime(t.endMin)} (${duration}m)`;
+      }
+
+      if (customTimeInput) {
+        const h = Math.floor(nowMin / 60).toString().padStart(2, '0');
+        const m = (nowMin % 60).toString().padStart(2, '0');
+        customTimeInput.value = `${h}:${m}`;
+      }
+
+      if (mode === 'late') {
+        if (iconEl) iconEl.textContent = '⏱️';
+        if (titleEl) titleEl.textContent = 'Task Completion Timing';
+        if (subtitleEl) subtitleEl.textContent = `This task was due at ${formatMinToTime(t.endMin)}. Was it finished earlier or just now?`;
+
+        if (optionsContainer) {
+          optionsContainer.innerHTML = `
+            <label class="block text-xs font-semibold uppercase tracking-wider dark:text-slate-300 text-slate-700">When was this task finished?</label>
+            <button type="button" onclick="finalizeCompletionTiming('scheduled')" class="w-full p-3.5 rounded-2xl border dark:border-slate-700 border-slate-300 dark:bg-slate-950/60 bg-slate-50 hover:border-emerald-500 hover:bg-emerald-500/5 text-left transition flex items-center justify-between group">
+              <div class="space-y-0.5">
+                <div class="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                  <span>✓ Completed earlier as scheduled</span>
+                </div>
+                <div class="text-[11px] text-slate-500 dark:text-slate-400">
+                  Keep in original block: <strong class="font-mono text-slate-700 dark:text-slate-300">${formatMinToTime(t.startMin)} – ${formatMinToTime(t.endMin)}</strong> (prior to current time)
+                </div>
+              </div>
+              <span class="text-xs text-slate-400 group-hover:text-emerald-500 transition">➔</span>
+            </button>
+
+            <button type="button" onclick="finalizeCompletionTiming('just_now')" class="w-full p-3.5 rounded-2xl border border-indigo-500/40 bg-indigo-500/10 hover:border-indigo-500 hover:bg-indigo-500/20 text-left transition flex items-center justify-between group">
+              <div class="space-y-0.5">
+                <div class="text-xs font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
+                  <span>⚡ Just completed now</span>
+                </div>
+                <div class="text-[11px] text-slate-500 dark:text-slate-400">
+                  Place in most recent window: <strong class="font-mono text-slate-700 dark:text-slate-300">${formatMinToTime(recentStart)} – ${formatMinToTime(nowMinRounded)}</strong> (ending at current time)
+                </div>
+              </div>
+              <span class="text-xs text-indigo-500 transition">➔</span>
+            </button>
+          `;
+        }
+      } else {
+        if (iconEl) iconEl.textContent = '⚡';
+        if (titleEl) titleEl.textContent = 'Early Task Completion';
+        if (subtitleEl) subtitleEl.textContent = `Originally scheduled for later at ${formatMinToTime(t.startMin)}. When was this completed?`;
+
+        if (optionsContainer) {
+          optionsContainer.innerHTML = `
+            <label class="block text-xs font-semibold uppercase tracking-wider dark:text-slate-300 text-slate-700">When was this future task finished?</label>
+            <button type="button" onclick="finalizeCompletionTiming('just_now')" class="w-full p-3.5 rounded-2xl border border-indigo-500/40 bg-indigo-500/10 hover:border-indigo-500 hover:bg-indigo-500/20 text-left transition flex items-center justify-between group">
+              <div class="space-y-0.5">
+                <div class="text-xs font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
+                  <span>⚡ Just completed now & ripple schedule</span>
+                </div>
+                <div class="text-[11px] text-slate-500 dark:text-slate-400">
+                  Slot ending at current time (<strong class="font-mono text-slate-700 dark:text-slate-300">${formatMinToTime(recentStart)} – ${formatMinToTime(nowMinRounded)}</strong>) and pull upcoming tasks into freed slot
+                </div>
+              </div>
+              <span class="text-xs text-indigo-500 transition">➔</span>
+            </button>
+
+            <button type="button" onclick="finalizeCompletionTiming('scheduled')" class="w-full p-3.5 rounded-2xl border dark:border-slate-700 border-slate-300 dark:bg-slate-950/60 bg-slate-50 hover:border-slate-500 text-left transition flex items-center justify-between group">
+              <div class="space-y-0.5">
+                <div class="text-xs font-bold dark:text-slate-200 text-slate-800 flex items-center gap-1.5">
+                  <span>📅 Keep original future slot</span>
+                </div>
+                <div class="text-[11px] text-slate-500 dark:text-slate-400">
+                  Leave at <strong class="font-mono text-slate-700 dark:text-slate-300">${formatMinToTime(t.startMin)} – ${formatMinToTime(t.endMin)}</strong> marked as finished in advance
+                </div>
+              </div>
+              <span class="text-xs text-slate-400 transition">➔</span>
+            </button>
+          `;
+        }
+      }
+
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+    }
+
+    function closeCompletionTimingModal() {
+      const modal = document.getElementById('completionTimingModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+      activeCompletionTimingTaskId = null;
+    }
+
+    function cancelCompletionTiming() {
+      if (activeCompletionTimingTaskId) {
+        const t = state.tasks.find(x => String(x.id) === String(activeCompletionTimingTaskId));
+        if (t) {
+          t.completed = false;
+        }
+      }
+      closeCompletionTimingModal();
+      renderPriorityLists();
+      recalculateSchedule();
+    }
+
+    function finalizeCompletionTiming(mode, customEndMin = null) {
+      if (!activeCompletionTimingTaskId) return;
+      const t = state.tasks.find(x => String(x.id) === String(activeCompletionTimingTaskId));
+      if (!t) { closeCompletionTimingModal(); return; }
+
+      const now = new Date();
+      const nowMin = now.getHours() * 60 + now.getMinutes();
+      const nowMinRounded = Math.ceil(nowMin / 5) * 5;
+      const duration = t.duration || 30;
+
+      t.completed = true;
+      t.completedAtISO = now.toISOString();
+      t.completedDate = getLocalDateString();
+
+      if (mode === 'scheduled') {
+        // Keep in original time block as completed earlier in the day prior to current time
+        trackTaskLifecycle(t, 'completed');
+        saveState();
+        recalculateSchedule();
+        showRippleNotice(`✓ Completed "${t.title}" kept in original block (${formatMinToTime(t.startMin)} – ${formatMinToTime(t.endMin)}).`);
+      } else if (mode === 'just_now') {
+        // Place completed task in most recent time window prior to current time
+        t.endMin = nowMinRounded;
+        t.startMin = Math.max(0, nowMinRounded - duration);
+        t.manuallyPositioned = true;
+        if (t.locked) {
+          t.locked = false;
+          t.fixedStartMin = null;
+        }
+        trackTaskLifecycle(t, 'completed');
+        saveState();
+        recalculateSchedule();
+        rippleShiftScheduleToNow(false);
+        saveState();
+        recalculateSchedule();
+        showRippleNotice(`⚡ Completed "${t.title}" slotted ending at ${formatMinToTime(nowMinRounded)} & rippled schedule.`);
+      } else if (mode === 'custom' && customEndMin != null) {
+        t.endMin = customEndMin;
+        t.startMin = Math.max(0, customEndMin - duration);
+        t.manuallyPositioned = true;
+        if (t.locked) {
+          t.locked = false;
+          t.fixedStartMin = null;
+        }
+        trackTaskLifecycle(t, 'completed');
+        saveState();
+        recalculateSchedule();
+        if (customEndMin <= nowMinRounded) {
+          rippleShiftScheduleToNow(false);
+          saveState();
+          recalculateSchedule();
+        }
+        showRippleNotice(`✓ Completed "${t.title}" placed at ${formatMinToTime(t.startMin)} – ${formatMinToTime(t.endMin)}.`);
+      }
+
+      closeCompletionTimingModal();
+      updateRecommendationBanner();
+    }
+
+    function applyCustomCompletionTime() {
+      const val = document.getElementById('completionCustomTimeInput')?.value;
+      if (!val) return;
+      const parts = val.split(':');
+      if (parts.length === 2) {
+        const customEndMin = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+        finalizeCompletionTiming('custom', customEndMin);
+      }
     }
     function promoteDemoteTask(taskId) {
       const t = state.tasks.find(x => String(x.id) === String(taskId));
@@ -8091,14 +8385,21 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       if (activeFocusTaskId) { 
         const t = state.tasks.find(x => String(x.id) === String(activeFocusTaskId)); 
         if (t) {
+          const now = new Date();
+          const nowMin = now.getHours() * 60 + now.getMinutes();
+          const nowMinRounded = Math.ceil(nowMin / 5) * 5;
+          const duration = t.duration || 30;
+          t.endMin = nowMinRounded;
+          t.startMin = Math.max(0, nowMinRounded - duration);
+          t.manuallyPositioned = true;
           t.completed = true;
-          t.completedAtISO = new Date().toISOString();
+          t.completedAtISO = now.toISOString();
           t.completedDate = getLocalDateString();
           trackTaskLifecycle(t, 'completed');
           rippleShiftScheduleToNow(false);
+          saveState(); 
+          recalculateSchedule(); 
         }
-        saveState(); 
-        recalculateSchedule(); 
       } 
       playGentleChime(880, 0.4); 
       closeFocusModal(); 
