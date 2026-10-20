@@ -233,5 +233,12 @@
       "recurring": false,
       "subtasks": []
     }
-  ]
+  ],
+  "archivedTasks": [],
+  "analytics": {
+    "history": [],
+    "rippleCount": 14,
+    "pushCounts": {},
+    "chronotypeHistory": []
+  }
 }

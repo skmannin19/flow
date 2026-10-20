@@ -4385,6 +4385,13 @@
         clearTimeout(ghSyncTimeout);
         ghSyncTimeout = setTimeout(() => { pushStateToGitHub(true); }, 2500);
       }
+      if (typeof isAnalyticsViewActive !== 'undefined' && isAnalyticsViewActive) {
+        renderAnalyticsDashboard();
+      }
+      const archModal = document.getElementById('archiveModal');
+      if (archModal && !archModal.classList.contains('hidden')) {
+        renderArchiveList();
+      }
       if (typeof triggerLiveCloudSync === 'function') {
         triggerLiveCloudSync();
       }
@@ -4455,6 +4462,13 @@
         document.getElementById('wGoal').value = state.goals?.wGoal || '';
         renderChronotypeUI();
         recalculateSchedule();
+        if (typeof isAnalyticsViewActive !== 'undefined' && isAnalyticsViewActive) {
+          renderAnalyticsDashboard();
+        }
+        const archiveModal = document.getElementById('archiveModal');
+        if (archiveModal && !archiveModal.classList.contains('hidden')) {
+          renderArchiveList();
+        }
         if (!silent) showGhStatus('✓ Pulled latest tasks from GitHub!');
       } catch (err) { if (!silent) showGhStatus(`❌ Pull Failed: ${err.message}`, true); }
     }
@@ -4526,6 +4540,13 @@
               optimizeByChronotype();
               renderPriorityLists();
               recalculateSchedule();
+              if (typeof isAnalyticsViewActive !== 'undefined' && isAnalyticsViewActive) {
+                renderAnalyticsDashboard();
+              }
+              const archModal = document.getElementById('archiveModal');
+              if (archModal && !archModal.classList.contains('hidden')) {
+                renderArchiveList();
+              }
             }
           } catch(err) {}
         }
@@ -4629,7 +4650,8 @@
         goals: state.goals,
         energy: state.energy,
         manualEnergyOverride: state.manualEnergyOverride,
-        archivedTasks: state.archivedTasks || []
+        archivedTasks: state.archivedTasks || [],
+        analytics: state.analytics || { history: [], rippleCount: 0, pushCounts: {}, chronotypeHistory: [] }
       };
 
       if (localBroadcastChannel) {
@@ -4680,6 +4702,50 @@
         if (Array.isArray(payload.archivedTasks)) {
           state.archivedTasks = payload.archivedTasks;
         }
+        if (payload.analytics) {
+          if (!state.analytics) {
+            state.analytics = payload.analytics;
+          } else {
+            const existingHistory = state.analytics.history || [];
+            const incomingHistory = payload.analytics.history || [];
+            const seenHistKeys = new Set(existingHistory.map(h => h.id || (h.taskId + '_' + h.completedAtISO + '_' + h.status)));
+            const mergedHistory = [...existingHistory];
+            incomingHistory.forEach(item => {
+              const key = item.id || (item.taskId + '_' + item.completedAtISO + '_' + item.status);
+              if (!seenHistKeys.has(key)) {
+                seenHistKeys.add(key);
+                mergedHistory.push(item);
+              }
+            });
+            mergedHistory.sort((a, b) => ((a.completedAtISO || '') > (b.completedAtISO || '') ? 1 : -1));
+
+            const mergedPushCounts = { ...(state.analytics.pushCounts || {}) };
+            if (payload.analytics.pushCounts) {
+              Object.keys(payload.analytics.pushCounts).forEach(title => {
+                mergedPushCounts[title] = Math.max(
+                  mergedPushCounts[title] || 0,
+                  payload.analytics.pushCounts[title] || 0
+                );
+              });
+            }
+
+            const mergedRippleCount = Math.max(
+              state.analytics.rippleCount || 0,
+              payload.analytics.rippleCount || 0
+            );
+
+            const mergedChronoHistory = Array.isArray(payload.analytics.chronotypeHistory) && payload.analytics.chronotypeHistory.length > 0
+              ? payload.analytics.chronotypeHistory
+              : (state.analytics.chronotypeHistory || []);
+
+            state.analytics = {
+              history: mergedHistory,
+              pushCounts: mergedPushCounts,
+              rippleCount: mergedRippleCount,
+              chronotypeHistory: mergedChronoHistory
+            };
+          }
+        }
 
         localStorage.setItem(MASTER_STORAGE_KEY, JSON.stringify(state));
 
@@ -4687,6 +4753,17 @@
         optimizeByChronotype();
         renderPriorityLists();
         recalculateSchedule();
+
+        // Real-time update for Analytics page if active or open
+        if (typeof isAnalyticsViewActive !== 'undefined' && (isAnalyticsViewActive || (document.getElementById('analyticsView') && !document.getElementById('analyticsView').classList.contains('hidden')))) {
+          renderAnalyticsDashboard();
+        }
+
+        // Real-time update for Archive modal if active or open
+        const archiveModal = document.getElementById('archiveModal');
+        if (archiveModal && !archiveModal.classList.contains('hidden')) {
+          renderArchiveList();
+        }
 
         if (state.goals) {
           const qEl = document.getElementById('qGoal');
@@ -5989,6 +6066,13 @@
           }
         }
       });
+
+      if (shiftedCount > 0) {
+        if (!state.analytics) {
+          state.analytics = { history: [], rippleCount: 0, pushCounts: {}, chronotypeHistory: [] };
+        }
+        state.analytics.rippleCount = (state.analytics.rippleCount || 0) + shiftedCount;
+      }
 
       saveState();
       recalculateSchedule();
@@ -8208,22 +8292,61 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
     }
 
     function getNormalizedArchivedTasks() {
-      if (!state.archivedTasks) return [];
       const normalized = [];
-      state.archivedTasks.forEach(item => {
-        if (!item) return;
-        if (item.tasks && Array.isArray(item.tasks)) {
-          item.tasks.forEach(t => {
-            normalized.push({
-              ...t,
-              completedDate: t.completedDate || item.date || 'prior',
-              completedAtISO: t.completedAtISO || (item.date ? item.date + 'T17:00:00.000Z' : new Date().toISOString())
+      const seenTaskKeys = new Set();
+
+      // 1. Permanent archive from prior days
+      if (state.archivedTasks && Array.isArray(state.archivedTasks)) {
+        state.archivedTasks.forEach(item => {
+          if (!item) return;
+          if (item.tasks && Array.isArray(item.tasks)) {
+            item.tasks.forEach(t => {
+              const key = String(t.id || (t.title + '_' + (t.completedDate || item.date)));
+              if (!seenTaskKeys.has(key)) {
+                seenTaskKeys.add(key);
+                normalized.push({
+                  ...t,
+                  completedDate: t.completedDate || item.date || 'prior',
+                  completedAtISO: t.completedAtISO || (item.date ? item.date + 'T17:00:00.000Z' : new Date().toISOString())
+                });
+              }
             });
-          });
-        } else if (item.title) {
-          normalized.push(item);
-        }
+          } else if (item.title) {
+            const key = String(item.id || (item.title + '_' + item.completedDate));
+            if (!seenTaskKeys.has(key)) {
+              seenTaskKeys.add(key);
+              normalized.push(item);
+            }
+          }
+        });
+      }
+
+      // 2. Completed tasks on today's schedule (instant live inclusion across mobile & desktop)
+      const todayKey = getLocalDateString();
+      if (state.tasks && Array.isArray(state.tasks)) {
+        state.tasks.forEach(t => {
+          if (t.completed) {
+            const key = String(t.id || (t.title + '_' + (t.completedDate || todayKey)));
+            if (!seenTaskKeys.has(key)) {
+              seenTaskKeys.add(key);
+              normalized.push({
+                ...t,
+                completedDate: t.completedDate || todayKey,
+                completedAtISO: t.completedAtISO || new Date().toISOString(),
+                isTodayTask: true
+              });
+            }
+          }
+        });
+      }
+
+      // Sort newest completed first
+      normalized.sort((a, b) => {
+        const timeA = a.completedAtISO || (a.completedDate ? a.completedDate + 'T12:00:00' : '1970-01-01');
+        const timeB = b.completedAtISO || (b.completedDate ? b.completedDate + 'T12:00:00' : '1970-01-01');
+        return timeA < timeB ? 1 : -1;
       });
+
       return normalized;
     }
 
@@ -8367,28 +8490,42 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       const target = normalized.find(x => String(x.id) === String(taskId));
       if (!target) return;
 
-      state.archivedTasks = normalized.filter(x => String(x.id) !== String(taskId));
+      const todayTask = state.tasks.find(t => String(t.id) === String(taskId));
+      if (todayTask) {
+        todayTask.completed = false;
+        todayTask.completedAtISO = null;
+        todayTask.completedDate = null;
+      } else {
+        state.archivedTasks = (state.archivedTasks || []).filter(x => {
+          if (x.id && String(x.id) === String(taskId)) return false;
+          if (x.tasks && Array.isArray(x.tasks)) {
+            x.tasks = x.tasks.filter(t => String(t.id) !== String(taskId));
+            return x.tasks.length > 0;
+          }
+          return true;
+        });
 
-      const todayKey = getLocalDateString();
-      const restored = {
-        id: 'restored_' + Date.now(),
-        title: target.title,
-        microStep: target.microStep || '',
-        type: target.type || 'LIT',
-        energy: target.energy || 'steady',
-        duration: target.duration || 30,
-        completed: false,
-        recurring: !!target.recurring,
-        fromCalendar: !!target.fromCalendar,
-        locked: false,
-        fixedStartMin: null,
-        startMin: null,
-        endMin: null,
-        scheduledDate: todayKey,
-        subtasks: target.subtasks ? JSON.parse(JSON.stringify(target.subtasks)) : []
-      };
+        const todayKey = getLocalDateString();
+        const restored = {
+          id: 'restored_' + Date.now(),
+          title: target.title,
+          microStep: target.microStep || '',
+          type: target.type || 'LIT',
+          energy: target.energy || 'steady',
+          duration: target.duration || 30,
+          completed: false,
+          recurring: !!target.recurring,
+          fromCalendar: !!target.fromCalendar,
+          locked: false,
+          fixedStartMin: null,
+          startMin: null,
+          endMin: null,
+          scheduledDate: todayKey,
+          subtasks: target.subtasks ? JSON.parse(JSON.stringify(target.subtasks)) : []
+        };
+        state.tasks.push(restored);
+      }
 
-      state.tasks.push(restored);
       saveState();
       recalculateSchedule();
       renderArchiveList();
@@ -8397,9 +8534,20 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
 
     function deleteArchivedTask(taskId) {
       if (!confirm('Permanently remove this task from archive?')) return;
-      const normalized = getNormalizedArchivedTasks();
-      state.archivedTasks = normalized.filter(x => String(x.id) !== String(taskId));
+      const todayIdx = state.tasks.findIndex(t => String(t.id) === String(taskId));
+      if (todayIdx !== -1) {
+        state.tasks.splice(todayIdx, 1);
+      }
+      state.archivedTasks = (state.archivedTasks || []).filter(x => {
+        if (x.id && String(x.id) === String(taskId)) return false;
+        if (x.tasks && Array.isArray(x.tasks)) {
+          x.tasks = x.tasks.filter(t => String(t.id) !== String(taskId));
+          return x.tasks.length > 0;
+        }
+        return true;
+      });
       saveState();
+      recalculateSchedule();
       renderArchiveList();
       showRippleNotice('🗑️ Task removed from archive.');
     }
