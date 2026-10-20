@@ -11,20 +11,33 @@
     "wGoal": "Finalize Precision Dosing Matrix & Tour 2 Lakewood Properties"
   },
   "chronotype": {
-    "id": "bear",
-    "name": "Solar Bear",
-    "emoji": "🐻",
-    "tagline": "Mid-Morning Peak • Classic 2:00 PM Trough • Late-Day Rebound",
-    "peakStart": 540,
-    "peakEnd": 780,
-    "dipStart": 840,
-    "dipEnd": 930,
-    "reboundStart": 930,
-    "reboundEnd": 1080,
-    "lastCalibratedISO": null,
+    "id": "wolf",
+    "name": "Evening Wolf",
+    "emoji": "\ud83d\udc3a",
+    "tagline": "Slow Morning Ramp \u2022 Afternoon & Evening Creative Surge",
+    "peakStart": 690,
+    "peakEnd": 930,
+    "dipStart": 510,
+    "dipEnd": 660,
+    "reboundStart": 960,
+    "reboundEnd": 1140,
+    "lastCalibratedISO": "2026-10-19T22:00:00.000Z",
     "quarterlyPromptDismissed": false
   },
   "tasks": [
+    {
+      "id": "t_dad_text",
+      "title": "Respond to Dad's text",
+      "microStep": "Send quick 1-sentence reply",
+      "type": "LIT",
+      "energy": "fried",
+      "duration": 15,
+      "fixedStartMin": null,
+      "locked": false,
+      "completed": false,
+      "recurring": false,
+      "subtasks": []
+    },
     {
       "id": "t1",
       "title": "Morning Routine, Meditation & Leo Park Walk",
@@ -37,7 +50,15 @@
       "recurring": true,
       "recurrence": {
         "freq": "daily",
-        "daysOfWeek": [0, 1, 2, 3, 4, 5, 6],
+        "daysOfWeek": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
         "interval": 1,
         "unit": "days"
       },
@@ -100,7 +121,13 @@
       "recurring": true,
       "recurrence": {
         "freq": "weekdays",
-        "daysOfWeek": [1, 2, 3, 4, 5],
+        "daysOfWeek": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
         "interval": 1,
         "unit": "days"
       },
@@ -130,7 +157,10 @@
       "recurring": true,
       "recurrence": {
         "freq": "weekly",
-        "daysOfWeek": [0, 5],
+        "daysOfWeek": [
+          0,
+          5
+        ],
         "interval": 1,
         "unit": "weeks"
       },
@@ -160,10 +190,42 @@
       "recurring": true,
       "recurrence": {
         "freq": "weekly",
-        "daysOfWeek": [1, 2, 3, 4, 5],
+        "daysOfWeek": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
         "interval": 1,
         "unit": "days"
       },
+      "subtasks": []
+    },
+    {
+      "id": "t_treadmill",
+      "title": "1 hour treadmill",
+      "microStep": "Lace up sneakers & set speed",
+      "type": "LIT",
+      "energy": "steady",
+      "duration": 60,
+      "fixedStartMin": 1255,
+      "locked": false,
+      "completed": true,
+      "recurring": false,
+      "subtasks": []
+    },
+    {
+      "id": "t_job_apply",
+      "title": "Find & Apply to one job",
+      "microStep": "Open LinkedIn & submit 1 targeted application",
+      "type": "MIT",
+      "energy": "sharp",
+      "duration": 45,
+      "fixedStartMin": null,
+      "locked": false,
+      "completed": false,
+      "recurring": false,
       "subtasks": []
     }
   ]

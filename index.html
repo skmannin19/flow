@@ -449,10 +449,10 @@
         </div>
 
         <!-- Timeline Stream -->
-        <div id="timelineContainer" ondragover="onTimelineContainerDragOver(event)" ondrop="onTimelineContainerDrop(event)" class="mt-2 space-y-2.5 flex-1 overflow-y-auto pr-1"></div>
+        <div id="timelineContainer" ondragover="onTimelineContainerDragOver(event)" ondrop="onTimelineContainerDrop(event)" class="mt-2 space-y-2.5 overflow-y-auto pr-1"></div>
 
         <!-- Deferred Queue -->
-        <div id="overflowContainer" class="mt-6 pt-4 border-t dark:border-slate-800 border-slate-200 hidden">
+        <div id="overflowContainer" class="mt-4 pt-3.5 border-t dark:border-slate-800 border-slate-200 hidden">
           <div class="flex items-center justify-between mb-2">
             <h4 class="text-xs font-mono uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
               <span>🛡️</span> Auto-Deferred to Tomorrow (Realistic Workload Protection)
@@ -631,6 +631,31 @@
           <p class="text-xs dark:text-slate-400 text-slate-500 mt-0.5">Your edits are safely preserved in browser storage. You can also export/import backup files anytime or sync directly with GitHub.</p>
         </div>
         <button onclick="closeGitHubModal()" class="text-slate-400 hover:text-white text-sm px-2.5 py-1 rounded-lg bg-slate-200 dark:bg-slate-800">✕</button>
+      </div>
+
+      <!-- Real-Time Cross-Device Cloud Sync (Mobile ⇄ Desktop) -->
+      <div class="p-4 rounded-2xl dark:bg-slate-950 bg-slate-50 border dark:border-emerald-500/30 border-emerald-500/30 space-y-3">
+        <div class="flex items-center justify-between">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
+            <span>⚡</span> Real-Time Cross-Device Sync (Mobile ⇄ Desktop)
+          </h3>
+          <span id="liveSyncStatusBadge" class="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">🟢 Connected (Live)</span>
+        </div>
+        <p class="text-xs dark:text-slate-400 text-slate-600">Tasks, chronotypes, and completion states sync automatically between your phone and laptop in real time via WebSockets. No page refresh required.</p>
+        <div class="flex flex-wrap items-center justify-between gap-2.5 pt-1">
+          <div class="text-[11px] font-mono text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+            <span>Room:</span>
+            <code class="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-emerald-600 dark:text-emerald-400">flowstate_os_skmannin19_live_sync</code>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="publishCurrentStateToLiveSync()" class="py-1.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition flex items-center gap-1.5 shadow-sm">
+              <span>⚡</span> Sync Now
+            </button>
+            <button onclick="connectLiveSyncWebSocket()" class="py-1.5 px-3 rounded-xl border dark:border-slate-700 border-slate-300 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition">
+              <span>🔄</span> Reconnect
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- Quick Local Export & Import (Instant 100% Persistence Guarantee) -->
@@ -1582,6 +1607,7 @@
     };
 
     const DEFAULT_TASKS = [
+      { id: 't_dad_text', title: "Respond to Dad's text", microStep: 'Send quick 1-sentence reply', type: 'LIT', energy: 'fried', duration: 15, fixedStartMin: null, locked: false, completed: false, recurring: false, subtasks: [] },
       { id: 't1', title: 'Morning Routine, Meditation & Leo Park Walk', microStep: 'Leash up & head out for 20-min low-impact walk', type: 'LIT', energy: 'steady', duration: 45, fixedStartMin: 450, locked: false, completed: true, recurring: true, recurrence: { freq: 'daily', daysOfWeek: [0, 1, 2, 3, 4, 5, 6], interval: 1, unit: 'days' }, subtasks: [] },
       { id: 't2', title: 'Draft CO Natural Medicine Potency & Packaging Compliance Matrix', microStep: 'Open state DOR compliance rules PDF and extract Section 4 table', type: 'MIT', energy: 'sharp', duration: 60, fixedStartMin: null, locked: false, completed: false, recurring: false, subtasks: [{ text: 'Define standardized capsule homogenizing SOP requirements', done: true }, { text: 'Map third-party lab stability & microbial testing intervals', done: false }] },
       { id: 't3', title: 'Outreach to 3 Denver Extraction & Formulation Lab Directors', microStep: 'Draft concise 4-sentence intro note to first founder on LinkedIn', type: 'MIT', energy: 'sharp', duration: 45, fixedStartMin: null, locked: false, completed: false, recurring: false, subtasks: [] },
@@ -1590,6 +1616,8 @@
       { id: 't6', title: 'Follow up with LiveWell Animal Hospital on Leo Radiographs', microStep: 'Reply to Patsy Mitch email confirming next mobility check-in', type: 'LIT', energy: 'fried', duration: 20, fixedStartMin: null, locked: false, completed: false, recurring: false, subtasks: [] },
       { id: 't7', title: 'Inbox Zero & Weekly Sunday Planning Prep', microStep: 'Clear starred emails and archive newsletters', type: 'LIT', energy: 'fried', duration: 25, fixedStartMin: null, locked: false, completed: false, recurring: true, recurrence: { freq: 'weekly', daysOfWeek: [0, 5], interval: 1, unit: 'weeks' }, subtasks: [] },
       { id: 't8', title: 'Review West Denver / Lakewood Real Estate Comps & Inspection Notes', microStep: 'Archive non-matching listings & flag top main-floor primary contender', type: 'LIT', energy: 'steady', duration: 30, fixedStartMin: null, locked: false, completed: false, recurring: false, subtasks: [] },
+      { id: 't_treadmill', title: '1 hour treadmill', microStep: 'Lace up sneakers & set speed', type: 'LIT', energy: 'steady', duration: 60, fixedStartMin: 1255, locked: false, completed: true, recurring: false, subtasks: [] },
+      { id: 't_job_apply', title: 'Find & Apply to one job', microStep: 'Open LinkedIn & submit 1 targeted application', type: 'MIT', energy: 'sharp', duration: 45, fixedStartMin: null, locked: false, completed: false, recurring: false, subtasks: [] },
       { id: 't9', title: 'Late Afternoon Workout / Pickleball Court Session', microStep: 'Change gear & head out on time', type: 'LIT', energy: 'steady', duration: 60, fixedStartMin: 1020, locked: false, completed: false, recurring: true, recurrence: { freq: 'weekly', daysOfWeek: [1, 2, 3, 4, 5], interval: 1, unit: 'days' }, subtasks: [] }
     ];
 
@@ -1650,11 +1678,11 @@
         wGoal: 'Finalize Precision Dosing Matrix & Tour 2 Lakewood Properties'
       },
       chronotype: {
-        id: 'bear', name: 'Solar Bear', emoji: '🐻',
-        tagline: 'Mid-Morning Peak • Classic 2:00 PM Trough • Late-Day Rebound',
-        peakStart: 540, peakEnd: 780, dipStart: 840, dipEnd: 930,
-        reboundStart: 930, reboundEnd: 1080,
-        lastCalibratedISO: null, quarterlyPromptDismissed: false
+        id: 'wolf', name: 'Evening Wolf', emoji: '🐺',
+        tagline: 'Slow Morning Ramp • Afternoon & Evening Creative Surge',
+        peakStart: 690, peakEnd: 930, dipStart: 510, dipEnd: 660,
+        reboundStart: 960, reboundEnd: 1140,
+        lastCalibratedISO: '2026-10-19T22:00:00.000Z', quarterlyPromptDismissed: false
       },
       analytics: {
         history: [],
@@ -1735,6 +1763,28 @@
         }
       }
 
+      // Ensure active chronotype is Evening Wolf if missing or defaulted to bear
+      if (!state.chronotype || state.chronotype.id === 'bear') {
+        state.chronotype = { ...CHRONOTYPES.wolf, lastCalibratedISO: state.chronotype?.lastCalibratedISO || new Date().toISOString() };
+      }
+
+      // Ensure "Respond to Dad's text" is preserved if not already in state
+      if (!state.tasks.some(t => t.title && t.title.toLowerCase().includes("dad's text"))) {
+        state.tasks.unshift({
+          id: 't_dad_text',
+          title: "Respond to Dad's text",
+          microStep: 'Send quick 1-sentence reply',
+          type: 'LIT',
+          energy: 'fried',
+          duration: 15,
+          fixedStartMin: null,
+          locked: false,
+          completed: false,
+          recurring: false,
+          subtasks: []
+        });
+      }
+
       // Initialize Theme & Audio
       applyTheme(state.theme || 'system');
       updateAudioMasterUI();
@@ -1801,12 +1851,18 @@
           if (state.autoSyncGoogle && googleAccessToken) {
             fetchGoogleCalendarLive(false);
           }
+          if (typeof fetchLatestCatchupState === 'function') {
+            fetchLatestCatchupState();
+          }
         }
       });
       window.addEventListener('focus', () => {
         updateLiveClockAndSchedule();
         if (state.autoSyncGoogle && googleAccessToken) {
           fetchGoogleCalendarLive(false);
+        }
+        if (typeof fetchLatestCatchupState === 'function') {
+          fetchLatestCatchupState();
         }
       });
       setInterval(updateLiveClockAndSchedule, 5000);
@@ -1835,6 +1891,9 @@
       if (ghConfig.token && ghConfig.autoSync) {
         await pullStateFromGitHub(true);
       }
+
+      // Initialize Real-Time Cross-Device Live Cloud Sync (WebSockets)
+      initLiveCloudSync();
 
       updateSoundscapeControlsUI();
       const initialVol = Math.round(soundscapeVolume * 100);
@@ -4218,6 +4277,9 @@
         clearTimeout(ghSyncTimeout);
         ghSyncTimeout = setTimeout(() => { pushStateToGitHub(true); }, 2500);
       }
+      if (typeof triggerLiveCloudSync === 'function') {
+        triggerLiveCloudSync();
+      }
     }
 
     function openGitHubModal() { populateGitHubModalInputs(); document.getElementById('githubModal').classList.remove('hidden'); document.getElementById('githubModal').classList.add('flex'); }
@@ -4287,6 +4349,251 @@
         recalculateSchedule();
         if (!silent) showGhStatus('✓ Pulled latest tasks from GitHub!');
       } catch (err) { if (!silent) showGhStatus(`❌ Pull Failed: ${err.message}`, true); }
+    }
+
+    // ========================================================
+    // REAL-TIME CROSS-DEVICE CLOUD SYNC ENGINE (WebSockets & REST)
+    // ========================================================
+    const LIVE_SYNC_TOPIC = 'flowstate_os_skmannin19_live_sync';
+    const LIVE_SYNC_WS_URL = `wss://ntfy.sh/${LIVE_SYNC_TOPIC}/ws`;
+    const LIVE_SYNC_PUB_URL = `https://ntfy.sh/${LIVE_SYNC_TOPIC}`;
+
+    let liveSyncSocket = null;
+    let liveSyncDebounceTimer = null;
+    let lastReceivedSyncTimestamp = 0;
+    let localClientId = localStorage.getItem('flowstate_client_id');
+    if (!localClientId) {
+      localClientId = 'cli_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now();
+      localStorage.setItem('flowstate_client_id', localClientId);
+    }
+    const localBroadcastChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('flowstate_os_local_channel') : null;
+
+    function updateLiveSyncStatusUI(status, label) {
+      const dot = document.getElementById('ghSyncDot');
+      const badge = document.getElementById('liveSyncStatusBadge');
+      if (dot) {
+        if (status === 'connected') {
+          dot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
+          dot.title = '🟢 Live Cloud Sync Active (Connected to Mobile & Desktop)';
+        } else if (status === 'syncing') {
+          dot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-ping';
+          dot.title = '🟡 Syncing updates across devices...';
+        } else {
+          dot.className = 'w-2 h-2 rounded-full bg-slate-400';
+          dot.title = '⚪ Live Cloud Sync Connecting...';
+        }
+      }
+      if (badge) {
+        if (status === 'connected') {
+          badge.className = 'px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30';
+          badge.textContent = label || '🟢 Connected (Live)';
+        } else if (status === 'syncing') {
+          badge.className = 'px-2 py-0.5 rounded text-[10px] font-mono bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30';
+          badge.textContent = label || '🟡 Syncing...';
+        } else {
+          badge.className = 'px-2 py-0.5 rounded text-[10px] font-mono bg-slate-500/20 text-slate-500 border border-slate-500/30';
+          badge.textContent = label || '⚪ Connecting...';
+        }
+      }
+    }
+
+    function initLiveCloudSync() {
+      // 1. Cross-tab real-time sync on the same device
+      if (localBroadcastChannel) {
+        localBroadcastChannel.onmessage = (event) => {
+          if (event.data && event.data.senderId !== localClientId) {
+            applyIncomingSyncData(event.data, false);
+          }
+        };
+      }
+
+      // 2. Storage event listener fallback
+      window.addEventListener('storage', (e) => {
+        if (e.key === MASTER_STORAGE_KEY && e.newValue) {
+          try {
+            const parsed = JSON.parse(e.newValue);
+            if (parsed && Array.isArray(parsed.tasks)) {
+              state = { ...state, ...parsed };
+              renderChronotypeUI();
+              optimizeByChronotype();
+              renderPriorityLists();
+              recalculateSchedule();
+            }
+          } catch(err) {}
+        }
+      });
+
+      // 3. Connect real-time WebSocket
+      connectLiveSyncWebSocket();
+
+      // 4. Catch-up fetch in case device was asleep or closed
+      fetchLatestCatchupState();
+    }
+
+    function connectLiveSyncWebSocket() {
+      try {
+        if (liveSyncSocket) {
+          try { liveSyncSocket.close(); } catch(e) {}
+        }
+        updateLiveSyncStatusUI('connecting', '⚪ Connecting...');
+        liveSyncSocket = new WebSocket(LIVE_SYNC_WS_URL);
+
+        liveSyncSocket.onopen = () => {
+          updateLiveSyncStatusUI('connected', '🟢 Connected (Live)');
+          // Announce presence and broadcast current state if newer
+          publishCurrentStateToLiveSync();
+        };
+
+        liveSyncSocket.onmessage = async (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.event === 'message') {
+              let payloadStr = data.message;
+              if (data.attachment && data.attachment.url) {
+                try {
+                  const resp = await fetch(data.attachment.url);
+                  payloadStr = await resp.text();
+                } catch(e) {}
+              }
+              if (payloadStr) {
+                const parsed = JSON.parse(payloadStr);
+                applyIncomingSyncData(parsed, true);
+              }
+            }
+          } catch (e) {
+            // Non-JSON frame, ignore
+          }
+        };
+
+        liveSyncSocket.onerror = () => {
+          updateLiveSyncStatusUI('disconnected', '⚠️ Offline');
+        };
+
+        liveSyncSocket.onclose = () => {
+          updateLiveSyncStatusUI('disconnected', '⚪ Reconnecting...');
+          setTimeout(connectLiveSyncWebSocket, 6000);
+        };
+      } catch (err) {
+        console.warn('Live Cloud Sync connection error:', err);
+      }
+    }
+
+    async function fetchLatestCatchupState() {
+      try {
+        const url = `${LIVE_SYNC_PUB_URL}/json?since=12h&poll=1`;
+        const resp = await fetch(url);
+        if (!resp.ok) return;
+        const text = await resp.text();
+        const lines = text.trim().split('\n');
+        for (let i = lines.length - 1; i >= 0; i--) {
+          try {
+            const row = JSON.parse(lines[i]);
+            if (row.event === 'message' && row.message) {
+              const parsed = JSON.parse(row.message);
+              if (parsed && parsed.senderId !== localClientId && parsed.timestamp) {
+                applyIncomingSyncData(parsed, false);
+                break;
+              }
+            }
+          } catch(e) {}
+        }
+      } catch (e) {
+        // Fallback to local storage
+      }
+    }
+
+    function triggerLiveCloudSync() {
+      clearTimeout(liveSyncDebounceTimer);
+      liveSyncDebounceTimer = setTimeout(() => {
+        publishCurrentStateToLiveSync();
+      }, 350);
+    }
+
+    async function publishCurrentStateToLiveSync() {
+      const now = Date.now();
+      state.lastModifiedTimestamp = now;
+      const payload = {
+        senderId: localClientId,
+        timestamp: now,
+        type: 'FULL_SYNC',
+        tasks: state.tasks,
+        chronotype: state.chronotype,
+        goals: state.goals,
+        energy: state.energy,
+        manualEnergyOverride: state.manualEnergyOverride,
+        archivedTasks: state.archivedTasks || []
+      };
+
+      if (localBroadcastChannel) {
+        try { localBroadcastChannel.postMessage(payload); } catch(e) {}
+      }
+
+      try {
+        updateLiveSyncStatusUI('syncing', '🟡 Syncing...');
+        const res = await fetch(LIVE_SYNC_PUB_URL, {
+          method: 'POST',
+          headers: {
+            'Title': 'FlowLiveSync',
+            'X-Sender': localClientId,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          updateLiveSyncStatusUI('connected', '🟢 Connected (Live)');
+        }
+      } catch (e) {
+        updateLiveSyncStatusUI('connected', '🟢 Connected (Local)');
+      }
+    }
+
+    function applyIncomingSyncData(payload, showToast = false) {
+      if (!payload || payload.senderId === localClientId) return;
+      if (payload.timestamp && payload.timestamp <= lastReceivedSyncTimestamp) return;
+
+      lastReceivedSyncTimestamp = payload.timestamp || Date.now();
+
+      if (payload.type === 'FULL_SYNC' || (Array.isArray(payload.tasks) && payload.tasks.length > 0)) {
+        if (Array.isArray(payload.tasks)) {
+          state.tasks = payload.tasks;
+        }
+        if (payload.chronotype && payload.chronotype.id) {
+          state.chronotype = payload.chronotype;
+        }
+        if (payload.goals) {
+          state.goals = { ...state.goals, ...payload.goals };
+        }
+        if (payload.energy) {
+          state.energy = payload.energy;
+        }
+        if (payload.manualEnergyOverride !== undefined) {
+          state.manualEnergyOverride = payload.manualEnergyOverride;
+        }
+        if (Array.isArray(payload.archivedTasks)) {
+          state.archivedTasks = payload.archivedTasks;
+        }
+
+        localStorage.setItem(MASTER_STORAGE_KEY, JSON.stringify(state));
+
+        renderChronotypeUI();
+        optimizeByChronotype();
+        renderPriorityLists();
+        recalculateSchedule();
+
+        if (state.goals) {
+          const qEl = document.getElementById('qGoal');
+          const mEl = document.getElementById('mGoal');
+          const wEl = document.getElementById('wGoal');
+          if (qEl && payload.goals?.qGoal !== undefined) qEl.value = state.goals.qGoal;
+          if (mEl && payload.goals?.mGoal !== undefined) mEl.value = state.goals.mGoal;
+          if (wEl && payload.goals?.wGoal !== undefined) wEl.value = state.goals.wGoal;
+        }
+
+        updateLiveSyncStatusUI('connected', '🟢 Synced');
+        if (showToast) {
+          showRippleNotice('⚡ Synced with mobile in real time.');
+        }
+      }
     }
 
     function resetDefaultData() {
