@@ -1739,18 +1739,29 @@
       }
     };
 
+    const DEPRECATED_SAMPLE_TITLES = [
+      'draft co natural medicine potency & packaging compliance matrix',
+      'evaluate cleanroom equipment & commercial facility layouts',
+      'outreach to 3 denver extraction & formulation lab directors',
+      'schedule denver real estate walkthroughs',
+      'review west denver / lakewood real estate comps & inspection notes',
+      'follow up with livewell animal hospital on leo radiographs',
+      'midday reset, lunch & quick mobility break',
+      'morning routine, meditation & leo park walk'
+    ];
+    const DEPRECATED_SAMPLE_IDS = new Set(['t1', 't2', 't3', 't4', 't5', 't6', 't8']);
+
+    function isDeprecatedTask(title, id) {
+      if (id && DEPRECATED_SAMPLE_IDS.has(String(id))) return true;
+      const lower = (title || '').trim().toLowerCase();
+      return DEPRECATED_SAMPLE_TITLES.some(d => lower === d || lower.startsWith(d));
+    }
+
     const DEFAULT_TASKS = [
       { id: 't_dad_text', title: "Respond to Dad's text", microStep: 'Send quick 1-sentence reply', type: 'LIT', energy: 'fried', duration: 15, fixedStartMin: null, locked: false, completed: false, recurring: false, subtasks: [] },
-      { id: 't1', title: 'Morning Routine, Meditation & Leo Park Walk', microStep: 'Leash up & head out for 20-min low-impact walk', type: 'LIT', energy: 'steady', duration: 45, fixedStartMin: 450, locked: false, completed: true, recurring: true, recurrence: { freq: 'daily', daysOfWeek: [0, 1, 2, 3, 4, 5, 6], interval: 1, unit: 'days' }, subtasks: [] },
-      { id: 't2', title: 'Draft CO Natural Medicine Potency & Packaging Compliance Matrix', microStep: 'Open state DOR compliance rules PDF and extract Section 4 table', type: 'MIT', energy: 'sharp', duration: 60, fixedStartMin: null, locked: false, completed: false, recurring: false, subtasks: [{ text: 'Define standardized capsule homogenizing SOP requirements', done: true }, { text: 'Map third-party lab stability & microbial testing intervals', done: false }] },
-      { id: 't3', title: 'Outreach to 3 Denver Extraction & Formulation Lab Directors', microStep: 'Draft concise 4-sentence intro note to first founder on LinkedIn', type: 'MIT', energy: 'sharp', duration: 45, fixedStartMin: null, locked: false, completed: false, recurring: false, subtasks: [] },
-      { id: 't4', title: 'Evaluate Cleanroom Equipment & Commercial Facility Layouts', microStep: 'Compare square footage & HVAC specs on top 2 saved industrial listings', type: 'MIT', energy: 'steady', duration: 45, fixedStartMin: null, locked: false, completed: false, recurring: false, subtasks: [] },
-      { id: 't5', title: 'Midday Reset, Lunch & Quick Mobility Break', microStep: 'Step away from screens for 45 mins', type: 'LIT', energy: 'fried', duration: 45, fixedStartMin: 750, locked: false, completed: false, recurring: true, recurrence: { freq: 'weekdays', daysOfWeek: [1, 2, 3, 4, 5], interval: 1, unit: 'days' }, subtasks: [] },
-      { id: 't6', title: 'Follow up with LiveWell Animal Hospital on Leo Radiographs', microStep: 'Reply to Patsy Mitch email confirming next mobility check-in', type: 'LIT', energy: 'fried', duration: 20, fixedStartMin: null, locked: false, completed: false, recurring: false, subtasks: [] },
-      { id: 't7', title: 'Inbox Zero & Weekly Sunday Planning Prep', microStep: 'Clear starred emails and archive newsletters', type: 'LIT', energy: 'fried', duration: 25, fixedStartMin: null, locked: false, completed: false, recurring: true, recurrence: { freq: 'weekly', daysOfWeek: [0, 5], interval: 1, unit: 'weeks' }, subtasks: [] },
-      { id: 't8', title: 'Review West Denver / Lakewood Real Estate Comps & Inspection Notes', microStep: 'Archive non-matching listings & flag top main-floor primary contender', type: 'LIT', energy: 'steady', duration: 30, fixedStartMin: null, locked: false, completed: false, recurring: false, subtasks: [] },
-      { id: 't_treadmill', title: '1 hour treadmill', microStep: 'Lace up sneakers & set speed', type: 'LIT', energy: 'steady', duration: 60, fixedStartMin: 1255, locked: false, completed: true, recurring: false, subtasks: [] },
       { id: 't_job_apply', title: 'Find & Apply to one job', microStep: 'Open LinkedIn & submit 1 targeted application', type: 'MIT', energy: 'sharp', duration: 45, fixedStartMin: null, locked: false, completed: false, recurring: false, subtasks: [] },
+      { id: 't_nail_polish', title: 'Take off nail polish', microStep: 'Gather nail polish, remover, file & buffer at clean table', type: 'LIT', energy: 'fried', duration: 10, fixedStartMin: null, locked: false, completed: true, recurring: false, subtasks: [], startMin: 840, endMin: 850 },
+      { id: 't7', title: 'Inbox Zero & Weekly Sunday Planning Prep', microStep: 'Clear starred emails and archive newsletters', type: 'LIT', energy: 'fried', duration: 25, fixedStartMin: null, locked: false, completed: false, recurring: true, recurrence: { freq: 'weekly', daysOfWeek: [0, 5], interval: 1, unit: 'weeks' }, subtasks: [] },
       { id: 't9', title: 'Late Afternoon Workout / Pickleball Court Session', microStep: 'Change gear & head out on time', type: 'LIT', energy: 'steady', duration: 60, fixedStartMin: 1020, locked: false, completed: false, recurring: true, recurrence: { freq: 'weekly', daysOfWeek: [1, 2, 3, 4, 5], interval: 1, unit: 'days' }, subtasks: [] }
     ];
 
@@ -1824,12 +1835,7 @@
       analytics: {
         history: [],
         rippleCount: 14,
-        pushCounts: {
-          'Draft CO Natural Medicine Potency & Packaging Compliance Matrix': 4,
-          'Evaluate Cleanroom Equipment & Commercial Facility Layouts': 3,
-          'Outreach to 3 Denver Extraction & Formulation Lab Directors': 2,
-          'Schedule Denver Real Estate Walkthroughs': 2
-        },
+        pushCounts: {},
         chronotypeHistory: []
       },
       chronotypeShiftDismissedUntil: null,
@@ -1969,6 +1975,22 @@
           completedDate: getLocalDateString(),
           manuallyPositioned: true
         });
+      }
+
+      // Permanently filter out any deprecated placeholder/sample tasks from tasks, archive, and analytics
+      state.tasks = (state.tasks || []).filter(t => !isDeprecatedTask(t.title, t.id));
+      if (state.archivedTasks) {
+        state.archivedTasks = state.archivedTasks.filter(t => !isDeprecatedTask(t.title, t.id));
+      }
+      if (state.analytics && state.analytics.pushCounts) {
+        Object.keys(state.analytics.pushCounts).forEach(title => {
+          if (isDeprecatedTask(title, '')) {
+            delete state.analytics.pushCounts[title];
+          }
+        });
+      }
+      if (state.analytics && Array.isArray(state.analytics.history)) {
+        state.analytics.history = state.analytics.history.filter(h => !isDeprecatedTask(h.title, h.taskId));
       }
 
       // Ensure any tasks with outdated generic 'Draft rough framework' microStep are updated, without auto-generating subtasks
@@ -4783,7 +4805,7 @@
 
       if (payload.type === 'FULL_SYNC' || (Array.isArray(payload.tasks) && payload.tasks.length > 0)) {
         if (Array.isArray(payload.tasks)) {
-          state.tasks = payload.tasks;
+          state.tasks = payload.tasks.filter(t => !isDeprecatedTask(t.title, t.id));
         }
         if (payload.chronotype && payload.chronotype.id) {
           state.chronotype = payload.chronotype;
@@ -4798,14 +4820,14 @@
           state.manualEnergyOverride = payload.manualEnergyOverride;
         }
         if (Array.isArray(payload.archivedTasks)) {
-          state.archivedTasks = payload.archivedTasks;
+          state.archivedTasks = payload.archivedTasks.filter(t => !isDeprecatedTask(t.title, t.id));
         }
         if (payload.analytics) {
           if (!state.analytics) {
             state.analytics = payload.analytics;
           } else {
             const existingHistory = state.analytics.history || [];
-            const incomingHistory = payload.analytics.history || [];
+            const incomingHistory = (payload.analytics.history || []).filter(h => !isDeprecatedTask(h.title, h.taskId));
             const seenHistKeys = new Set(existingHistory.map(h => h.id || (h.taskId + '_' + h.completedAtISO + '_' + h.status)));
             const mergedHistory = [...existingHistory];
             incomingHistory.forEach(item => {
@@ -4820,6 +4842,14 @@
             const mergedPushCounts = { ...(state.analytics.pushCounts || {}) };
             if (payload.analytics.pushCounts) {
               Object.keys(payload.analytics.pushCounts).forEach(title => {
+                if (!isDeprecatedTask(title, '')) {
+                  mergedPushCounts[title] = Math.max(
+                    mergedPushCounts[title] || 0,
+                    payload.analytics.pushCounts[title] || 0
+                  );
+                }
+              });
+            }
                 mergedPushCounts[title] = Math.max(
                   mergedPushCounts[title] || 0,
                   payload.analytics.pushCounts[title] || 0
@@ -6538,10 +6568,18 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
     }
     function deleteTask(taskId) { 
       const t = state.tasks.find(x => String(x.id) === String(taskId));
-      if (t) trackTaskLifecycle(t, 'deleted');
+      if (t) {
+        trackTaskLifecycle(t, 'deleted');
+        if (state.analytics && state.analytics.pushCounts && t.title) {
+          delete state.analytics.pushCounts[t.title];
+        }
+      }
       state.tasks = state.tasks.filter(x => String(x.id) !== String(taskId)); 
       saveState(); 
       recalculateSchedule(); 
+      if (typeof isAnalyticsViewActive !== 'undefined' && isAnalyticsViewActive) {
+        renderAnalyticsDashboard();
+      }
     }
 
     // ==========================================
@@ -6849,13 +6887,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
 
       analytics.history = [];
       analytics.rippleCount = analytics.rippleCount || 14;
-      analytics.pushCounts = analytics.pushCounts || {
-        'Draft CO Natural Medicine Potency & Packaging Compliance Matrix': 4,
-        'Evaluate Cleanroom Equipment & Commercial Facility Layouts': 3,
-        'Outreach to 3 Denver Extraction & Formulation Lab Directors': 2,
-        'Schedule Denver Real Estate Walkthroughs': 2,
-        'Cleanroom HVAC Ventilation Specification Review': 1
-      };
+      analytics.pushCounts = analytics.pushCounts || {};
 
       const sampleTasks = [
         { title: 'Morning Routine, Meditation & Leo Park Walk', type: 'FIXED', energy: 'steady', duration: 45, startMin: 450, endMin: 495, hour: 8, onTime: true, status: 'completed' },
@@ -8646,6 +8678,9 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       let archivedCount = 0;
 
       state.archivedTasks = state.archivedTasks || [];
+
+      // Ensure no deprecated placeholder tasks ever roll over
+      state.tasks = state.tasks.filter(t => !isDeprecatedTask(t.title, t.id));
 
       // 1. Reset completion on all recurring routines & snapshot completed routines into archive
       const todayDate = new Date();
