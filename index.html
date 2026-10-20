@@ -949,7 +949,12 @@
 
         <!-- Sub-steps / Breakdown Checklist -->
         <div class="space-y-2">
-          <label class="block text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500">Sub-steps / Breakdown Checklist</label>
+          <div class="flex items-center justify-between">
+            <label class="block text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500">Sub-steps / Breakdown Checklist</label>
+            <button type="button" onclick="autoBreakdownTask(editingTaskId)" class="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 transition" title="Auto-generate relevant micro-steps">
+              <span>🪄</span> Auto-Breakdown
+            </button>
+          </div>
           <div id="editTaskSubtasksList" class="space-y-1.5 max-h-36 overflow-y-auto pr-1"></div>
           <div class="flex items-center gap-2 pt-1">
             <input type="text" id="newSubtaskInput" placeholder="Add micro-step..." onkeydown="if(event.key==='Enter'){event.preventDefault();addEditModalSubtask();}" class="flex-1 dark:bg-slate-950 bg-slate-50 border dark:border-slate-700 border-slate-300 rounded-xl px-3 py-1.5 text-xs dark:text-slate-200 text-slate-800 focus:outline-none" />
@@ -4656,6 +4661,380 @@
 
     function launchRecommendedFocus() { const rec = getRecommendedTask(); if (rec) openFocusModal(rec.id); }
 
+    // ==========================================
+    // CONTEXT-AWARE SMART BREAKDOWN & SUBTASK ENGINE
+    // ==========================================
+    function generateSmartBreakdown(title, type = 'LIT', energy = 'steady') {
+      const rawTitle = (title || '').trim();
+      const t = rawTitle.toLowerCase();
+
+      // 1. Nails / Manicure / Pedicure / Polish
+      if (t.includes('nail') || t.includes('manicure') || t.includes('pedicure') || t.includes('polish')) {
+        return {
+          microStep: 'Gather nail polish, remover, file & buffer at clean table',
+          subtasks: [
+            { text: 'Remove old polish & shape/file nails to desired length', done: false },
+            { text: 'Apply protective base coat & 2 thin color layers', done: false },
+            { text: 'Apply quick-dry top coat & allow 15m to fully set', done: false }
+          ]
+        };
+      }
+
+      // 2. Skincare / Facial / Hygiene
+      if (t.includes('skin') || t.includes('facial') || t.includes('face mask') || t.includes('serum') || t.includes('moisturiz') || t.includes('hygiene')) {
+        return {
+          microStep: 'Wash hands and line up cleanser & active treatment',
+          subtasks: [
+            { text: 'Gentle cleanse with warm water & soft towel pat', done: false },
+            { text: 'Apply targeted treatment serum or hydrating mask', done: false },
+            { text: 'Lock in moisture with hydrating cream / SPF', done: false }
+          ]
+        };
+      }
+
+      // 3. Hair / Shave / Beard
+      if (t.includes('hair') || t.includes('haircut') || t.includes('barber') || t.includes('shave') || t.includes('beard') || t.includes('trim')) {
+        return {
+          microStep: 'Set up mirror, towel & grooming tools in well-lit area',
+          subtasks: [
+            { text: 'Prep area & dampen hair or apply shave lather', done: false },
+            { text: 'Carefully trim, cut, or shape in sections', done: false },
+            { text: 'Rinse off, style, and clean sink & tools', done: false }
+          ]
+        };
+      }
+
+      // 4. Dog / Pets / Vet / Leo / Walk
+      if (t.includes('dog') || t.includes('walk leo') || t.includes('leo') || t.includes('puppy') || t.includes('pet') || t.includes('cat') || t.includes('vet') || t.includes('radiograph')) {
+        if (t.includes('vet') || t.includes('radiograph') || t.includes('hospital') || t.includes('clinic')) {
+          return {
+            microStep: 'Open portal or records PDF & confirm appointment details',
+            subtasks: [
+              { text: 'Review recent symptoms, radiographs & notes to discuss', done: false },
+              { text: 'Place call to clinic or check in at front desk', done: false },
+              { text: 'Log provider instructions & next mobility milestone', done: false }
+            ]
+          };
+        }
+        return {
+          microStep: 'Grab leash, harness, waste bags & slip on walking shoes',
+          subtasks: [
+            { text: 'Head out for brisk initial block to burn initial excitement', done: false },
+            { text: 'Maintain steady 20-min low-impact sniffing & walking loop', done: false },
+            { text: 'Wipe paws, refill fresh water bowl & give treat', done: false }
+          ]
+        };
+      }
+
+      // 5. Sports / Court / Pickleball / Tennis
+      if (t.includes('pickleball') || t.includes('tennis') || t.includes('court') || t.includes('racket') || t.includes('paddle') || t.includes('badminton') || t.includes('basketball')) {
+        return {
+          microStep: 'Pack paddle/racket, balls & cold water bottle into car',
+          subtasks: [
+            { text: '5-min dynamic arm & leg warm-up on court', done: false },
+            { text: 'Active rally consistency & focused drill/match play', done: false },
+            { text: 'Hydrate, cool down & stretch calves/shoulders', done: false }
+          ]
+        };
+      }
+
+      // 6. Workout / Gym / Weights / Lift
+      if (t.includes('workout') || t.includes('gym') || t.includes('lift') || t.includes('weight') || t.includes('strength') || t.includes('exercise') || t.includes('wod')) {
+        return {
+          microStep: 'Lace up training shoes & queue high-energy playlist',
+          subtasks: [
+            { text: '5-min dynamic joint activation & warm-up sets', done: false },
+            { text: 'Execute primary compound lifts & accessory circuit', done: false },
+            { text: 'Hydrate, cool-down stretches & log weights/reps', done: false }
+          ]
+        };
+      }
+
+      // 7. Run / Jog / Cardio / Bike
+      if (t.includes('run') || t.includes('jog') || t.includes('sprint') || t.includes('mile') || t.includes('cardio') || t.includes('treadmill') || t.includes('cycle') || t.includes('bike')) {
+        return {
+          microStep: 'Put on running gear & start tracking app',
+          subtasks: [
+            { text: '5-min brisk walk & ankle/hip dynamic stretches', done: false },
+            { text: 'Run target route maintaining steady aerobic pace', done: false },
+            { text: '5-min walk cooldown, hydrate & stretch calves', done: false }
+          ]
+        };
+      }
+
+      // 8. Meditation / Yoga / NSDR / Breathwork / Relax
+      if (t.includes('meditat') || t.includes('breath') || t.includes('nsdr') || t.includes('yoga') || t.includes('stretch') || t.includes('relax')) {
+        return {
+          microStep: 'Roll out mat, dim lighting & silence phone notifications',
+          subtasks: [
+            { text: '2-minute diaphragmatic breathing reset', done: false },
+            { text: 'Execute mindful movement or guided audio track', done: false },
+            { text: '1-minute stillness integration before standing', done: false }
+          ]
+        };
+      }
+
+      // 9. Dishes / Kitchen Cleaning
+      if (t.includes('dish') || t.includes('dishwasher') || t.includes('sink')) {
+        return {
+          microStep: 'Turn on hot water and scrape first plate into compost',
+          subtasks: [
+            { text: 'Unload clean drying rack / dishwasher to cupboards', done: false },
+            { text: 'Scrub and wash/load remaining dirty dishes', done: false },
+            { text: 'Wipe down sink basin, faucet & surrounding counter', done: false }
+          ]
+        };
+      }
+
+      // 10. Laundry / Clothes
+      if (t.includes('laundry') || t.includes('wash clothes') || t.includes('fold') || t.includes('linens') || t.includes('sheets')) {
+        return {
+          microStep: 'Gather laundry hamper and sort by wash cycle type',
+          subtasks: [
+            { text: 'Start wash cycle with detergent & set 35m timer', done: false },
+            { text: 'Transfer clean load to dryer or hanging rack', done: false },
+            { text: 'Fold immediately once dry & put into drawers', done: false }
+          ]
+        };
+      }
+
+      // 11. General Cleaning / Tidy / Vacuum / Declutter
+      if (t.includes('clean') || t.includes('tidy') || t.includes('vacuum') || t.includes('mop') || t.includes('dust') || t.includes('declutter') || t.includes('trash') || t.includes('sweep')) {
+        return {
+          microStep: 'Put on energizing music & pick up first 3 items in room',
+          subtasks: [
+            { text: 'Return stray items to their designated homes', done: false },
+            { text: 'Wipe down primary surfaces & vacuum/sweep main floor', done: false },
+            { text: 'Empty trash bins & enjoy refreshed atmosphere', done: false }
+          ]
+        };
+      }
+
+      // 12. Grocery / Food Shopping
+      if (t.includes('grocery') || t.includes('groceries') || t.includes('trader joe') || t.includes('supermarket') || t.includes('safeway') || t.includes('costco') || t.includes('market')) {
+        return {
+          microStep: 'Open notes app & write 5-minute essential shopping list',
+          subtasks: [
+            { text: 'Check pantry staples & organize list by aisle', done: false },
+            { text: 'Pick up fresh produce, proteins & pantry items', done: false },
+            { text: 'Unpack and organize items into fridge & cupboards', done: false }
+          ]
+        };
+      }
+
+      // 13. Cooking / Dinner / Meal Prep
+      if (t.includes('cook') || t.includes('dinner') || t.includes('lunch') || t.includes('breakfast') || t.includes('meal prep') || t.includes('bake') || t.includes('recipe')) {
+        return {
+          microStep: 'Pull cutting board, knife & core ingredients onto counter',
+          subtasks: [
+            { text: 'Wash, chop, and measure all recipe ingredients', done: false },
+            { text: 'Cook main dish components & monitor timers', done: false },
+            { text: 'Plate food and soak pans in hot soapy water', done: false }
+          ]
+        };
+      }
+
+      // 14. Compliance / Colorado DOR / Potency / Packaging / Lab Testing
+      if (t.includes('compliance') || t.includes('potency') || t.includes('packaging') || t.includes('dor') || t.includes('natural medicine') || t.includes('regulation')) {
+        return {
+          microStep: 'Open Colorado DOR compliance PDF to standards table',
+          subtasks: [
+            { text: 'Extract required potency limits & labeling disclosures', done: false },
+            { text: 'Map third-party lab testing intervals & microbial limits', done: false },
+            { text: 'Draft standardized packaging & child-resistant checklist', done: false }
+          ]
+        };
+      }
+
+      // 15. Lab / Cleanroom / Facility / HVAC / Equipment
+      if (t.includes('lab') || t.includes('cleanroom') || t.includes('extraction') || t.includes('equipment') || t.includes('facility') || t.includes('hvac') || t.includes('contractor')) {
+        return {
+          microStep: 'Open equipment spec sheet or commercial floor plan',
+          subtasks: [
+            { text: 'Review square footage, power drops & HVAC airflow specs', done: false },
+            { text: 'Compare vendor quotes & warranty / validation terms', done: false },
+            { text: 'Draft concise follow-up technical questions for engineer', done: false }
+          ]
+        };
+      }
+
+      // 16. Formulation / Dosing / SOP / Matrix
+      if (t.includes('formulation') || t.includes('dosing') || t.includes('matrix') || t.includes('homogeniz') || t.includes('capsule') || t.includes('sop') || t.includes('stability')) {
+        return {
+          microStep: 'Open master formulation spreadsheet to dosing tab',
+          subtasks: [
+            { text: 'Calculate active milligram dosing ratios & excipient blend', done: false },
+            { text: 'Define step-by-step capsule homogenization SOP', done: false },
+            { text: 'Establish 30/60/90-day stability testing schedule', done: false }
+          ]
+        };
+      }
+
+      // 17. Outreach / Founders / LinkedIn / Networking
+      if (t.includes('outreach') || t.includes('director') || t.includes('founder') || t.includes('intro') || t.includes('connect') || t.includes('linkedin') || t.includes('coffee chat')) {
+        return {
+          microStep: 'Pull up contact profile and note 1 mutual interest or project',
+          subtasks: [
+            { text: 'Draft concise 3-sentence note with clear value hook', done: false },
+            { text: 'Propose 2 concrete 15-minute time slots for a call', done: false },
+            { text: 'Send message and log follow-up date in tracker', done: false }
+          ]
+        };
+      }
+
+      // 18. Email / Inbox Zero / Newsletters
+      if (t.includes('email') || t.includes('inbox') || t.includes('zero') || t.includes('reply') || t.includes('newsletter')) {
+        return {
+          microStep: 'Open inbox, filter unread, and archive top 5 promotional emails',
+          subtasks: [
+            { text: 'Scan for high-priority sender emails and reply directly', done: false },
+            { text: 'Delegate or convert actionable tasks to calendar', done: false },
+            { text: 'Archive or file resolved conversations to reach zero', done: false }
+          ]
+        };
+      }
+
+      // 19. Call / Appointment Booking / Phone
+      if (t.includes('call') || t.includes('phone') || t.includes('appointment') || t.includes('book')) {
+        return {
+          microStep: 'Locate office contact number & write down 2 preferred dates',
+          subtasks: [
+            { text: 'Dial office or log into booking portal', done: false },
+            { text: 'Confirm appointment date, provider & prep instructions', done: false },
+            { text: 'Add confirmed event into calendar with location & reminder', done: false }
+          ]
+        };
+      }
+
+      // 20. Real Estate / Listings / Tour / Properties
+      if (t.includes('real estate') || t.includes('property') || t.includes('listing') || t.includes('tour') || t.includes('lakewood') || t.includes('inspection') || t.includes('house') || t.includes('apartment')) {
+        return {
+          microStep: 'Open saved property search and filter top 2 contender listings',
+          subtasks: [
+            { text: 'Examine square footage, floor plan, zoning & HOA terms', done: false },
+            { text: 'Draft tour inquiry or review inspection report notes', done: false },
+            { text: 'Log evaluation notes and pros/cons in property tracker', done: false }
+          ]
+        };
+      }
+
+      // 21. Pitch Deck / Presentation / Slides
+      if (t.includes('deck') || t.includes('presentation') || t.includes('pitch') || t.includes('slides') || t.includes('teaser')) {
+        return {
+          microStep: 'Open presentation deck to target slide and write 1 bold header',
+          subtasks: [
+            { text: 'Draft 3 core bullet points supporting the narrative', done: false },
+            { text: 'Add clean visual graphic, chart, or metric callout', done: false },
+            { text: 'Present in full screen to test pacing and clarity', done: false }
+          ]
+        };
+      }
+
+      // 22. Writing / Drafting / Proposals / Reports
+      if (t.includes('write') || t.includes('draft') || t.includes('article') || t.includes('blog') || t.includes('memo') || t.includes('proposal') || t.includes('essay')) {
+        return {
+          microStep: 'Open blank document and jot down a 3-point bullet outline',
+          subtasks: [
+            { text: 'Draft rough first-pass section without self-editing', done: false },
+            { text: 'Refine language for clarity, punchiness, and flow', done: false },
+            { text: 'Proofread formatting and verify citations/links', done: false }
+          ]
+        };
+      }
+
+      // 23. Research / Study / Analysis
+      if (t.includes('research') || t.includes('read') || t.includes('analyze') || t.includes('review') || t.includes('study') || t.includes('audit')) {
+        return {
+          microStep: 'Open source document or PDF and skim main headings',
+          subtasks: [
+            { text: 'Read target section with focused highlighter', done: false },
+            { text: 'Synthesize top 3 actionable findings into notes', done: false },
+            { text: 'Identify direct application or next decision step', done: false }
+          ]
+        };
+      }
+
+      // 24. Finance / Invoices / Taxes / Bills / Budget
+      if (t.includes('invoice') || t.includes('bill') || t.includes('pay') || t.includes('tax') || t.includes('budget') || t.includes('accounting') || t.includes('receipt') || t.includes('expense')) {
+        return {
+          microStep: 'Open finance portal or spreadsheet to current balance',
+          subtasks: [
+            { text: 'Review pending line items and verify amounts', done: false },
+            { text: 'Execute payments or send out client invoice', done: false },
+            { text: 'Save confirmation PDF into monthly tax records', done: false }
+          ]
+        };
+      }
+
+      // 25. Shopping / Purchases / Orders
+      if (t.includes('buy') || t.includes('order') || t.includes('purchase') || t.includes('shop')) {
+        return {
+          microStep: 'Open product listing and confirm sizing / specifications',
+          subtasks: [
+            { text: 'Check top 3 reviews and shipping ETA', done: false },
+            { text: 'Proceed to checkout and verify shipping address', done: false },
+            { text: 'Save order confirmation and set delivery reminder', done: false }
+          ]
+        };
+      }
+
+      // 26. Code / Tech / Debugging / Dev
+      if (t.includes('code') || t.includes('bug') || t.includes('debug') || t.includes('dev') || t.includes('github') || t.includes('deploy') || t.includes('api') || t.includes('software')) {
+        return {
+          microStep: 'Open terminal and reproduction file for target issue',
+          subtasks: [
+            { text: 'Isolate root cause and reproduce with minimal test', done: false },
+            { text: 'Implement clean fix and verify tests pass', done: false },
+            { text: 'Commit changes with descriptive message and push', done: false }
+          ]
+        };
+      }
+
+      // 27. Verb-Based Smart Heuristics
+      if (t.startsWith('organize') || t.startsWith('sort') || t.startsWith('categorize') || t.startsWith('plan')) {
+        return {
+          microStep: `List top 3 priority categories for "${rawTitle}"`,
+          subtasks: [
+            { text: `Group items or ideas into defined categories`, done: false },
+            { text: `Tackle highest-friction pile first for 15 minutes`, done: false },
+            { text: `File and label remaining items cleanly`, done: false }
+          ]
+        };
+      }
+
+      if (t.startsWith('set up') || t.startsWith('setup') || t.startsWith('install') || t.startsWith('assemble') || t.startsWith('build')) {
+        return {
+          microStep: `Unbox or open setup wizard for "${rawTitle}"`,
+          subtasks: [
+            { text: `Review instructions checklist and clear physical workspace`, done: false },
+            { text: `Assemble or configure core components in order`, done: false },
+            { text: `Run functional test to confirm everything works`, done: false }
+          ]
+        };
+      }
+
+      if (t.startsWith('update') || t.startsWith('edit') || t.startsWith('polish') || t.startsWith('revise')) {
+        return {
+          microStep: `Open active draft/file for "${rawTitle}"`,
+          subtasks: [
+            { text: `Identify the 2-3 specific sections needing revision`, done: false },
+            { text: `Make focused line edits and save changes`, done: false },
+            { text: `Review final version end-to-end`, done: false }
+          ]
+        };
+      }
+
+      // 28. Universal Dynamic Fallback
+      return {
+        microStep: `Gather tools & open workspace for "${rawTitle}"`,
+        subtasks: [
+          { text: `5-Min Setup: Prep essentials and clear workspace`, done: false },
+          { text: `Core Sprint: 20-min focused progress block on "${rawTitle}"`, done: false },
+          { text: `Wrap-Up: Review outcome, tidy tools & log next step`, done: false }
+        ]
+      };
+    }
+
     function addTask(e) {
       e.preventDefault();
       const title = document.getElementById('taskTitleInput').value.trim();
@@ -4685,10 +5064,11 @@
         };
       }
 
+      const smart = generateSmartBreakdown(title, type, energy);
       state.tasks.push({
         id: 't_' + Date.now(),
         title,
-        microStep: micro || `Draft rough framework`,
+        microStep: micro || smart.microStep,
         type,
         energy,
         duration,
@@ -4697,7 +5077,7 @@
         completed: false,
         recurring,
         recurrence,
-        subtasks: []
+        subtasks: smart.subtasks.map(st => ({ text: st.text, done: false }))
       });
       document.getElementById('taskTitleInput').value = '';
       document.getElementById('taskMicroInput').value = '';
@@ -4788,11 +5168,75 @@
       }
     }
 
-    function autoBreakdownTask(taskId) {
+    async function autoBreakdownTask(taskId) {
       const task = state.tasks.find(t => String(t.id) === String(taskId));
       if (!task) return;
-      task.subtasks = [{ text: '2-Min Setup & browser tab cleanup', done: false }, { text: 'Core 15-min rough sprint', done: false }, { text: '10-min review & polish', done: false }];
-      saveState(); renderPriorityLists();
+
+      // 1. Immediately apply context-aware smart breakdown
+      const smart = generateSmartBreakdown(task.title, task.type, task.energy);
+      task.subtasks = smart.subtasks.map(st => ({ text: st.text, done: false }));
+      if (!task.microStep || task.microStep.toLowerCase().includes('draft rough framework')) {
+        task.microStep = smart.microStep;
+      }
+      saveState();
+      renderPriorityLists();
+      updateRecommendationBanner();
+
+      if (editingTaskId === taskId) {
+        renderEditModalSubtasks();
+        const microInp = document.getElementById('editTaskMicro');
+        if (microInp) microInp.value = task.microStep;
+      }
+      showRippleNotice(`🪄 Generated tailored micro-steps for "${task.title}"`);
+
+      // 2. If Gemini API key is configured, enrich asynchronously with Gemini 2.5 Flash
+      const apiKey = localStorage.getItem('flowstate_os_gemini_api_key') || document.getElementById('geminiApiKeyInput')?.value;
+      if (apiKey && apiKey.trim()) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 3500);
+
+          const prompt = `Task: "${task.title}" (energy: ${task.energy}, duration: ${task.duration}m, type: ${task.type}).
+Suggest:
+1. "microStep": a 2-minute physical starter step that completely removes initiation friction.
+2. "subtasks": exactly 3 concise, sequential, highly practical sub-steps to complete this exact task.
+Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "step 2", "step 3"]}`;
+
+          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey.trim()}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: { responseMimeType: 'application/json' }
+            }),
+            signal: controller.signal
+          });
+          clearTimeout(timeoutId);
+
+          if (res.ok) {
+            const data = await res.json();
+            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (text) {
+              const parsed = JSON.parse(text);
+              if (parsed.subtasks && Array.isArray(parsed.subtasks) && parsed.subtasks.length > 0) {
+                task.subtasks = parsed.subtasks.map(s => ({ text: typeof s === 'string' ? s : s.text, done: false }));
+                if (parsed.microStep) task.microStep = parsed.microStep;
+                saveState();
+                renderPriorityLists();
+                updateRecommendationBanner();
+                if (editingTaskId === taskId) {
+                  renderEditModalSubtasks();
+                  const microInp = document.getElementById('editTaskMicro');
+                  if (microInp) microInp.value = task.microStep;
+                }
+                showRippleNotice(`✨ Gemini AI crafted bespoke micro-steps for "${task.title}"`);
+              }
+            }
+          }
+        } catch (e) {
+          // Gracefully retain the smart heuristic breakdown
+        }
+      }
     }
 
     function toggleSubtask(taskId, idx) { const t = state.tasks.find(x => String(x.id) === String(taskId)); if (t && t.subtasks[idx]) { t.subtasks[idx].done = !t.subtasks[idx].done; saveState(); renderPriorityLists(); } }
@@ -5835,7 +6279,7 @@
       }
 
       t.title = newTitle;
-      t.microStep = newMicro || 'Draft rough framework';
+      t.microStep = newMicro || generateSmartBreakdown(newTitle, t.type, t.energy).microStep;
       t.energy = newEnergy;
       t.duration = newDuration;
 
