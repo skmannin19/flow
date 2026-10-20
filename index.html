@@ -4617,11 +4617,20 @@
         for (let i = lines.length - 1; i >= 0; i--) {
           try {
             const row = JSON.parse(lines[i]);
-            if (row.event === 'message' && row.message) {
-              const parsed = JSON.parse(row.message);
-              if (parsed && parsed.senderId !== localClientId && parsed.timestamp) {
-                applyIncomingSyncData(parsed, false);
-                break;
+            if (row.event === 'message') {
+              let payloadStr = row.message;
+              if (row.attachment && row.attachment.url) {
+                try {
+                  const aResp = await fetch(row.attachment.url);
+                  payloadStr = await aResp.text();
+                } catch(e) {}
+              }
+              if (payloadStr) {
+                const parsed = JSON.parse(payloadStr);
+                if (parsed && parsed.senderId !== localClientId && parsed.timestamp) {
+                  applyIncomingSyncData(parsed, false);
+                  break;
+                }
               }
             }
           } catch(e) {}
