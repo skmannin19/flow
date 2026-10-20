@@ -64,6 +64,23 @@
       box-shadow: 0 6px 14px -2px rgba(99, 102, 241, 0.5) !important;
       transform: translateY(-2px);
     }
+
+    /* Mobile-first enhancements */
+    @media (max-width: 640px) {
+      input, select, textarea {
+        font-size: 16px !important; /* Prevents iOS Safari auto-zoom on input focus */
+      }
+    }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    button, input, select, textarea, a {
+      touch-action: manipulation;
+    }
   </style>
 </head>
 <body class="min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white dark:bg-[#080d1a] dark:text-slate-100 bg-slate-50 text-slate-900">
@@ -120,7 +137,7 @@
       </div>
 
       <!-- Chronotype Pill, Theme Toggle, Audio Toggle, Data & GitHub Sync, & Horizons -->
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2 overflow-x-auto no-scrollbar max-w-full py-1">
         <button onclick="openChronotypeModal('overview')" class="px-3 py-1.5 rounded-xl dark:bg-slate-950 bg-slate-100 hover:dark:bg-slate-800 hover:bg-slate-200 dark:border-indigo-500/30 border-slate-300 border text-xs flex items-center gap-2 transition shadow-sm" title="Calibrate Quarterly Productivity Chronotype">
           <span id="chronoHeaderEmoji" class="text-base">🐻</span>
           <div class="text-left">
@@ -207,7 +224,7 @@
         </div>
       </div>
 
-      <div id="waveSegmentsContainer" class="grid grid-cols-3 gap-2 w-full md:w-auto flex-1 max-w-2xl text-[11px]"></div>
+      <div id="waveSegmentsContainer" class="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full md:w-auto flex-1 max-w-2xl text-[11px]"></div>
 
       <button onclick="openChronotypeModal('quiz')" class="text-xs font-mono text-indigo-600 dark:text-indigo-400 hover:underline shrink-0 font-medium">
         Recalibrate Wave
@@ -237,11 +254,23 @@
     </div>
   </div>
 
+  <!-- MOBILE VIEW SEGMENTED CONTROLLER (Visible only on screens < lg) -->
+  <div class="max-w-7xl mx-auto w-full px-4 sm:px-6 pt-1 lg:hidden">
+    <div class="bg-slate-200/90 dark:bg-slate-900/90 p-1 rounded-2xl flex items-center border border-slate-300 dark:border-slate-800 shadow-inner">
+      <button id="mobileTabScheduleBtn" onclick="switchMobileTab('schedule')" class="flex-1 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm">
+        <span>🗓️</span> Schedule Timeline
+      </button>
+      <button id="mobileTabTasksBtn" onclick="switchMobileTab('tasks')" class="flex-1 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
+        <span>📋</span> Tasks & Priorities
+      </button>
+    </div>
+  </div>
+
   <!-- MAIN WORKSPACE GRID -->
   <main class="max-w-7xl mx-auto w-full px-4 sm:px-6 py-5 grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
 
     <!-- LEFT COLUMN: BRAIN DUMP, PRIORITIZATION & MICRO-STEPPING (5 cols) -->
-    <section class="lg:col-span-5 flex flex-col gap-5">
+    <section id="leftTasksColumn" class="lg:col-span-5 hidden lg:flex flex-col gap-5">
       
       <!-- Fast Capture Card -->
       <div class="dark:bg-slate-900/90 bg-white border dark:border-slate-800 border-slate-200 rounded-2xl p-4 shadow-sm">
@@ -257,7 +286,7 @@
           
           <input id="taskMicroInput" type="text" placeholder="First 2-min starter step (e.g., 'Open doc & write 3 bullet headers')" class="w-full dark:bg-slate-950/60 bg-slate-50/70 border dark:border-slate-800/80 border-slate-300 focus:border-emerald-500 rounded-xl px-3.5 py-2 text-xs text-emerald-600 dark:text-emerald-300 placeholder-slate-400 focus:outline-none transition" />
 
-          <div class="grid grid-cols-3 gap-2 pt-1">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
             <div>
               <label class="block text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500 mb-1">Priority Tier</label>
               <select id="taskTypeInput" class="w-full dark:bg-slate-950 bg-slate-50 border dark:border-slate-800 border-slate-300 rounded-lg px-2.5 py-1.5 text-xs dark:text-slate-200 text-slate-800 focus:outline-none">
@@ -371,7 +400,7 @@
     </section>
 
     <!-- RIGHT COLUMN: TIME-BLOCK TIMELINE & AUTO-RESCHEDULER (7 cols) -->
-    <section class="lg:col-span-7 flex flex-col gap-5">
+    <section id="rightScheduleColumn" class="lg:col-span-7 flex flex-col gap-5">
       <div class="dark:bg-slate-900/90 bg-white border dark:border-slate-800 border-slate-200 rounded-2xl p-5 shadow-sm flex-1 flex flex-col">
         
         <!-- Schedule Controls Header -->
@@ -1532,6 +1561,14 @@
       </div>
     </div>
   </div>
+
+  <!-- MOBILE FLOATING QUICK CAPTURE BUTTON (Visible only on screens < lg) -->
+  <aside id="mobileFabContainer" class="fixed bottom-6 right-5 lg:hidden z-40">
+    <button onclick="openMobileQuickCapture()" class="bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white shadow-xl shadow-indigo-600/40 rounded-full px-4 py-3 flex items-center gap-2 font-semibold text-xs sm:text-sm transition-all border border-indigo-400/30 backdrop-blur-sm" title="Quick Task Capture on the Go">
+      <span class="text-base leading-none">⚡</span>
+      <span class="tracking-wide">+ Quick Task</span>
+    </button>
+  </aside>
 
   <script>
     const MASTER_STORAGE_KEY = 'flowstate_os_master_state';
@@ -5926,6 +5963,52 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       }
 
       return analytics;
+    }
+
+    let currentMobileTab = 'schedule';
+
+    function switchMobileTab(tab) {
+      currentMobileTab = tab;
+      const leftCol = document.getElementById('leftTasksColumn');
+      const rightCol = document.getElementById('rightScheduleColumn');
+      const schedBtn = document.getElementById('mobileTabScheduleBtn');
+      const tasksBtn = document.getElementById('mobileTabTasksBtn');
+
+      // If analytics view is currently open, exit back to main schedule
+      if (typeof isAnalyticsViewActive !== 'undefined' && isAnalyticsViewActive) {
+        toggleAnalyticsView(true);
+      }
+
+      if (tab === 'schedule') {
+        if (leftCol) leftCol.className = 'lg:col-span-5 hidden lg:flex flex-col gap-5';
+        if (rightCol) rightCol.className = 'lg:col-span-7 flex flex-col gap-5';
+        if (schedBtn) {
+          schedBtn.className = 'flex-1 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm';
+        }
+        if (tasksBtn) {
+          tasksBtn.className = 'flex-1 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white';
+        }
+      } else {
+        if (leftCol) leftCol.className = 'lg:col-span-5 flex flex-col gap-5';
+        if (rightCol) rightCol.className = 'lg:col-span-7 hidden lg:flex flex-col gap-5';
+        if (schedBtn) {
+          schedBtn.className = 'flex-1 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white';
+        }
+        if (tasksBtn) {
+          tasksBtn.className = 'flex-1 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm';
+        }
+      }
+    }
+
+    function openMobileQuickCapture() {
+      switchMobileTab('tasks');
+      const input = document.getElementById('taskTitleInput');
+      if (input) {
+        input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => {
+          input.focus();
+        }, 150);
+      }
     }
 
     let isAnalyticsViewActive = false;
