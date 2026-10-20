@@ -212,23 +212,27 @@
   <div class="max-w-7xl mx-auto w-full px-4 sm:px-6 pt-4 space-y-3">
     
     <!-- Daily Biological Wave Bar -->
-    <div class="dark:bg-slate-900/90 bg-white border dark:border-slate-800 border-slate-200 rounded-2xl p-3.5 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-      <div class="flex items-center gap-3 shrink-0">
-        <span class="text-xl" id="waveCardEmoji">🐻</span>
-        <div>
-          <div class="flex items-center gap-2">
-            <h3 class="text-xs font-bold uppercase tracking-wider dark:text-slate-200 text-slate-800" id="waveCardTitle">Your Biological Productivity Wave</h3>
-            <span id="quarterlyBadge" class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">Q4 Calibrated</span>
+    <div class="dark:bg-slate-900/90 bg-white border dark:border-slate-800 border-slate-200 rounded-2xl p-4 shadow-sm space-y-3">
+      <!-- Top Row: Chronotype Title, Tagline & Recalibrate Action -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2.5 border-b dark:border-slate-800/80 border-slate-100">
+        <div class="flex items-center gap-3">
+          <span class="text-2xl shrink-0" id="waveCardEmoji">🐺</span>
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 class="text-xs font-bold uppercase tracking-wider dark:text-slate-200 text-slate-800" id="waveCardTitle">Your Biological Productivity Wave</h3>
+              <span id="quarterlyBadge" class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">Q4 Calibrated</span>
+            </div>
+            <p class="text-[11px] dark:text-slate-400 text-slate-500 mt-0.5" id="waveCardDesc">Gentle Morning Warm-up (8a–1:30p) • Afternoon Rest Trough (1:30p–4:30p) • Sunset Peak Surge (4:30p–9p) • Night Rebound (9p–12a)</p>
           </div>
-          <p class="text-[11px] dark:text-slate-400 text-slate-500 mt-0.5" id="waveCardDesc">MITs auto-lock to your Peak; LITs route to your Trough; Steady work fills your Rebound.</p>
         </div>
+
+        <button onclick="openChronotypeModal('quiz')" class="text-xs font-mono text-indigo-600 dark:text-indigo-400 hover:underline shrink-0 font-medium sm:self-center self-start">
+          Recalibrate Wave ↗
+        </button>
       </div>
 
-      <div id="waveSegmentsContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 w-full md:w-auto flex-1 max-w-3xl text-[11px]"></div>
-
-      <button onclick="openChronotypeModal('quiz')" class="text-xs font-mono text-indigo-600 dark:text-indigo-400 hover:underline shrink-0 font-medium">
-        Recalibrate Wave
-      </button>
+      <!-- Bottom Row: 4 Full-Width Circadian Phase Blocks -->
+      <div id="waveSegmentsContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 w-full text-xs"></div>
     </div>
 
     <!-- Energy Match Recommendation Banner -->
@@ -1831,9 +1835,24 @@
         }
       }
 
-      // Ensure active chronotype is Evening Wolf with full-day mapping
-      if (!state.chronotype || state.chronotype.id === 'bear' || state.chronotype.dipStart === 510) {
-        state.chronotype = { ...CHRONOTYPES.wolf, lastCalibratedISO: state.chronotype?.lastCalibratedISO || new Date().toISOString() };
+      // Keep whatever Chronotype the user calibrated/set in the app or received via cloud sync.
+      // Do not force an artificial fallback or reset their selected chronotype.
+      if (state.chronotype && state.chronotype.id && CHRONOTYPES[state.chronotype.id]) {
+        const meta = CHRONOTYPES[state.chronotype.id];
+        state.chronotype = {
+          ...meta,
+          ...state.chronotype,
+          rampStart: state.chronotype.rampStart || meta.rampStart,
+          rampEnd: state.chronotype.rampEnd || meta.rampEnd,
+          dipStart: (state.chronotype.dipStart === 510 && state.chronotype.id === 'wolf') ? meta.dipStart : (state.chronotype.dipStart || meta.dipStart),
+          dipEnd: (state.chronotype.dipEnd === 660 && state.chronotype.id === 'wolf') ? meta.dipEnd : (state.chronotype.dipEnd || meta.dipEnd),
+          peakStart: (state.chronotype.peakStart === 690 && state.chronotype.id === 'wolf') ? meta.peakStart : (state.chronotype.peakStart || meta.peakStart),
+          peakEnd: (state.chronotype.peakEnd === 930 && state.chronotype.id === 'wolf') ? meta.peakEnd : (state.chronotype.peakEnd || meta.peakEnd),
+          reboundStart: (state.chronotype.reboundStart === 960 && state.chronotype.id === 'wolf') ? meta.reboundStart : (state.chronotype.reboundStart || meta.reboundStart),
+          reboundEnd: (state.chronotype.reboundEnd === 1140 && state.chronotype.id === 'wolf') ? meta.reboundEnd : (state.chronotype.reboundEnd || meta.reboundEnd)
+        };
+      } else if (!state.chronotype) {
+        state.chronotype = JSON.parse(JSON.stringify(CHRONOTYPES.wolf));
       }
 
       // Ensure "Respond to Dad's text" is preserved if not already in state
@@ -4766,33 +4785,70 @@
       document.getElementById('nextQuarterlyReviewText').textContent = `Next review: ${nextDate.toLocaleDateString()}`;
 
       const rampHtml = c.rampStart !== undefined ? `
-        <div class="px-3 py-2 rounded-xl bg-blue-500/10 border border-blue-500/30 flex flex-col justify-between">
-          <div class="flex items-center justify-between">
-            <span class="font-semibold text-blue-600 dark:text-blue-300">☀️ Morning Warm-up</span>
-            <span class="font-mono text-[10px] text-blue-500 dark:text-blue-200">${formatMinShort(c.rampStart)}–${formatMinShort(c.rampEnd)}</span>
+        <div class="p-3 rounded-xl bg-blue-500/10 border border-blue-500/30 flex flex-col justify-between gap-2 min-w-0">
+          <div class="flex items-center justify-between gap-1.5">
+            <span class="font-bold text-xs text-blue-600 dark:text-blue-300 flex items-center gap-1.5 truncate">
+              <span>☀️</span> Morning Warm-up
+            </span>
+            <span class="font-mono text-[11px] font-semibold px-2 py-0.5 rounded bg-blue-500/15 text-blue-700 dark:text-blue-200 whitespace-nowrap shrink-0">
+              ${formatMinShort(c.rampStart)}–${formatMinShort(c.rampEnd)}
+            </span>
           </div>
-          <span class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Gentle Start & Admin</span>
+          <div class="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 pt-0.5">
+            <span>Focus Target:</span>
+            <span class="font-medium text-slate-700 dark:text-slate-300">Gentle Start & Admin</span>
+          </div>
         </div>
       ` : '';
 
       const dipHtml = `
-        <div class="px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex flex-col justify-between">
-          <div class="flex items-center justify-between"><span class="font-semibold text-emerald-600 dark:text-emerald-300">🌊 Trough Window</span><span class="font-mono text-[10px] text-emerald-500 dark:text-emerald-200">${formatMinShort(c.dipStart)}–${formatMinShort(c.dipEnd)}</span></div>
-          <span class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Schedule: Rest & LITs</span>
+        <div class="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex flex-col justify-between gap-2 min-w-0">
+          <div class="flex items-center justify-between gap-1.5">
+            <span class="font-bold text-xs text-emerald-600 dark:text-emerald-300 flex items-center gap-1.5 truncate">
+              <span>🌊</span> Trough Window
+            </span>
+            <span class="font-mono text-[11px] font-semibold px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-200 whitespace-nowrap shrink-0">
+              ${formatMinShort(c.dipStart)}–${formatMinShort(c.dipEnd)}
+            </span>
+          </div>
+          <div class="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 pt-0.5">
+            <span>Focus Target:</span>
+            <span class="font-medium text-slate-700 dark:text-slate-300">Rest & Light LITs</span>
+          </div>
         </div>
       `;
 
       const peakHtml = `
-        <div class="px-3 py-2 rounded-xl bg-rose-500/10 border border-rose-500/30 flex flex-col justify-between">
-          <div class="flex items-center justify-between"><span class="font-semibold text-rose-600 dark:text-rose-300">🔥 Peak Wave</span><span class="font-mono text-[10px] text-rose-500 dark:text-rose-200">${formatMinShort(c.peakStart)}–${formatMinShort(c.peakEnd)}</span></div>
-          <span class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Schedule: Deep MITs</span>
+        <div class="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 flex flex-col justify-between gap-2 min-w-0">
+          <div class="flex items-center justify-between gap-1.5">
+            <span class="font-bold text-xs text-rose-600 dark:text-rose-300 flex items-center gap-1.5 truncate">
+              <span>🔥</span> Peak Wave
+            </span>
+            <span class="font-mono text-[11px] font-semibold px-2 py-0.5 rounded bg-rose-500/15 text-rose-700 dark:text-rose-200 whitespace-nowrap shrink-0">
+              ${formatMinShort(c.peakStart)}–${formatMinShort(c.peakEnd)}
+            </span>
+          </div>
+          <div class="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 pt-0.5">
+            <span>Focus Target:</span>
+            <span class="font-medium text-slate-700 dark:text-slate-300">Deep Work MITs</span>
+          </div>
         </div>
       `;
 
       const reboundHtml = `
-        <div class="px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 flex flex-col justify-between">
-          <div class="flex items-center justify-between"><span class="font-semibold text-amber-600 dark:text-amber-300">🔋 Rebound Wave</span><span class="font-mono text-[10px] text-amber-500 dark:text-amber-200">${formatMinShort(c.reboundStart)}–${formatMinShort(c.reboundEnd)}</span></div>
-          <span class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Schedule: Steady</span>
+        <div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex flex-col justify-between gap-2 min-w-0">
+          <div class="flex items-center justify-between gap-1.5">
+            <span class="font-bold text-xs text-amber-600 dark:text-amber-300 flex items-center gap-1.5 truncate">
+              <span>🔋</span> Rebound Wave
+            </span>
+            <span class="font-mono text-[11px] font-semibold px-2 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-200 whitespace-nowrap shrink-0">
+              ${formatMinShort(c.reboundStart)}–${formatMinShort(c.reboundEnd)}
+            </span>
+          </div>
+          <div class="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 pt-0.5">
+            <span>Focus Target:</span>
+            <span class="font-medium text-slate-700 dark:text-slate-300">Steady & Creative</span>
+          </div>
         </div>
       `;
 
@@ -7226,6 +7282,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
 
     function formatMinToTime(mins) {
       if (mins == null || isNaN(mins)) return '--:--';
+      if (mins === 1440) return '12:00 AM';
       const clamped = Math.max(0, Math.min(1439, Math.round(mins)));
       const h24 = Math.floor(clamped / 60), m = clamped % 60;
       const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
@@ -7233,6 +7290,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
     }
     function formatMinShort(mins) {
       if (mins == null || isNaN(mins)) return '--';
+      if (mins === 1440) return '12a';
       const clamped = Math.max(0, Math.min(1439, Math.round(mins)));
       const h24 = Math.floor(clamped / 60), m = clamped % 60;
       return m === 0 ? `${h24 % 12 || 12}${h24 >= 12 ? 'p' : 'a'}` : `${h24 % 12 || 12}:${m.toString().padStart(2, '0')}${h24 >= 12 ? 'p' : 'a'}`;
