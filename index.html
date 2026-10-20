@@ -974,15 +974,36 @@
           </div>
         </div>
 
-        <!-- Duration & Scheduled Start Time Grid -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label class="block text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500 mb-1">Duration (Minutes)</label>
-            <input type="number" id="editTaskDuration" min="5" max="360" step="5" class="w-full dark:bg-slate-950 bg-slate-50 border dark:border-slate-700 border-slate-300 rounded-xl px-3 py-2 text-xs dark:text-slate-200 text-slate-800 focus:outline-none focus:border-indigo-500" />
+        <!-- Schedule & Completed Timing Grid -->
+        <div class="p-3.5 rounded-2xl dark:bg-slate-950/70 bg-slate-50 border dark:border-slate-800 border-slate-200 space-y-2.5">
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <span class="text-[10px] font-mono uppercase font-bold text-indigo-600 dark:text-indigo-400 tracking-wider">Schedule & Completion Timing</span>
+            <div class="flex items-center gap-2">
+              <label class="flex items-center gap-1.5 cursor-pointer select-none text-[11px] font-medium text-slate-600 dark:text-slate-300">
+                <input type="checkbox" id="editTaskCompletedCheck" onchange="onEditModalCompletedToggle()" class="w-3.5 h-3.5 accent-emerald-500 rounded cursor-pointer" />
+                <span id="editTaskCompletedCheckLabel">Task Completed</span>
+              </label>
+              <span id="editTaskTimingBadge" class="text-[10px] font-mono px-2 py-0.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold">⚡ Active</span>
+            </div>
           </div>
-          <div>
-            <label class="block text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500 mb-1">Scheduled Start Time</label>
-            <input type="time" id="editTaskStartTime" class="w-full dark:bg-slate-950 bg-slate-50 border dark:border-slate-700 border-slate-300 rounded-xl px-3 py-2 text-xs font-mono dark:text-slate-200 text-slate-800 focus:outline-none focus:border-indigo-500" />
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div>
+              <label id="editTaskStartLabel" class="block text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500 mb-1">Start Time</label>
+              <input type="time" id="editTaskStartTime" oninput="onEditModalTimeInput('start')" class="w-full dark:bg-slate-900 bg-white border dark:border-slate-700 border-slate-300 rounded-xl px-2.5 py-1.5 text-xs font-mono dark:text-slate-200 text-slate-800 focus:outline-none focus:border-indigo-500" />
+            </div>
+            <div>
+              <label class="block text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500 mb-1">Duration (Min)</label>
+              <input type="number" id="editTaskDuration" min="5" max="360" step="5" oninput="onEditModalTimeInput('duration')" class="w-full dark:bg-slate-900 bg-white border dark:border-slate-700 border-slate-300 rounded-xl px-2.5 py-1.5 text-xs dark:text-slate-200 text-slate-800 focus:outline-none focus:border-indigo-500" />
+            </div>
+            <div>
+              <label id="editTaskEndLabel" class="block text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500 mb-1">Completed / End Time</label>
+              <input type="time" id="editTaskEndTime" oninput="onEditModalTimeInput('end')" class="w-full dark:bg-slate-900 bg-white border dark:border-slate-700 border-slate-300 rounded-xl px-2.5 py-1.5 text-xs font-mono dark:text-slate-200 text-slate-800 focus:outline-none focus:border-indigo-500" />
+            </div>
+          </div>
+
+          <div id="editTaskTimingNote" class="text-[11px] text-slate-500 dark:text-slate-400 pt-1 border-t dark:border-slate-800/80 border-slate-200/80">
+            🕒 Sets the scheduled start and due/completed times. All changes stick directly to the timeline.
           </div>
         </div>
 
@@ -1913,6 +1934,40 @@
           completed: false,
           recurring: false,
           subtasks: []
+        });
+      }
+
+      // Ensure "Take off nail polish" is present and set to 2:00 PM (840) to 2:10 PM (850) with 10m duration as requested
+      const nailTask = state.tasks.find(t => t.title && t.title.toLowerCase().includes('nail polish'));
+      if (nailTask) {
+        if (nailTask.startMin === 1050 || nailTask.startMin == null || !nailTask.completed || nailTask.duration !== 10) {
+          nailTask.startMin = 840;
+          nailTask.endMin = 850;
+          nailTask.duration = 10;
+          nailTask.completed = true;
+          nailTask.completedAtMin = 850;
+          nailTask.completedDate = nailTask.completedDate || getLocalDateString();
+          nailTask.manuallyPositioned = true;
+        }
+      } else {
+        state.tasks.push({
+          id: 't_nail_polish',
+          title: 'Take off nail polish',
+          microStep: 'Gather nail polish, remover, file & buffer at clean table',
+          type: 'LIT',
+          energy: 'fried',
+          duration: 10,
+          fixedStartMin: null,
+          locked: false,
+          completed: true,
+          recurring: false,
+          subtasks: [],
+          startMin: 840,
+          endMin: 850,
+          completedAtMin: 850,
+          completedAtISO: new Date().toISOString().slice(0, 10) + 'T14:10:00.000Z',
+          completedDate: getLocalDateString(),
+          manuallyPositioned: true
         });
       }
 
@@ -7464,14 +7519,26 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       document.getElementById('editTaskMicro').value = t.microStep || '';
       document.getElementById('editTaskType').value = t.type || 'LIT';
       document.getElementById('editTaskEnergy').value = t.energy || 'steady';
-      document.getElementById('editTaskDuration').value = t.duration || 30;
+      const duration = Math.max(5, t.duration || 30);
+      document.getElementById('editTaskDuration').value = duration;
 
       const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
       const roundedNowMin = Math.ceil(nowMin / 5) * 5;
-      const currentStart = isTaskLocked(t) 
-        ? (t.fixedStartMin ?? t.startMin ?? roundedNowMin) 
-        : (t.startMin != null && t.startMin >= roundedNowMin ? t.startMin : roundedNowMin);
+
+      // Always respect the task's existing startMin, even if in the past or completed!
+      const currentStart = (t.startMin != null) 
+        ? t.startMin 
+        : (isTaskLocked(t) ? (t.fixedStartMin ?? roundedNowMin) : roundedNowMin);
+      const currentEnd = (t.endMin != null) ? t.endMin : (currentStart + duration);
+
       document.getElementById('editTaskStartTime').value = minToTimeInputValue(currentStart);
+      document.getElementById('editTaskEndTime').value = minToTimeInputValue(currentEnd);
+
+      const compCheck = document.getElementById('editTaskCompletedCheck');
+      if (compCheck) {
+        compCheck.checked = !!t.completed;
+      }
+      updateEditModalTimingUI(!!t.completed);
 
       const lockedCheck = document.getElementById('editTaskLocked');
       if (lockedCheck) {
@@ -7488,6 +7555,62 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       const modal = document.getElementById('editTaskModal');
       modal.classList.remove('hidden');
       modal.classList.add('flex');
+    }
+
+    function updateEditModalTimingUI(isCompleted) {
+      const timingBadge = document.getElementById('editTaskTimingBadge');
+      const startLabel = document.getElementById('editTaskStartLabel');
+      const endLabel = document.getElementById('editTaskEndLabel');
+      const timingNote = document.getElementById('editTaskTimingNote');
+      const compLabel = document.getElementById('editTaskCompletedCheckLabel');
+
+      if (compLabel) {
+        compLabel.textContent = isCompleted ? '✓ Completed' : 'Task Incomplete';
+      }
+
+      if (isCompleted) {
+        if (timingBadge) {
+          timingBadge.className = 'text-[10px] font-mono px-2 py-0.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold';
+          timingBadge.textContent = '✓ Completed Task';
+        }
+        if (startLabel) startLabel.textContent = 'Started At';
+        if (endLabel) endLabel.textContent = 'Completed At';
+        if (timingNote) timingNote.innerHTML = '✨ Completed tasks retain their exact start & completion times in your schedule history and analytics.';
+      } else {
+        if (timingBadge) {
+          timingBadge.className = 'text-[10px] font-mono px-2 py-0.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold';
+          timingBadge.textContent = '⚡ Active / Upcoming';
+        }
+        if (startLabel) startLabel.textContent = 'Scheduled Start';
+        if (endLabel) endLabel.textContent = 'Scheduled End / Due';
+        if (timingNote) timingNote.innerHTML = '🕒 Sets the scheduled window. Flexible tasks automatically ripple if overlapping occurs.';
+      }
+    }
+
+    function onEditModalCompletedToggle() {
+      const isCompleted = document.getElementById('editTaskCompletedCheck')?.checked || false;
+      updateEditModalTimingUI(isCompleted);
+    }
+
+    function onEditModalTimeInput(field) {
+      const startEl = document.getElementById('editTaskStartTime');
+      const endEl = document.getElementById('editTaskEndTime');
+      const durEl = document.getElementById('editTaskDuration');
+      if (!startEl || !endEl || !durEl) return;
+
+      let dur = parseInt(durEl.value, 10);
+      if (isNaN(dur) || dur < 5) dur = 5;
+
+      if (field === 'start') {
+        const startMin = timeInputValueToMin(startEl.value);
+        endEl.value = minToTimeInputValue(startMin + dur);
+      } else if (field === 'end') {
+        const endMin = timeInputValueToMin(endEl.value);
+        startEl.value = minToTimeInputValue(Math.max(0, endMin - dur));
+      } else if (field === 'duration') {
+        const startMin = timeInputValueToMin(startEl.value);
+        endEl.value = minToTimeInputValue(startMin + dur);
+      }
     }
 
     function closeEditTaskModal() {
@@ -7560,7 +7683,14 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       const newEnergy = document.getElementById('editTaskEnergy').value;
       const newDuration = Math.max(5, parseInt(document.getElementById('editTaskDuration').value, 10) || 30);
       const timeVal = document.getElementById('editTaskStartTime').value;
+      const endTimeVal = document.getElementById('editTaskEndTime')?.value;
+      const isCompleted = document.getElementById('editTaskCompletedCheck')?.checked || false;
+
       const newStartMin = timeInputValueToMin(timeVal);
+      let newEndMin = endTimeVal ? timeInputValueToMin(endTimeVal) : (newStartMin + newDuration);
+      if (newEndMin <= newStartMin) {
+        newEndMin = newStartMin + newDuration;
+      }
 
       // MIT capacity check
       if (newType === 'MIT' && t.type !== 'MIT') {
@@ -7585,23 +7715,54 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       const isLocked = document.getElementById('editTaskLocked')?.checked || false;
       t.locked = isLocked;
 
-      const timeChanged = (t.startMin !== newStartMin) || (isLocked && t.fixedStartMin !== newStartMin);
+      const timeChanged = (t.startMin !== newStartMin) || (t.endMin !== newEndMin);
+      const statusChanged = (t.completed !== isCompleted);
+
+      t.completed = isCompleted;
+      t.startMin = newStartMin;
+      t.endMin = newEndMin;
+      t.manuallyPositioned = true;
 
       if (isLocked) {
         t.fixedStartMin = newStartMin;
-        t.startMin = newStartMin;
-        t.endMin = newStartMin + newDuration;
       } else {
         t.fixedStartMin = null;
-        const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
-        const roundedNowMin = Math.ceil(nowMin / 5) * 5;
-        const validStart = (newStartMin != null && newStartMin >= roundedNowMin) ? newStartMin : roundedNowMin;
-        t.startMin = validStart;
-        t.endMin = validStart + newDuration;
       }
 
-      // If start time was explicitly updated, ripple subsequent flexible tasks
-      if (timeChanged) {
+      if (t.completed) {
+        t.completedAtMin = newEndMin;
+        const dateStr = t.completedDate || t.scheduledDate || getLocalDateString();
+        const h = Math.floor(newEndMin / 60);
+        const m = newEndMin % 60;
+        const d = new Date(dateStr + 'T12:00:00');
+        d.setHours(h, m, 0, 0);
+        t.completedAtISO = d.toISOString();
+        t.completedDate = dateStr;
+
+        // Keep analytics history in sync
+        if (!state.analytics) {
+          state.analytics = { history: [], rippleCount: 0, pushCounts: {}, chronotypeHistory: [] };
+        }
+        if (!state.analytics.history) state.analytics.history = [];
+        const existingEntry = state.analytics.history.find(h => String(h.taskId) === String(t.id) && h.status === 'completed');
+        if (existingEntry) {
+          existingEntry.completedAtMin = newEndMin;
+          existingEntry.hourOfDay = Math.floor(newEndMin / 60);
+          existingEntry.scheduledStartMin = newStartMin;
+          existingEntry.scheduledEndMin = newEndMin;
+          existingEntry.durationMin = newDuration;
+          existingEntry.completedAtISO = t.completedAtISO;
+        } else if (statusChanged) {
+          trackTaskLifecycle(t, 'completed');
+        }
+      } else {
+        t.completedAtISO = null;
+        t.completedDate = null;
+        t.completedAtMin = null;
+      }
+
+      // If active (incomplete) task time was updated, ripple subsequent flexible tasks
+      if (timeChanged && !t.completed) {
         const today = new Date();
         const includeBuffers = document.getElementById('bufferToggle')?.checked || false;
         const bufferMin = includeBuffers ? 10 : 0;
@@ -7642,8 +7803,11 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       saveState();
       recalculateSchedule();
       updateRecommendationBanner();
+      if (typeof isAnalyticsViewActive !== 'undefined' && isAnalyticsViewActive) {
+        renderAnalyticsDashboard();
+      }
       closeEditTaskModal();
-      showRippleNotice(`✓ Saved changes for "${t.title}"`);
+      showRippleNotice(`✓ Saved "${t.title}" (${formatMinToTime(t.startMin)} – ${formatMinToTime(t.endMin)})`);
     }
 
     function optimizeByChronotype(showNotice = true) {
@@ -8133,47 +8297,50 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       if (!t) return;
       const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
       const roundedNowMin = Math.ceil(nowMin / 5) * 5;
-      if (t.startMin == null || (!isTaskLocked(t) && t.startMin < roundedNowMin)) t.startMin = roundedNowMin;
-      const minBound = isTaskLocked(t) ? 360 : roundedNowMin;
-      const newStart = Math.max(minBound, Math.min(1380 - (t.duration || 30), t.startMin + deltaMin));
+      if (t.startMin == null || (!isTaskLocked(t) && !t.completed && t.startMin < roundedNowMin)) t.startMin = roundedNowMin;
+      const minBound = (isTaskLocked(t) || t.completed) ? 0 : roundedNowMin;
+      const newStart = Math.max(minBound, Math.min(1440 - (t.duration || 30), (t.startMin ?? roundedNowMin) + deltaMin));
       t.startMin = newStart;
       t.endMin = newStart + (t.duration || 30);
       t.manuallyPositioned = true;
       if (isTaskLocked(t)) t.fixedStartMin = t.startMin;
+      if (t.completed) t.completedAtMin = t.endMin;
 
-      // Ripple any subsequent overlapping flexible tasks
-      const today = new Date();
-      const includeBuffers = document.getElementById('bufferToggle')?.checked || false;
-      const bufferMin = includeBuffers ? 10 : 0;
-      const activeTasks = state.tasks.filter(x => isTaskScheduledForDate(x, today));
-      const lockedIntervals = activeTasks.filter(x => isTaskLocked(x) && x.id !== taskId).map(f => ({
-        start: f.fixedStartMin || f.startMin || 540,
-        end: (f.fixedStartMin || f.startMin || 540) + (f.duration || 30)
-      }));
+      // Ripple any subsequent overlapping flexible tasks only if active
+      if (!t.completed) {
+        const today = new Date();
+        const includeBuffers = document.getElementById('bufferToggle')?.checked || false;
+        const bufferMin = includeBuffers ? 10 : 0;
+        const activeTasks = state.tasks.filter(x => isTaskScheduledForDate(x, today));
+        const lockedIntervals = activeTasks.filter(x => isTaskLocked(x) && x.id !== taskId).map(f => ({
+          start: f.fixedStartMin || f.startMin || 540,
+          end: (f.fixedStartMin || f.startMin || 540) + (f.duration || 30)
+        }));
 
-      const subsequentFlexible = activeTasks
-        .filter(x => !isTaskLocked(x) && x.id !== taskId && x.startMin != null && x.startMin >= newStart && !x.completed)
-        .sort((a, b) => a.startMin - b.startMin);
+        const subsequentFlexible = activeTasks
+          .filter(x => !isTaskLocked(x) && x.id !== taskId && x.startMin != null && x.startMin >= newStart && !x.completed)
+          .sort((a, b) => a.startMin - b.startMin);
 
-      let cursor = t.endMin + bufferMin;
-      subsequentFlexible.forEach(st => {
-        if (st.startMin < cursor) {
-          let placed = false;
-          while (!placed) {
-            const conflict = lockedIntervals.find(f => Math.max(cursor, f.start) < Math.min(cursor + (st.duration || 30), f.end));
-            if (conflict) {
-              cursor = conflict.end + bufferMin;
-            } else {
-              st.startMin = cursor;
-              st.endMin = cursor + (st.duration || 30);
-              cursor = st.endMin + bufferMin;
-              placed = true;
+        let cursor = t.endMin + bufferMin;
+        subsequentFlexible.forEach(st => {
+          if (st.startMin < cursor) {
+            let placed = false;
+            while (!placed) {
+              const conflict = lockedIntervals.find(f => Math.max(cursor, f.start) < Math.min(cursor + (st.duration || 30), f.end));
+              if (conflict) {
+                cursor = conflict.end + bufferMin;
+              } else {
+                st.startMin = cursor;
+                st.endMin = cursor + (st.duration || 30);
+                cursor = st.endMin + bufferMin;
+                placed = true;
+              }
             }
+          } else {
+            cursor = Math.max(cursor, st.endMin + bufferMin);
           }
-        } else {
-          cursor = Math.max(cursor, st.endMin + bufferMin);
-        }
-      });
+        });
+      }
 
       saveState();
       recalculateSchedule();

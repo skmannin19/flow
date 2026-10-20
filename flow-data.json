@@ -49,6 +49,26 @@
       "needsReview": false
     },
     {
+      "id": "t_nail_polish",
+      "title": "Take off nail polish",
+      "microStep": "Gather nail polish, remover, file & buffer at clean table",
+      "type": "LIT",
+      "energy": "fried",
+      "duration": 10,
+      "fixedStartMin": null,
+      "locked": false,
+      "completed": true,
+      "recurring": false,
+      "subtasks": [],
+      "startMin": 840,
+      "endMin": 850,
+      "completedAtMin": 850,
+      "completedAtISO": "2026-10-20T14:10:00.000Z",
+      "completedDate": "2026-10-20",
+      "manuallyPositioned": true,
+      "needsReview": false
+    },
+    {
       "id": "t_dad_text",
       "title": "Respond to Dad's text",
       "microStep": "Send quick 1-sentence reply",
@@ -1340,6 +1360,23 @@
         "hourOfDay": 11,
         "onTime": true,
         "durationMin": 30
+      },
+      {
+        "id": "an_nail_polish_20261020",
+        "taskId": "t_nail_polish",
+        "title": "Take off nail polish",
+        "type": "LIT",
+        "energy": "fried",
+        "status": "completed",
+        "scheduledStartMin": 840,
+        "scheduledEndMin": 850,
+        "completedAtISO": "2026-10-20T14:10:00.000Z",
+        "completedAtMin": 850,
+        "date": "2026-10-20",
+        "dayOfWeek": 2,
+        "hourOfDay": 14,
+        "onTime": true,
+        "durationMin": 10
       }
     ],
     "pushCounts": {
