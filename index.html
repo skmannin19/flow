@@ -865,9 +865,9 @@
   </div>
 
   <!-- RECURRENCE RULES MODAL -->
-  <div id="recurrenceModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden items-center justify-center p-4 overflow-y-auto">
-    <div class="dark:bg-slate-900 bg-white border dark:border-slate-800 border-slate-200 rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl space-y-5 my-8">
-      <div class="flex items-start justify-between gap-4 border-b dark:border-slate-800 border-slate-200 pb-3">
+  <div id="recurrenceModal" onclick="if(event.target === this) closeRecurrenceModal()" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden items-center justify-center p-3 sm:p-6 overflow-y-auto">
+    <div class="dark:bg-slate-900 bg-white border dark:border-slate-800 border-slate-200 rounded-3xl max-w-lg w-full p-5 sm:p-7 shadow-2xl space-y-5 my-auto max-h-[92vh] flex flex-col">
+      <div class="flex items-start justify-between gap-4 border-b dark:border-slate-800 border-slate-200 pb-3 shrink-0">
         <div>
           <span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 border border-indigo-500/30">Google-Style Recurrence</span>
           <h2 class="text-lg font-bold dark:text-white text-slate-900 mt-1">🔁 Set Repeat Schedule</h2>
@@ -931,18 +931,18 @@
   </div>
 
   <!-- EDIT TASK / EVENT MODAL -->
-  <div id="editTaskModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden items-center justify-center p-4 overflow-y-auto">
-    <div class="dark:bg-slate-900 bg-white border dark:border-slate-800 border-slate-200 rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl space-y-5 my-8">
-      <div class="flex items-start justify-between gap-4 border-b dark:border-slate-800 border-slate-200 pb-3">
+  <div id="editTaskModal" onclick="if(event.target === this) closeEditTaskModal()" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden items-center justify-center p-3 sm:p-6 overflow-y-auto">
+    <div class="dark:bg-slate-900 bg-white border dark:border-slate-800 border-slate-200 rounded-3xl max-w-lg w-full p-5 sm:p-7 shadow-2xl my-auto max-h-[92vh] flex flex-col">
+      <div class="flex items-start justify-between gap-4 border-b dark:border-slate-800 border-slate-200 pb-3 shrink-0">
         <div>
           <span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 border border-indigo-500/30">Task Customization</span>
           <h2 class="text-lg font-bold dark:text-white text-slate-900 mt-1">✏️ Edit Task / Routine</h2>
           <p class="text-xs dark:text-slate-400 text-slate-500 mt-0.5">Modify title, starter micro-step, schedule time, duration, and energy alignment.</p>
         </div>
-        <button onclick="closeEditTaskModal()" class="text-slate-400 hover:text-white text-sm px-2.5 py-1 rounded-lg bg-slate-200 dark:bg-slate-800 transition">✕</button>
+        <button type="button" onclick="closeEditTaskModal()" class="text-slate-400 hover:text-white text-sm px-2.5 py-1 rounded-lg bg-slate-200 dark:bg-slate-800 transition" title="Close modal">✕</button>
       </div>
 
-      <div class="space-y-4 text-xs">
+      <div class="space-y-4 text-xs overflow-y-auto flex-1 py-3 pr-1 overscroll-contain">
         <!-- Title -->
         <div>
           <label class="block text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500 mb-1">Task Title</label>
@@ -1045,28 +1045,28 @@
             <button type="button" onclick="addEditModalSubtask()" class="px-3 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-indigo-600 hover:text-white text-xs font-semibold dark:text-slate-300 text-slate-700 transition">+ Add</button>
           </div>
         </div>
+      </div>
 
-        <!-- Modal Actions Footer -->
-        <div class="flex flex-wrap items-center justify-between gap-2 pt-3 border-t dark:border-slate-800 border-slate-200">
-          <div class="flex flex-wrap items-center gap-1.5">
-            <button type="button" onclick="deleteFromEditModal()" class="py-2 px-3 rounded-xl hover:bg-rose-950/40 text-rose-500 hover:text-rose-400 font-semibold text-xs transition border border-rose-500/20">
-              🗑️ Delete
-            </button>
-            <button type="button" onclick="const tid = editingTaskId; closeEditTaskModal(); openDeferTomorrowModal(tid);" class="py-2 px-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-semibold text-xs transition border border-emerald-500/30 flex items-center gap-1" title="Schedule task for tomorrow">
-              <span>🌅</span> Defer to Tomorrow
-            </button>
-            <button type="button" onclick="const tid = editingTaskId; closeEditTaskModal(); skipTask(tid);" class="py-2 px-3 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 font-semibold text-xs transition border border-amber-500/30 flex items-center gap-1" title="Skip task for today">
-              <span>⏭️</span> Skip Today
-            </button>
-          </div>
-          <div class="flex items-center gap-2">
-            <button type="button" onclick="closeEditTaskModal()" class="py-2 px-3.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 dark:text-slate-300 text-slate-700 font-semibold text-xs transition">
-              Cancel
-            </button>
-            <button type="button" onclick="saveEditTask()" class="py-2 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition shadow-sm">
-              Save Changes
-            </button>
-          </div>
+      <!-- Modal Actions Footer -->
+      <div class="flex flex-wrap items-center justify-between gap-2 pt-3 border-t dark:border-slate-800 border-slate-200 shrink-0">
+        <div class="flex flex-wrap items-center gap-1.5">
+          <button type="button" onclick="deleteFromEditModal()" class="py-2 px-3 rounded-xl hover:bg-rose-950/40 text-rose-500 hover:text-rose-400 font-semibold text-xs transition border border-rose-500/20">
+            🗑️ Delete
+          </button>
+          <button type="button" onclick="const tid = editingTaskId; closeEditTaskModal(); openDeferTomorrowModal(tid);" class="py-2 px-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-semibold text-xs transition border border-emerald-500/30 flex items-center gap-1" title="Schedule task for tomorrow">
+            <span>🌅</span> Defer to Tomorrow
+          </button>
+          <button type="button" onclick="const tid = editingTaskId; closeEditTaskModal(); skipTask(tid);" class="py-2 px-3 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 font-semibold text-xs transition border border-amber-500/30 flex items-center gap-1" title="Skip task for today">
+            <span>⏭️</span> Skip Today
+          </button>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="closeEditTaskModal()" class="py-2 px-3.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 dark:text-slate-300 text-slate-700 font-semibold text-xs transition">
+            Cancel
+          </button>
+          <button type="button" onclick="saveEditTask()" class="py-2 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition shadow-sm">
+            Save Changes
+          </button>
         </div>
       </div>
     </div>
@@ -1488,9 +1488,9 @@
   </div>
 
   <!-- TASK COMPLETION TIMING CONFIRMATION MODAL -->
-  <div id="completionTimingModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden items-center justify-center p-4 overflow-y-auto">
-    <div class="dark:bg-slate-900 bg-white border dark:border-slate-800 border-slate-200 rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl space-y-5 my-8">
-      <div class="flex items-start justify-between gap-4 border-b dark:border-slate-800 border-slate-200 pb-4">
+  <div id="completionTimingModal" onclick="if(event.target === this) cancelCompletionTiming()" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden items-center justify-center p-3 sm:p-6 overflow-y-auto">
+    <div class="dark:bg-slate-900 bg-white border dark:border-slate-800 border-slate-200 rounded-3xl max-w-lg w-full p-5 sm:p-7 shadow-2xl space-y-4 my-auto max-h-[92vh] flex flex-col">
+      <div class="flex items-start justify-between gap-4 border-b dark:border-slate-800 border-slate-200 pb-3 shrink-0">
         <div class="flex items-center gap-3">
           <span class="text-3xl" id="completionModalIcon">⏱️</span>
           <div>
@@ -1501,39 +1501,41 @@
         <button type="button" onclick="cancelCompletionTiming()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-lg transition">✕</button>
       </div>
 
-      <div class="p-3.5 rounded-2xl dark:bg-slate-950/70 bg-slate-50 border dark:border-slate-800 border-slate-200 space-y-1">
-        <div class="text-xs font-bold dark:text-white text-slate-900" id="completionTaskName">Task Title</div>
-        <div class="text-[11px] text-slate-500 dark:text-slate-400 font-mono" id="completionTaskScheduledInfo">Original schedule: 9:00 AM – 9:45 AM</div>
-      </div>
-
-      <div class="space-y-2.5" id="completionModalOptions">
-        <!-- Injected dynamically based on whether late completion or early completion -->
-      </div>
-
-      <!-- Optional Custom Time Picker -->
-      <div id="completionCustomTimeRow" class="pt-3 border-t dark:border-slate-800 border-slate-200 space-y-2">
-        <div class="flex items-center justify-between text-xs">
-          <label class="font-medium dark:text-slate-300 text-slate-700 flex items-center gap-1.5">
-            <span>🕒</span> Custom Finished Date & Time:
-          </label>
-          <span class="text-[10px] text-slate-400">Pick past day/time if rolled over or backfilling</span>
+      <div class="space-y-4 overflow-y-auto flex-1 py-1 pr-1 overscroll-contain">
+        <div class="p-3.5 rounded-2xl dark:bg-slate-950/70 bg-slate-50 border dark:border-slate-800 border-slate-200 space-y-1 shrink-0">
+          <div class="text-xs font-bold dark:text-white text-slate-900" id="completionTaskName">Task Title</div>
+          <div class="text-[11px] text-slate-500 dark:text-slate-400 font-mono" id="completionTaskScheduledInfo">Original schedule: 9:00 AM – 9:45 AM</div>
         </div>
-        <div class="flex flex-wrap items-center gap-2">
-          <div class="flex items-center gap-1.5 flex-1 min-w-[130px]">
-            <label for="completionCustomDateInput" class="text-[11px] text-slate-400 font-medium">Date:</label>
-            <input type="date" id="completionCustomDateInput" class="w-full dark:bg-slate-950 bg-slate-100 border dark:border-slate-700 border-slate-300 rounded-lg px-2.5 py-1 text-xs font-mono dark:text-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+
+        <div class="space-y-2.5" id="completionModalOptions">
+          <!-- Injected dynamically based on whether late completion or early completion -->
+        </div>
+
+        <!-- Optional Custom Time Picker -->
+        <div id="completionCustomTimeRow" class="pt-3 border-t dark:border-slate-800 border-slate-200 space-y-2">
+          <div class="flex items-center justify-between text-xs">
+            <label class="font-medium dark:text-slate-300 text-slate-700 flex items-center gap-1.5">
+              <span>🕒</span> Custom Finished Date & Time:
+            </label>
+            <span class="text-[10px] text-slate-400">Pick past day/time if rolled over or backfilling</span>
           </div>
-          <div class="flex items-center gap-1.5 w-28">
-            <label for="completionCustomTimeInput" class="text-[11px] text-slate-400 font-medium">Time:</label>
-            <input type="time" id="completionCustomTimeInput" class="w-full dark:bg-slate-950 bg-slate-100 border dark:border-slate-700 border-slate-300 rounded-lg px-2.5 py-1 text-xs font-mono dark:text-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+          <div class="flex flex-wrap items-center gap-2">
+            <div class="flex items-center gap-1.5 flex-1 min-w-[130px]">
+              <label for="completionCustomDateInput" class="text-[11px] text-slate-400 font-medium">Date:</label>
+              <input type="date" id="completionCustomDateInput" class="w-full dark:bg-slate-950 bg-slate-100 border dark:border-slate-700 border-slate-300 rounded-lg px-2.5 py-1 text-xs font-mono dark:text-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+            </div>
+            <div class="flex items-center gap-1.5 w-28">
+              <label for="completionCustomTimeInput" class="text-[11px] text-slate-400 font-medium">Time:</label>
+              <input type="time" id="completionCustomTimeInput" class="w-full dark:bg-slate-950 bg-slate-100 border dark:border-slate-700 border-slate-300 rounded-lg px-2.5 py-1 text-xs font-mono dark:text-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+            </div>
+            <button type="button" onclick="applyCustomCompletionTime()" class="px-3.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition shadow-sm">
+              Apply
+            </button>
           </div>
-          <button type="button" onclick="applyCustomCompletionTime()" class="px-3.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition shadow-sm">
-            Apply
-          </button>
         </div>
       </div>
 
-      <div class="flex items-center justify-between pt-3 border-t dark:border-slate-800 border-slate-200 text-xs">
+      <div class="flex items-center justify-between pt-3 border-t dark:border-slate-800 border-slate-200 text-xs shrink-0">
         <button type="button" onclick="cancelCompletionTiming()" class="px-3 py-1.5 rounded-xl text-xs dark:text-slate-400 text-slate-600 hover:dark:text-slate-200 hover:text-slate-900 transition">
           Cancel (Keep Unfinished)
         </button>
