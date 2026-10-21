@@ -946,7 +946,10 @@
       <div class="space-y-4 text-xs overflow-y-auto flex-1 py-3 pr-1 overscroll-contain">
         <!-- Title -->
         <div>
-          <label class="block text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500 mb-1">Task Title</label>
+          <div class="flex items-center justify-between mb-1">
+            <label class="block text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500">Task Title</label>
+            <button type="button" id="editTaskRevertTitleBtn" onclick="revertEditModalTitle()" class="text-[10px] text-indigo-500 dark:text-indigo-400 hover:underline hidden font-medium"></button>
+          </div>
           <input type="text" id="editTaskTitle" placeholder="e.g. Paint my nails, Review budget..." class="w-full dark:bg-slate-950 bg-slate-50 border dark:border-slate-700 border-slate-300 rounded-xl px-3 py-2 text-xs font-medium dark:text-slate-100 text-slate-900 focus:outline-none focus:border-indigo-500" />
         </div>
 
@@ -7992,11 +7995,32 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         recurEl.textContent = t.recurring ? `Repeats: ${formatRecurrenceLabel(t)}` : 'One-off (Does not repeat)';
       }
 
+      const revertTitleBtn = document.getElementById('editTaskRevertTitleBtn');
+      if (revertTitleBtn) {
+        if (t.fromCalendar && t.gcalTitle && t.gcalTitle !== t.title) {
+          revertTitleBtn.textContent = `↺ Revert to GCal: "${t.gcalTitle}"`;
+          revertTitleBtn.classList.remove('hidden');
+        } else {
+          revertTitleBtn.textContent = '';
+          revertTitleBtn.classList.add('hidden');
+        }
+      }
+
       renderEditModalSubtasks();
 
       const modal = document.getElementById('editTaskModal');
       modal.classList.remove('hidden');
       modal.classList.add('flex');
+    }
+
+    function revertEditModalTitle() {
+      if (!editingTaskId) return;
+      const t = state.tasks.find(x => String(x.id) === String(editingTaskId));
+      if (!t || !t.gcalTitle) return;
+      const titleInput = document.getElementById('editTaskTitle');
+      if (titleInput) titleInput.value = t.gcalTitle;
+      const btn = document.getElementById('editTaskRevertTitleBtn');
+      if (btn) btn.classList.add('hidden');
     }
 
     function updateEditModalTimingUI(isCompleted) {
@@ -8149,8 +8173,26 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       }
       t.needsReview = false;
 
-      t.title = newTitle;
-      t.microStep = newMicro || generateSmartBreakdown(newTitle, t.type, t.energy).microStep;
+      if (t.title !== newTitle) {
+        if (t.fromCalendar || (t.id && String(t.id).startsWith('gcal_'))) {
+          if (!t.gcalTitle) t.gcalTitle = t.title;
+          if (t.gcalTitle && newTitle.trim().toLowerCase() === t.gcalTitle.trim().toLowerCase()) {
+            t.userRenamed = false;
+          } else {
+            t.userRenamed = true;
+          }
+        }
+        t.title = newTitle;
+      }
+
+      if (newMicro && t.microStep !== newMicro) {
+        if (t.fromCalendar || (t.id && String(t.id).startsWith('gcal_'))) {
+          t.userMicroEdited = true;
+        }
+        t.microStep = newMicro;
+      } else if (!newMicro && !t.microStep) {
+        t.microStep = generateSmartBreakdown(newTitle, t.type, t.energy).microStep;
+      }
       t.energy = newEnergy;
       t.duration = newDuration;
 
@@ -8926,8 +8968,8 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
                   <span onclick="openEditTaskModal('${t.id}')" class="text-xs font-semibold cursor-pointer hover:underline hover:text-indigo-500 transition dark:text-white text-slate-900 ${t.completed ? 'line-through text-slate-400 dark:text-slate-500' : ''}" title="Click to edit task details">${t.title}</span>
                   <span class="text-[10px] font-mono px-1 rounded border ${p.color}">${p.label}</span>
                   ${t.fromCalendar ? `
-                    <span class="text-[10px] font-mono px-1.5 py-0.2 rounded border ${t.userShifted || (t.gcalStartMin != null && t.gcalStartMin !== t.startMin) ? 'border-amber-400/40 bg-amber-500/10 text-amber-600 dark:text-amber-400' : 'border-indigo-400/40 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400'}" title="${t.calendarName || 'Google Calendar'} ${t.userShifted || (t.gcalStartMin != null && t.gcalStartMin !== t.startMin) ? '(Shifted from original ' + (t.gcalStartMin != null ? formatMinToTime(t.gcalStartMin) : 'calendar time') + ')' : ''}">
-                      🗓️ ${t.calendarName || 'Calendar'}${t.userShifted || (t.gcalStartMin != null && t.gcalStartMin !== t.startMin) ? ' (Shifted)' : ''}
+                    <span class="text-[10px] font-mono px-1.5 py-0.2 rounded border ${t.userShifted || (t.gcalStartMin != null && t.gcalStartMin !== t.startMin) ? 'border-amber-400/40 bg-amber-500/10 text-amber-600 dark:text-amber-400' : 'border-indigo-400/40 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400'}" title="${t.calendarName || 'Google Calendar'}${t.gcalTitle && t.gcalTitle !== t.title ? ' • Original: ' + t.gcalTitle : ''}${t.userShifted || (t.gcalStartMin != null && t.gcalStartMin !== t.startMin) ? ' • Shifted from ' + (t.gcalStartMin != null ? formatMinToTime(t.gcalStartMin) : 'calendar time') : ''}">
+                      🗓️ ${t.calendarName || 'Calendar'}${t.userShifted || (t.gcalStartMin != null && t.gcalStartMin !== t.startMin) ? ' (Shifted)' : ''}${t.userRenamed || (t.gcalTitle && t.gcalTitle !== t.title) ? ' ✏️' : ''}
                     </span>
                     ${(t.userShifted || (t.gcalStartMin != null && t.gcalStartMin !== t.startMin)) && t.gcalStartMin != null ? `
                       <button onclick="resetTaskToCalendarTime('${t.id}')" class="px-1.5 py-0.2 rounded text-[10px] font-mono bg-amber-500/15 hover:bg-amber-500/30 text-amber-700 dark:text-amber-300 border border-amber-500/40 transition" title="Reset back to Google Calendar scheduled time (${formatMinToTime(t.gcalStartMin)})">↺ Cal</button>
@@ -9940,10 +9982,18 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
             : (ev.location ? `Location: ${ev.location}` : `Review agenda for ${calName} & join on time`);
 
           // Check if already in tasks
-          const existing = state.tasks.find(t => t.id === gcalId || (t.fromCalendar && t.title.toLowerCase() === title.toLowerCase()));
+          const existing = state.tasks.find(t => 
+            t.id === gcalId || 
+            (t.gcalEventId && t.gcalEventId === ev.id) ||
+            (t.fromCalendar && (
+              (t.title && t.title.toLowerCase() === title.toLowerCase()) ||
+              (t.gcalTitle && t.gcalTitle.toLowerCase() === title.toLowerCase())
+            ))
+          );
 
           if (existing) {
             existing.id = gcalId;
+            existing.gcalEventId = ev.id;
             existing.fromCalendar = true;
             existing.calendarName = calName;
             if (!existing.scheduledDate) {
@@ -9989,13 +10039,27 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
               changed = true;
             }
 
-            if (existing.title !== title) {
-              existing.title = title;
-              changed = true;
+            // Preserve user manual title rename in Flow App
+            if (!existing.gcalTitle) {
+              existing.gcalTitle = title;
             }
-            if (existing.microStep !== microStep) {
-              existing.microStep = microStep;
-              changed = true;
+            const isUserRenamed = !!(existing.userRenamed || (existing.gcalTitle && existing.title !== existing.gcalTitle));
+            if (!isUserRenamed) {
+              if (existing.title !== title) {
+                existing.title = title;
+                existing.gcalTitle = title;
+                changed = true;
+              }
+            } else {
+              existing.gcalTitle = title;
+            }
+
+            // Preserve user-edited microStep in Flow App
+            if (!existing.userMicroEdited) {
+              if (existing.microStep !== microStep) {
+                existing.microStep = microStep;
+                changed = true;
+              }
             }
 
             if (changed) {
@@ -10005,7 +10069,9 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
             const pInfo = classifyTaskPriority(title, duration, 'steady');
             state.tasks.push({
               id: gcalId,
+              gcalEventId: ev.id,
               title,
+              gcalTitle: title,
               microStep,
               type: pInfo.type,
               needsReview: pInfo.needsReview,
