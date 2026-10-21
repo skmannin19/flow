@@ -2086,7 +2086,7 @@
             .filter(at => !at.recurring)
             .map(at => (at.title || '').trim().toLowerCase())
         );
-        state.tasks = state.tasks.filter(t => t.recurring || !archivedTitles.has((t.title || '').trim().toLowerCase()));
+        state.tasks = state.tasks.filter(t => t.recurring || t.fromCalendar || !archivedTitles.has((t.title || '').trim().toLowerCase()));
       }
 
       // 3. Dynamic Date & Day Rollover Check (Auto-corrects date and rolls over tasks)
@@ -8113,7 +8113,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
             .filter(at => !at.recurring)
             .map(at => (at.title || '').trim().toLowerCase())
         );
-        state.tasks = state.tasks.filter(t => t.recurring || !archivedTitles.has((t.title || '').trim().toLowerCase()));
+        state.tasks = state.tasks.filter(t => t.recurring || t.fromCalendar || !archivedTitles.has((t.title || '').trim().toLowerCase()));
       }
 
       // 1. Deduplicate any identical calendar tasks (same start time & title)
@@ -8128,7 +8128,8 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
 
       // 2. Sanitize any previously overflowed, broken, or historical start times from previous runs
       state.tasks.forEach(t => {
-        if (!t.completed && !isTaskLocked(t)) {
+        // Do NOT wipe out startMin for calendar events (t.fromCalendar), locked tasks, or completed tasks
+        if (!t.completed && !isTaskLocked(t) && !t.fromCalendar) {
           // If in the past (historical time block) and flexible: clear startMin so it is re-slotted into current/future time or deferred
           if (t.startMin != null && t.startMin < roundedNowMin && !t.overrideEvening) {
             t.startMin = null;
@@ -8163,7 +8164,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
 
       const flexible = activeTasks.filter(t => !isTaskLocked(t));
 
-      // 3. Separate preserved tasks (completed or already scheduled in a valid upcoming slot) from unassigned tasks
+      // 3. Separate preserved tasks (completed, calendar events, or already scheduled in a valid upcoming slot) from unassigned tasks
       const overflow = [];
       const preservedTasks = [];
       const unassignedTasks = [];
@@ -8174,6 +8175,9 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
           t.endMin = null;
           overflow.push(t);
         } else if (t.completed && t.startMin != null) {
+          preservedTasks.push(t);
+        } else if (t.fromCalendar && t.startMin != null) {
+          // Always preserve today's Google Calendar events in their original scheduled slots, even if earlier in the day
           preservedTasks.push(t);
         } else if (!t.completed && t.startMin != null && t.startMin >= roundedNowMin && (t.startMin < 1350 || t.overrideEvening)) {
           preservedTasks.push(t);
@@ -9659,22 +9663,48 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
             existing.id = gcalId;
             existing.fromCalendar = true;
             existing.calendarName = calName;
+            if (!existing.scheduledDate) {
+              existing.scheduledDate = getLocalDateString();
+            }
             if (existing.type === 'FIXED' || !existing.type) {
               const pInfo = classifyTaskPriority(title, duration, 'steady');
               existing.type = pInfo.type;
               existing.needsReview = pInfo.needsReview;
             }
-            if (existing.duration !== duration || existing.title !== title) {
-              existing.duration = duration;
-              existing.title = title;
-              existing.microStep = microStep;
-              if (isTaskLocked(existing)) {
-                existing.fixedStartMin = startMin;
+
+            // Ensure calendar events maintain their exact scheduled start & end times
+            let changed = false;
+            if (!existing.completed) {
+              if (existing.startMin == null || existing.startMin !== startMin) {
                 existing.startMin = startMin;
                 existing.endMin = startMin + duration;
-              } else {
-                existing.endMin = (existing.startMin || startMin) + duration;
+                changed = true;
               }
+              if (existing.duration !== duration) {
+                existing.duration = duration;
+                existing.endMin = existing.startMin + duration;
+                changed = true;
+              }
+              if (isTaskLocked(existing) && existing.fixedStartMin !== startMin) {
+                existing.fixedStartMin = startMin;
+                changed = true;
+              }
+            } else if (existing.startMin == null) {
+              existing.startMin = startMin;
+              existing.endMin = startMin + duration;
+              changed = true;
+            }
+
+            if (existing.title !== title) {
+              existing.title = title;
+              changed = true;
+            }
+            if (existing.microStep !== microStep) {
+              existing.microStep = microStep;
+              changed = true;
+            }
+
+            if (changed) {
               updatedCount++;
             }
           } else {
@@ -9693,6 +9723,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
               fixedStartMin: null,
               startMin: startMin,
               endMin: startMin + duration,
+              scheduledDate: getLocalDateString(),
               completed: false,
               recurring: false,
               subtasks: []
