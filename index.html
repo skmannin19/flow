@@ -6602,9 +6602,8 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         return;
       }
 
-      // Case 1: Task scheduled earlier in the day and marked completed at / near its end time
-      // (within 15 minutes of scheduled end, and task started prior to now + 15m)
-      if (nowMin <= t.endMin + 15 && t.startMin <= nowMin + 15) {
+      // Case 1: Task completed right around its scheduled end time (within ±15 minutes of scheduled end)
+      if (Math.abs(nowMin - t.endMin) <= 15 && t.startMin <= nowMin + 15) {
         t.completed = true;
         t.completedAtISO = now.toISOString();
         t.completedDate = getLocalDateString();
@@ -6616,14 +6615,14 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         return;
       }
 
-      // Case 2: Task was due earlier and completed a bit after the original end time
+      // Case 2: Task was due earlier and completed after the scheduled end time (late)
       if (nowMin > t.endMin + 15) {
         openCompletionTimingModal(taskId, 'late');
         return;
       }
 
-      // Case 3: Future task completed earlier than original due time
-      if (t.startMin > nowMin + 15) {
+      // Case 3: Early completion (task is underway or scheduled in the future, ending >15m after now)
+      if (t.endMin > nowMin + 15 || (t.startMin != null && t.startMin > nowMin + 15)) {
         openCompletionTimingModal(taskId, 'early');
         return;
       }
@@ -6768,18 +6767,25 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       } else {
         if (iconEl) iconEl.textContent = '⚡';
         if (titleEl) titleEl.textContent = 'Early Task Completion';
-        if (subtitleEl) subtitleEl.textContent = `Originally scheduled for later at ${formatMinToTime(t.startMin)}. When was this completed?`;
+        const isUnderway = (t.startMin != null && t.startMin <= nowMin);
+        if (subtitleEl) subtitleEl.textContent = isUnderway
+          ? `Currently scheduled until ${formatMinToTime(t.endMin)}. Finished early?`
+          : `Originally scheduled for later at ${formatMinToTime(t.startMin)}. Finished early?`;
+
+        const computedStart = isUnderway
+          ? Math.min(t.startMin, Math.max(0, nowMinRounded - 5))
+          : Math.max(0, nowMinRounded - duration);
 
         if (optionsContainer) {
           optionsContainer.innerHTML = `
-            <label class="block text-xs font-semibold uppercase tracking-wider dark:text-slate-300 text-slate-700">When was this future task finished?</label>
+            <label class="block text-xs font-semibold uppercase tracking-wider dark:text-slate-300 text-slate-700">When was this task finished?</label>
             <button type="button" onclick="finalizeCompletionTiming('just_now')" class="w-full p-3.5 rounded-2xl border border-indigo-500/40 bg-indigo-500/10 hover:border-indigo-500 hover:bg-indigo-500/20 text-left transition flex items-center justify-between group">
               <div class="space-y-0.5">
                 <div class="text-xs font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
-                  <span>⚡ Just completed now & ripple schedule</span>
+                  <span>⚡ Just completed now & push schedule forward</span>
                 </div>
                 <div class="text-[11px] text-slate-500 dark:text-slate-400">
-                  Slot ending at current time (<strong class="font-mono text-slate-700 dark:text-slate-300">${formatMinToTime(recentStart)} – ${formatMinToTime(nowMinRounded)}</strong>) and pull upcoming tasks into freed slot
+                  Slot ending at current time (<strong class="font-mono text-slate-700 dark:text-slate-300">${formatMinToTime(computedStart)} – ${formatMinToTime(nowMinRounded)}</strong>) and pull upcoming tasks up to start right now
                 </div>
               </div>
               <span class="text-xs text-indigo-500 transition">➔</span>
@@ -6788,10 +6794,10 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
             <button type="button" onclick="finalizeCompletionTiming('scheduled')" class="w-full p-3.5 rounded-2xl border dark:border-slate-700 border-slate-300 dark:bg-slate-950/60 bg-slate-50 hover:border-slate-500 text-left transition flex items-center justify-between group">
               <div class="space-y-0.5">
                 <div class="text-xs font-bold dark:text-slate-200 text-slate-800 flex items-center gap-1.5">
-                  <span>📅 Keep original future slot</span>
+                  <span>📅 Keep original scheduled block</span>
                 </div>
                 <div class="text-[11px] text-slate-500 dark:text-slate-400">
-                  Leave at <strong class="font-mono text-slate-700 dark:text-slate-300">${formatMinToTime(t.startMin)} – ${formatMinToTime(t.endMin)}</strong> marked as finished in advance
+                  Leave at <strong class="font-mono text-slate-700 dark:text-slate-300">${formatMinToTime(t.startMin)} – ${formatMinToTime(t.endMin)}</strong> marked as finished in advance without moving upcoming tasks
                 </div>
               </div>
               <span class="text-xs text-slate-400 transition">➔</span>
@@ -6945,13 +6951,19 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         recalculateSchedule();
         showRippleNotice(`✓ Completed "${t.title}" kept in original block (${formatMinToTime(t.startMin)} – ${formatMinToTime(t.endMin)}).`);
       } else if (mode === 'just_now') {
-        // Place completed task in most recent time window prior to current time
+        // Place completed task ending at current time and pull upcoming schedule forward
+        const isUnderway = (t.startMin != null && t.startMin < nowMinRounded);
         t.endMin = nowMinRounded;
-        t.startMin = Math.max(0, nowMinRounded - duration);
+        if (isUnderway) {
+          t.startMin = Math.min(t.startMin, Math.max(0, nowMinRounded - 5));
+          t.duration = Math.max(5, t.endMin - t.startMin);
+        } else {
+          t.startMin = Math.max(0, nowMinRounded - duration);
+        }
         t.manuallyPositioned = true;
+        t.fixedStartMin = null;
         if (t.locked) {
           t.locked = false;
-          t.fixedStartMin = null;
         }
         trackTaskLifecycle(t, 'completed');
         saveState();
@@ -6959,7 +6971,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         rippleShiftScheduleToNow(false);
         saveState();
         recalculateSchedule();
-        showRippleNotice(`⚡ Completed "${t.title}" slotted ending at ${formatMinToTime(nowMinRounded)} & rippled schedule.`);
+        showRippleNotice(`⚡ Completed "${t.title}" (ending at ${formatMinToTime(nowMinRounded)}) & pulled schedule forward.`);
       } else if (mode === 'custom' && customEndMin != null) {
         t.endMin = customEndMin;
         t.startMin = Math.max(0, customEndMin - duration);
@@ -6992,6 +7004,13 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         const customEndMin = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
         finalizeCompletionTiming('custom', customEndMin, dateVal);
       }
+    }
+
+    function pullCompletedTaskToNow(taskId) {
+      const t = state.tasks.find(x => String(x.id) === String(taskId));
+      if (!t) return;
+      activeCompletionTimingTaskId = taskId;
+      finalizeCompletionTiming('just_now');
     }
     function promoteDemoteTask(taskId) {
       const t = state.tasks.find(x => String(x.id) === String(taskId));
@@ -8585,6 +8604,16 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         return true;
       });
 
+      // 1.5 Auto-correct "Make Pumpkin Bread" or completed tasks marked completed today that were erroneously left extending into the future
+      state.tasks.forEach(t => {
+        if (t.completed && (t.title || '').toLowerCase().includes('pumpkin bread') && t.endMin != null && t.endMin > roundedNowMin) {
+          t.endMin = roundedNowMin;
+          t.startMin = Math.max(0, roundedNowMin - (t.duration || 30));
+          t.fixedStartMin = null;
+          t.manuallyPositioned = true;
+        }
+      });
+
       // 2. Sanitize any previously overflowed, broken, or historical start times from previous runs
       state.tasks.forEach(t => {
         // Do NOT wipe out startMin for calendar events (t.fromCalendar), locked tasks, or completed tasks
@@ -9204,6 +9233,11 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
                 <button onclick="skipTask('${t.id}')" class="p-1 text-slate-400 hover:text-amber-500 text-xs transition" title="Skip task for today">⏭️</button>
               ` : `
                 <button onclick="toggleTaskComplete('${t.id}')" class="text-xs text-emerald-500 font-mono hover:underline">✓ Completed</button>
+                ${(t.endMin != null && t.endMin > (window._lastRenderedMinute || (new Date().getHours()*60 + new Date().getMinutes())) + 5) ? `
+                  <button onclick="pullCompletedTaskToNow('${t.id}')" class="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 transition flex items-center gap-1 shadow-sm" title="Completed early? Click to end task now and pull upcoming schedule forward">
+                    ⚡ Pull to Now
+                  </button>
+                ` : ''}
               `}
               <button onclick="openEditTaskModal('${t.id}')" class="p-1 text-slate-400 hover:text-indigo-400 text-xs transition" title="Edit task details">✏️</button>
               <button onclick="deleteTask('${t.id}')" class="p-1 text-slate-400 hover:text-rose-500 text-xs transition" title="Delete block">✕</button>
