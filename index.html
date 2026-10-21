@@ -6196,6 +6196,22 @@
       );
     }
 
+    function resetTaskToCalendarTime(taskId) {
+      const t = state.tasks.find(x => String(x.id) === String(taskId));
+      if (!t || t.gcalStartMin == null) return;
+      t.startMin = t.gcalStartMin;
+      t.duration = t.gcalDuration || t.duration || 30;
+      t.endMin = t.startMin + t.duration;
+      t.userShifted = false;
+      t.manuallyPositioned = false;
+      if (isTaskLocked(t)) {
+        t.fixedStartMin = t.startMin;
+      }
+      saveState();
+      recalculateSchedule();
+      showRippleNotice(`↺ Reset "${t.title}" to Google Calendar time (${formatMinToTime(t.startMin)})`);
+    }
+
     function rippleShiftScheduleToNow(notify = true) {
       const today = new Date();
       const nowMin = today.getHours() * 60 + today.getMinutes();
@@ -7857,6 +7873,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       if (!t) return;
       t.duration = Math.max(10, (t.duration || 30) + delta);
       t.manuallyPositioned = true;
+      t.userShifted = true;
       if (t.startMin != null) {
         t.endMin = t.startMin + t.duration;
       }
@@ -7898,6 +7915,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
                 st.startMin = stCur;
                 st.endMin = stCur + stDur;
                 st.manuallyPositioned = true;
+                st.userShifted = true;
                 rippleCursor = st.endMin + bufferMin;
                 stPlaced = true;
               }
@@ -8149,6 +8167,9 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       t.startMin = newStartMin;
       t.endMin = newEndMin;
       t.manuallyPositioned = true;
+      if (timeChanged || (t.gcalStartMin != null && newStartMin !== t.gcalStartMin)) {
+        t.userShifted = true;
+      }
 
       if (isLocked) {
         t.fixedStartMin = newStartMin;
@@ -8724,6 +8745,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       sourceTask.startMin = cursor;
       sourceTask.endMin = cursor + sDuration;
       sourceTask.manuallyPositioned = true;
+      sourceTask.userShifted = true;
       if (isTaskLocked(sourceTask)) {
         sourceTask.fixedStartMin = cursor;
       }
@@ -8749,6 +8771,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
                 st.startMin = stCur;
                 st.endMin = stCur + stDur;
                 st.manuallyPositioned = true;
+                st.userShifted = true;
                 rippleCursor = st.endMin + bufferMin;
                 stPlaced = true;
               }
@@ -8775,6 +8798,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       t.startMin = newStart;
       t.endMin = newStart + (t.duration || 30);
       t.manuallyPositioned = true;
+      t.userShifted = true;
       if (isTaskLocked(t)) t.fixedStartMin = t.startMin;
       if (t.completed) t.completedAtMin = t.endMin;
 
@@ -8901,7 +8925,14 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
                 <div class="flex items-center gap-1.5 flex-wrap">
                   <span onclick="openEditTaskModal('${t.id}')" class="text-xs font-semibold cursor-pointer hover:underline hover:text-indigo-500 transition dark:text-white text-slate-900 ${t.completed ? 'line-through text-slate-400 dark:text-slate-500' : ''}" title="Click to edit task details">${t.title}</span>
                   <span class="text-[10px] font-mono px-1 rounded border ${p.color}">${p.label}</span>
-                  ${t.fromCalendar ? `<span class="text-[10px] font-mono px-1.5 py-0.2 rounded border border-indigo-400/40 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400" title="${t.calendarName || 'Google Calendar'}">🗓️ ${t.calendarName || 'Calendar'}</span>` : ''}
+                  ${t.fromCalendar ? `
+                    <span class="text-[10px] font-mono px-1.5 py-0.2 rounded border ${t.userShifted || (t.gcalStartMin != null && t.gcalStartMin !== t.startMin) ? 'border-amber-400/40 bg-amber-500/10 text-amber-600 dark:text-amber-400' : 'border-indigo-400/40 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400'}" title="${t.calendarName || 'Google Calendar'} ${t.userShifted || (t.gcalStartMin != null && t.gcalStartMin !== t.startMin) ? '(Shifted from original ' + (t.gcalStartMin != null ? formatMinToTime(t.gcalStartMin) : 'calendar time') + ')' : ''}">
+                      🗓️ ${t.calendarName || 'Calendar'}${t.userShifted || (t.gcalStartMin != null && t.gcalStartMin !== t.startMin) ? ' (Shifted)' : ''}
+                    </span>
+                    ${(t.userShifted || (t.gcalStartMin != null && t.gcalStartMin !== t.startMin)) && t.gcalStartMin != null ? `
+                      <button onclick="resetTaskToCalendarTime('${t.id}')" class="px-1.5 py-0.2 rounded text-[10px] font-mono bg-amber-500/15 hover:bg-amber-500/30 text-amber-700 dark:text-amber-300 border border-amber-500/40 transition" title="Reset back to Google Calendar scheduled time (${formatMinToTime(t.gcalStartMin)})">↺ Cal</button>
+                    ` : ''}
+                  ` : ''}
                   ${t.needsReview ? `
                     <div class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-500/35 text-amber-700 dark:text-amber-300 text-[10px] font-semibold">
                       <span>🤨 Review:</span>
@@ -9924,22 +9955,33 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
               existing.needsReview = pInfo.needsReview;
             }
 
-            // Ensure calendar events maintain their exact scheduled start & end times
+            // Preserve user manual shift in Flow App
+            existing.gcalStartMin = startMin;
+            existing.gcalDuration = duration;
+            const isUserShifted = !!(existing.manuallyPositioned || existing.userShifted);
             let changed = false;
+
             if (!existing.completed) {
-              if (existing.startMin == null || existing.startMin !== startMin) {
+              if (existing.startMin == null) {
                 existing.startMin = startMin;
                 existing.endMin = startMin + duration;
                 changed = true;
-              }
-              if (existing.duration !== duration) {
-                existing.duration = duration;
-                existing.endMin = existing.startMin + duration;
-                changed = true;
-              }
-              if (isTaskLocked(existing) && existing.fixedStartMin !== startMin) {
-                existing.fixedStartMin = startMin;
-                changed = true;
+              } else if (!isUserShifted) {
+                // Only update start time from Google Calendar if the user hasn't shifted it in Flow App
+                if (existing.startMin !== startMin) {
+                  existing.startMin = startMin;
+                  existing.endMin = startMin + (existing.duration || duration);
+                  changed = true;
+                }
+                if (existing.duration !== duration) {
+                  existing.duration = duration;
+                  existing.endMin = existing.startMin + duration;
+                  changed = true;
+                }
+                if (isTaskLocked(existing) && existing.fixedStartMin !== startMin) {
+                  existing.fixedStartMin = startMin;
+                  changed = true;
+                }
               }
             } else if (existing.startMin == null) {
               existing.startMin = startMin;
@@ -9975,6 +10017,8 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
               fixedStartMin: null,
               startMin: startMin,
               endMin: startMin + duration,
+              gcalStartMin: startMin,
+              gcalDuration: duration,
               scheduledDate: getLocalDateString(),
               completed: false,
               recurring: false,
