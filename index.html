@@ -1770,7 +1770,6 @@
     }
 
     const DEFAULT_TASKS = [
-      { id: 't_dad_text', title: "Respond to Dad's text", microStep: 'Send quick 1-sentence reply', type: 'LIT', energy: 'fried', duration: 15, fixedStartMin: null, locked: false, completed: false, recurring: false, subtasks: [] },
       { id: 't_job_apply', title: 'Find & Apply to one job', microStep: 'Open LinkedIn & submit 1 targeted application', type: 'MIT', energy: 'sharp', duration: 45, fixedStartMin: null, locked: false, completed: false, recurring: false, subtasks: [] },
       { id: 't_nail_polish', title: 'Take off nail polish', microStep: 'Gather nail polish, remover, file & buffer at clean table', type: 'LIT', energy: 'fried', duration: 10, fixedStartMin: null, locked: false, completed: true, recurring: false, subtasks: [], startMin: 840, endMin: 850 },
       { id: 't7', title: 'Inbox Zero & Weekly Sunday Planning Prep', microStep: 'Clear starred emails and archive newsletters', type: 'LIT', energy: 'fried', duration: 25, fixedStartMin: null, locked: false, completed: false, recurring: true, recurrence: { freq: 'weekly', daysOfWeek: [0, 5], interval: 1, unit: 'weeks' }, subtasks: [] },
@@ -1938,21 +1937,34 @@
         state.chronotype = JSON.parse(JSON.stringify(CHRONOTYPES.wolf));
       }
 
-      // Ensure "Respond to Dad's text" is preserved if not already in state
-      if (!state.tasks.some(t => t.title && t.title.toLowerCase().includes("dad's text"))) {
-        state.tasks.unshift({
+      // Ensure "Respond to Dad's text" (completed on 2026-10-20) remains archived and does not appear on today's schedule
+      state.tasks = (state.tasks || []).filter(t => !t.title || !t.title.toLowerCase().includes("dad's text"));
+      state.archivedTasks = state.archivedTasks || [];
+      if (!state.archivedTasks.some(t => t.title && t.title.toLowerCase().includes("dad's text"))) {
+        state.archivedTasks.push({
           id: 't_dad_text',
           title: "Respond to Dad's text",
           microStep: 'Send quick 1-sentence reply',
           type: 'LIT',
           energy: 'fried',
           duration: 15,
-          fixedStartMin: null,
-          locked: false,
-          completed: false,
+          completed: true,
+          completedDate: '2026-10-20',
+          completedAtISO: '2026-10-20T17:00:17.095Z',
           recurring: false,
-          subtasks: []
+          fromCalendar: false,
+          archivedAt: '2026-10-21T00:00:00.000Z'
         });
+      }
+
+      // Safety check: prune any past-completed non-recurring tasks that exist in archivedTasks from state.tasks
+      if (state.archivedTasks && state.archivedTasks.length > 0) {
+        const archivedTitles = new Set(
+          state.archivedTasks
+            .filter(at => !at.recurring)
+            .map(at => (at.title || '').trim().toLowerCase())
+        );
+        state.tasks = state.tasks.filter(t => t.recurring || !archivedTitles.has((t.title || '').trim().toLowerCase()));
       }
 
       // Ensure "Take off nail polish" is present and set to 2:00 PM (840) to 2:10 PM (850) with 10m duration as requested
@@ -2069,6 +2081,16 @@
         const pastIds = new Set(pastCompleted.map(p => String(p.id)));
         state.tasks = state.tasks.filter(t => !pastIds.has(String(t.id)));
         saveState();
+      }
+
+      // Ensure any task that already exists in archivedTasks (as non-recurring) is never duplicated in active state.tasks
+      if (state.archivedTasks && state.archivedTasks.length > 0) {
+        const archivedTitles = new Set(
+          state.archivedTasks
+            .filter(at => !at.recurring)
+            .map(at => (at.title || '').trim().toLowerCase())
+        );
+        state.tasks = state.tasks.filter(t => t.recurring || !archivedTitles.has((t.title || '').trim().toLowerCase()));
       }
 
       // 3. Dynamic Date & Day Rollover Check (Auto-corrects date and rolls over tasks)
@@ -8083,6 +8105,16 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         const pastIds = new Set(pastCompleted.map(p => String(p.id)));
         state.tasks = state.tasks.filter(t => !pastIds.has(String(t.id)));
         saveState();
+      }
+
+      // Ensure any task that already exists in archivedTasks (as non-recurring) is never duplicated in active state.tasks
+      if (state.archivedTasks && state.archivedTasks.length > 0) {
+        const archivedTitles = new Set(
+          state.archivedTasks
+            .filter(at => !at.recurring)
+            .map(at => (at.title || '').trim().toLowerCase())
+        );
+        state.tasks = state.tasks.filter(t => t.recurring || !archivedTitles.has((t.title || '').trim().toLowerCase()));
       }
 
       // 1. Deduplicate any identical calendar tasks (same start time & title)
