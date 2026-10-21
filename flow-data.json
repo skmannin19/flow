@@ -45,6 +45,9 @@
       "startMin": null,
       "endMin": null,
       "rolledOver": true,
+      "rolledOverFromDate": "2026-10-20",
+      "originalHistoricalStartMin": 540,
+      "originalHistoricalEndMin": 585,
       "manuallyPositioned": true,
       "needsReview": false
     },
@@ -86,7 +89,10 @@
       "recurrence": null,
       "subtasks": [],
       "manuallyPositioned": true,
-      "rolledOver": true
+      "rolledOver": true,
+      "rolledOverFromDate": "2026-10-20",
+      "originalHistoricalStartMin": 930,
+      "originalHistoricalEndMin": 975
     },
     {
       "id": "t9",

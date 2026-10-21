@@ -1511,13 +1511,23 @@
       </div>
 
       <!-- Optional Custom Time Picker -->
-      <div id="completionCustomTimeRow" class="pt-2 border-t dark:border-slate-800 border-slate-200 flex items-center justify-between gap-3 text-xs">
-        <label class="font-medium dark:text-slate-300 text-slate-700 flex items-center gap-1.5">
-          <span>🕒</span> Custom Finished Time:
-        </label>
-        <div class="flex items-center gap-2">
-          <input type="time" id="completionCustomTimeInput" class="dark:bg-slate-950 bg-slate-100 border dark:border-slate-700 border-slate-300 rounded-lg px-2.5 py-1 text-xs font-mono dark:text-white text-slate-900 focus:outline-none" />
-          <button type="button" onclick="applyCustomCompletionTime()" class="px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition">
+      <div id="completionCustomTimeRow" class="pt-3 border-t dark:border-slate-800 border-slate-200 space-y-2">
+        <div class="flex items-center justify-between text-xs">
+          <label class="font-medium dark:text-slate-300 text-slate-700 flex items-center gap-1.5">
+            <span>🕒</span> Custom Finished Date & Time:
+          </label>
+          <span class="text-[10px] text-slate-400">Pick past day/time if rolled over or backfilling</span>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="flex items-center gap-1.5 flex-1 min-w-[130px]">
+            <label for="completionCustomDateInput" class="text-[11px] text-slate-400 font-medium">Date:</label>
+            <input type="date" id="completionCustomDateInput" class="w-full dark:bg-slate-950 bg-slate-100 border dark:border-slate-700 border-slate-300 rounded-lg px-2.5 py-1 text-xs font-mono dark:text-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+          </div>
+          <div class="flex items-center gap-1.5 w-28">
+            <label for="completionCustomTimeInput" class="text-[11px] text-slate-400 font-medium">Time:</label>
+            <input type="time" id="completionCustomTimeInput" class="w-full dark:bg-slate-950 bg-slate-100 border dark:border-slate-700 border-slate-300 rounded-lg px-2.5 py-1 text-xs font-mono dark:text-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+          </div>
+          <button type="button" onclick="applyCustomCompletionTime()" class="px-3.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition shadow-sm">
             Apply
           </button>
         </div>
@@ -6292,7 +6302,21 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         return;
       }
 
-      // 2. Marking as completed: evaluate timing
+      // 2. Rollover check: Task rolled over from a previous day
+      const todayKey = getLocalDateString();
+      const isRolledOver = !!(
+        t.rolledOver ||
+        (t.rolledOverFromDate && t.rolledOverFromDate < todayKey) ||
+        (t.scheduledDate && t.scheduledDate < todayKey) ||
+        (t.originalDate && t.originalDate < todayKey)
+      );
+
+      if (isRolledOver) {
+        openCompletionTimingModal(taskId, 'rollover');
+        return;
+      }
+
+      // 3. Marking as completed: evaluate timing for tasks scheduled today
       const now = new Date();
       const nowMin = now.getHours() * 60 + now.getMinutes();
       const roundedNowMin = Math.ceil(nowMin / 5) * 5;
@@ -6361,7 +6385,19 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       const taskNameEl = document.getElementById('completionTaskName');
       const taskInfoEl = document.getElementById('completionTaskScheduledInfo');
       const optionsContainer = document.getElementById('completionModalOptions');
+      const customDateInput = document.getElementById('completionCustomDateInput');
       const customTimeInput = document.getElementById('completionCustomTimeInput');
+
+      const todayKey = getLocalDateString();
+      const prevDateKey = t.rolledOverFromDate || state.lastActiveDate || getYesterdayDateString();
+      const prevDateFormatted = formatDateLabel(prevDateKey);
+
+      const histStart = t.originalHistoricalStartMin != null 
+        ? t.originalHistoricalStartMin 
+        : (t.fixedStartMin != null ? t.fixedStartMin : (t.startMin != null ? t.startMin : 540));
+      const histEnd = t.originalHistoricalEndMin != null 
+        ? t.originalHistoricalEndMin 
+        : (histStart + (t.duration || 30));
 
       const now = new Date();
       const nowMin = now.getHours() * 60 + now.getMinutes();
@@ -6370,17 +6406,65 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       const recentStart = Math.max(0, nowMinRounded - duration);
 
       if (taskNameEl) taskNameEl.textContent = t.title;
-      if (taskInfoEl) {
-        taskInfoEl.textContent = `Original schedule: ${formatMinToTime(t.startMin)} – ${formatMinToTime(t.endMin)} (${duration}m)`;
+
+      if (mode === 'rollover') {
+        if (taskInfoEl) {
+          taskInfoEl.innerHTML = `Rolled over from <strong class="text-amber-500 font-semibold">${prevDateFormatted}</strong> (original slot: <strong class="font-mono text-slate-700 dark:text-slate-300">${formatMinToTime(histStart)} – ${formatMinToTime(histEnd)}</strong>)`;
+        }
+      } else {
+        if (taskInfoEl) {
+          taskInfoEl.textContent = `Original schedule: ${formatMinToTime(t.startMin)} – ${formatMinToTime(t.endMin)} (${duration}m)`;
+        }
+      }
+
+      if (customDateInput) {
+        customDateInput.max = todayKey;
+        customDateInput.value = (mode === 'rollover') ? prevDateKey : todayKey;
       }
 
       if (customTimeInput) {
-        const h = Math.floor(nowMin / 60).toString().padStart(2, '0');
-        const m = (nowMin % 60).toString().padStart(2, '0');
-        customTimeInput.value = `${h}:${m}`;
+        if (mode === 'rollover') {
+          customTimeInput.value = minToTimeInputValue(histEnd);
+        } else {
+          customTimeInput.value = minToTimeInputValue(nowMin);
+        }
       }
 
-      if (mode === 'late') {
+      if (mode === 'rollover') {
+        if (iconEl) iconEl.textContent = '↩️';
+        if (titleEl) titleEl.textContent = 'Rolled-Over Task Completion';
+        if (subtitleEl) subtitleEl.textContent = `This task rolled over from ${prevDateFormatted}. Was it completed previously, or just now today?`;
+
+        if (optionsContainer) {
+          optionsContainer.innerHTML = `
+            <label class="block text-xs font-semibold uppercase tracking-wider dark:text-slate-300 text-slate-700">How was this rolled-over task completed?</label>
+            
+            <button type="button" onclick="finalizeCompletionTiming('historical_slot')" class="w-full p-3.5 rounded-2xl border dark:border-emerald-500/40 border-emerald-500/40 dark:bg-emerald-500/10 bg-emerald-50 hover:border-emerald-500 hover:bg-emerald-500/15 text-left transition flex items-center justify-between group">
+              <div class="space-y-0.5">
+                <div class="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                  <span>📅 Keep original historical slot</span>
+                </div>
+                <div class="text-[11px] text-slate-500 dark:text-slate-400">
+                  Save as completed on time on <strong class="font-semibold text-slate-700 dark:text-slate-300">${prevDateFormatted}</strong> (<span class="font-mono">${formatMinToTime(histStart)} – ${formatMinToTime(histEnd)}</span>) and archive
+                </div>
+              </div>
+              <span class="text-xs text-emerald-500 group-hover:translate-x-0.5 transition">➔</span>
+            </button>
+
+            <button type="button" onclick="finalizeCompletionTiming('just_now')" class="w-full p-3.5 rounded-2xl border border-indigo-500/40 bg-indigo-500/10 hover:border-indigo-500 hover:bg-indigo-500/20 text-left transition flex items-center justify-between group">
+              <div class="space-y-0.5">
+                <div class="text-xs font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
+                  <span>⚡ Just completed now (today)</span>
+                </div>
+                <div class="text-[11px] text-slate-500 dark:text-slate-400">
+                  Slot ending at current time (<strong class="font-mono text-slate-700 dark:text-slate-300">${formatMinToTime(recentStart)} – ${formatMinToTime(nowMinRounded)}</strong>) on today's schedule & ripple
+                </div>
+              </div>
+              <span class="text-xs text-indigo-500 group-hover:translate-x-0.5 transition">➔</span>
+            </button>
+          `;
+        }
+      } else if (mode === 'late') {
         if (iconEl) iconEl.textContent = '⏱️';
         if (titleEl) titleEl.textContent = 'Task Completion Timing';
         if (subtitleEl) subtitleEl.textContent = `This task was due at ${formatMinToTime(t.endMin)}. Was it finished earlier or just now?`;
@@ -6475,19 +6559,116 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       recalculateSchedule();
     }
 
-    function finalizeCompletionTiming(mode, customEndMin = null) {
+    function finalizeCompletionTiming(mode, customEndMin = null, customDate = null) {
       if (!activeCompletionTimingTaskId) return;
       const t = state.tasks.find(x => String(x.id) === String(activeCompletionTimingTaskId));
       if (!t) { closeCompletionTimingModal(); return; }
 
+      const todayKey = getLocalDateString();
+      const prevDateKey = t.rolledOverFromDate || state.lastActiveDate || getYesterdayDateString();
       const now = new Date();
       const nowMin = now.getHours() * 60 + now.getMinutes();
       const nowMinRounded = Math.ceil(nowMin / 5) * 5;
       const duration = t.duration || 30;
 
+      if (mode === 'historical_slot') {
+        const histStart = t.originalHistoricalStartMin != null 
+          ? t.originalHistoricalStartMin 
+          : (t.fixedStartMin != null ? t.fixedStartMin : (t.startMin != null ? t.startMin : 540));
+        const histEnd = t.originalHistoricalEndMin != null 
+          ? t.originalHistoricalEndMin 
+          : (histStart + duration);
+
+        const completedISO = new Date(prevDateKey + 'T' + minToTimeInputValue(histEnd) + ':00').toISOString();
+
+        t.completed = true;
+        t.completedDate = prevDateKey;
+        t.completedAtISO = completedISO;
+        t.startMin = histStart;
+        t.endMin = histEnd;
+
+        // Archive into state.archivedTasks so it doesn't clutter today's active schedule
+        state.archivedTasks = state.archivedTasks || [];
+        state.archivedTasks.push({
+          id: t.id,
+          title: t.title,
+          microStep: t.microStep || '',
+          type: t.type || 'LIT',
+          energy: t.energy || 'steady',
+          duration: duration,
+          startMin: histStart,
+          endMin: histEnd,
+          completed: true,
+          completedDate: prevDateKey,
+          completedAtISO: completedISO,
+          recurring: !!t.recurring,
+          fromCalendar: !!t.fromCalendar,
+          archivedAt: new Date().toISOString()
+        });
+
+        // Record historical analytics event & clear from pushCounts
+        recordHistoricalAnalyticsEvent(t, prevDateKey, histStart, histEnd, true);
+
+        // Remove from active tasks
+        state.tasks = state.tasks.filter(x => String(x.id) !== String(t.id));
+
+        saveState();
+        recalculateSchedule();
+        showRippleNotice(`✓ Saved "${t.title}" as completed on time on ${formatDateLabel(prevDateKey)} (${formatMinToTime(histStart)} – ${formatMinToTime(histEnd)}) and archived.`);
+        closeCompletionTimingModal();
+        updateRecommendationBanner();
+        return;
+      }
+
+      if (mode === 'custom' && customDate && customDate < todayKey) {
+        const histEnd = customEndMin != null ? customEndMin : nowMinRounded;
+        const histStart = Math.max(0, histEnd - duration);
+        const completedISO = new Date(customDate + 'T' + minToTimeInputValue(histEnd) + ':00').toISOString();
+
+        t.completed = true;
+        t.completedDate = customDate;
+        t.completedAtISO = completedISO;
+        t.startMin = histStart;
+        t.endMin = histEnd;
+
+        // Archive into state.archivedTasks
+        state.archivedTasks = state.archivedTasks || [];
+        state.archivedTasks.push({
+          id: t.id,
+          title: t.title,
+          microStep: t.microStep || '',
+          type: t.type || 'LIT',
+          energy: t.energy || 'steady',
+          duration: duration,
+          startMin: histStart,
+          endMin: histEnd,
+          completed: true,
+          completedDate: customDate,
+          completedAtISO: completedISO,
+          recurring: !!t.recurring,
+          fromCalendar: !!t.fromCalendar,
+          archivedAt: new Date().toISOString()
+        });
+
+        // Record historical analytics event & clear from pushCounts
+        recordHistoricalAnalyticsEvent(t, customDate, histStart, histEnd, true);
+
+        // Remove from active tasks
+        state.tasks = state.tasks.filter(x => String(x.id) !== String(t.id));
+
+        saveState();
+        recalculateSchedule();
+        showRippleNotice(`✓ Saved "${t.title}" as completed on ${formatDateLabel(customDate)} (${formatMinToTime(histStart)} – ${formatMinToTime(histEnd)}) and archived.`);
+        closeCompletionTimingModal();
+        updateRecommendationBanner();
+        return;
+      }
+
+      // Normal completion on today
       t.completed = true;
       t.completedAtISO = now.toISOString();
-      t.completedDate = getLocalDateString();
+      t.completedDate = todayKey;
+      t.rolledOver = false;
 
       if (mode === 'scheduled') {
         // Keep in original time block as completed earlier in the day prior to current time
@@ -6535,12 +6716,13 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
     }
 
     function applyCustomCompletionTime() {
-      const val = document.getElementById('completionCustomTimeInput')?.value;
-      if (!val) return;
-      const parts = val.split(':');
+      const timeVal = document.getElementById('completionCustomTimeInput')?.value;
+      const dateVal = document.getElementById('completionCustomDateInput')?.value || getLocalDateString();
+      if (!timeVal) return;
+      const parts = timeVal.split(':');
       if (parts.length === 2) {
         const customEndMin = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
-        finalizeCompletionTiming('custom', customEndMin);
+        finalizeCompletionTiming('custom', customEndMin, dateVal);
       }
     }
     function promoteDemoteTask(taskId) {
@@ -8605,12 +8787,86 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
     }
 
     // --- DAY ROLLOVER & DATE AUTOCORRECTION ENGINE ---
-    function getLocalDateString() {
-      const now = new Date();
+    function getLocalDateString(d) {
+      const now = (d instanceof Date && !isNaN(d)) ? d : new Date();
       const year = now.getFullYear();
       const month = String(now.getMonth() + 1).padStart(2, '0');
       const day = String(now.getDate()).padStart(2, '0');
       return `${year}-${month}-${day}`;
+    }
+
+    function getYesterdayDateString() {
+      const d = new Date();
+      d.setDate(d.getDate() - 1);
+      return getLocalDateString(d);
+    }
+
+    function formatDateLabel(dateStr) {
+      if (!dateStr) return '';
+      const todayKey = getLocalDateString();
+      const yesterdayKey = getYesterdayDateString();
+      if (dateStr === todayKey) return 'Today';
+      if (dateStr === yesterdayKey) return 'Yesterday';
+      try {
+        const parts = dateStr.split('-');
+        if (parts.length === 3) {
+          const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+          return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        }
+      } catch (e) {}
+      return dateStr;
+    }
+
+    function minToTimeInputValue(mins) {
+      if (mins == null || isNaN(mins)) return '09:00';
+      const clamped = Math.max(0, Math.min(1439, Math.round(mins)));
+      const h = Math.floor(clamped / 60).toString().padStart(2, '0');
+      const m = (clamped % 60).toString().padStart(2, '0');
+      return `${h}:${m}`;
+    }
+
+    function recordHistoricalAnalyticsEvent(task, dateKey, startMin, endMin, onTime = true) {
+      if (!state.analytics) {
+        state.analytics = { history: [], rippleCount: 0, pushCounts: {}, chronotypeHistory: [] };
+      }
+      if (!state.analytics.history) state.analytics.history = [];
+      if (!state.analytics.pushCounts) state.analytics.pushCounts = {};
+
+      if (state.analytics.pushCounts && state.analytics.pushCounts[task.title]) {
+        delete state.analytics.pushCounts[task.title];
+      }
+
+      let d = new Date();
+      try {
+        const p = dateKey.split('-');
+        if (p.length === 3) {
+          d = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10), Math.floor(endMin / 60), endMin % 60);
+        }
+      } catch (e) {}
+
+      state.analytics.history.push({
+        id: 'an_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        taskId: task.id,
+        title: task.title,
+        type: task.type || 'LIT',
+        energy: task.energy || 'steady',
+        status: 'completed',
+        scheduledStartMin: startMin,
+        scheduledEndMin: endMin,
+        completedAtISO: d.toISOString(),
+        completedAtMin: endMin,
+        date: dateKey,
+        dayOfWeek: d.getDay(),
+        hourOfDay: Math.floor(endMin / 60),
+        onTime: onTime,
+        durationMin: task.duration || 30
+      });
+
+      if (task.type === 'MIT' || task.energy === 'sharp') {
+        setTimeout(() => {
+          checkChronotypeDrift(false);
+        }, 800);
+      }
     }
 
     function updateDateAndRollover(silent = false) {
@@ -8708,6 +8964,13 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
           if (!t.fromCalendar) {
             lingeringCount++;
             t.rolledOver = true;
+            if (!t.rolledOverFromDate) {
+              t.rolledOverFromDate = (lastDate && lastDate !== 'prior') ? lastDate : getYesterdayDateString();
+            }
+            if (t.startMin != null && t.originalHistoricalStartMin == null) {
+              t.originalHistoricalStartMin = t.startMin;
+              t.originalHistoricalEndMin = t.endMin;
+            }
             if (!isTaskLocked(t)) {
               t.startMin = null;
               t.endMin = null;
