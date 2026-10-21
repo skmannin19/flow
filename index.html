@@ -480,17 +480,18 @@
         <div class="flex items-center gap-2">
           <span class="text-2xl">📊</span>
           <h2 class="text-xl font-bold dark:text-white text-slate-900">Productivity Health & Circadian Analytics</h2>
-          <span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">Telemetry Engine</span>
+          <span id="analyticsPeriodBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">Telemetry Engine</span>
         </div>
         <p class="text-xs dark:text-slate-400 text-slate-500 mt-1">Diagnostic intelligence on your completion pacing, schedule drift, cognitive friction, and biological wave velocity.</p>
       </div>
 
       <div class="flex flex-wrap items-center gap-2">
         <div class="flex items-center rounded-xl bg-slate-100 dark:bg-slate-900 border dark:border-slate-800 border-slate-300 p-0.5 text-xs">
-          <button onclick="setAnalyticsPeriod(7)" id="periodBtn_7" class="period-btn px-2.5 py-1 rounded-lg font-medium transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">7D</button>
-          <button onclick="setAnalyticsPeriod(14)" id="periodBtn_14" class="period-btn px-2.5 py-1 rounded-lg font-medium bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm transition">14D</button>
-          <button onclick="setAnalyticsPeriod(30)" id="periodBtn_30" class="period-btn px-2.5 py-1 rounded-lg font-medium transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">30D</button>
-          <button onclick="setAnalyticsPeriod(90)" id="periodBtn_90" class="period-btn px-2.5 py-1 rounded-lg font-medium transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">Quarter</button>
+          <button onclick="setAnalyticsPeriod(1)" id="periodBtn_1" class="period-btn px-2.5 py-1 rounded-lg font-medium transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white" title="Current Day (Today)">1D</button>
+          <button onclick="setAnalyticsPeriod(7)" id="periodBtn_7" class="period-btn px-2.5 py-1 rounded-lg font-medium transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white" title="Last 7 Days">7D</button>
+          <button onclick="setAnalyticsPeriod(14)" id="periodBtn_14" class="period-btn px-2.5 py-1 rounded-lg font-medium bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm transition" title="Last 14 Days">14D</button>
+          <button onclick="setAnalyticsPeriod(30)" id="periodBtn_30" class="period-btn px-2.5 py-1 rounded-lg font-medium transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white" title="Last 30 Days">30D</button>
+          <button onclick="setAnalyticsPeriod(90)" id="periodBtn_90" class="period-btn px-2.5 py-1 rounded-lg font-medium transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white" title="Full Quarter (90 Days)">Quarter</button>
         </div>
 
         <button onclick="checkChronotypeDrift(true)" class="px-3 py-2 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 border border-indigo-500/30 text-xs font-semibold flex items-center gap-1.5 transition" title="Analyze completed task timestamps to detect biological rhythm drift">
@@ -7185,8 +7186,9 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       }
     }
 
+    const savedAnalyticsPeriod = parseInt(localStorage.getItem('flowstate_analytics_period'), 10);
+    let currentAnalyticsPeriod = [1, 7, 14, 30, 90].includes(savedAnalyticsPeriod) ? savedAnalyticsPeriod : 14;
     let isAnalyticsViewActive = false;
-    let currentAnalyticsPeriod = 14;
 
     function toggleAnalyticsView(forceSchedule = false) {
       const scheduleView = document.getElementById('mainScheduleView');
@@ -7209,13 +7211,16 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
           navBtn.classList.remove('bg-indigo-500/10', 'text-indigo-600', 'dark:text-indigo-300');
           navBtn.classList.add('bg-indigo-600', 'text-white');
         }
-        renderAnalyticsDashboard();
+        setAnalyticsPeriod(currentAnalyticsPeriod);
       }
     }
 
     function setAnalyticsPeriod(days) {
       currentAnalyticsPeriod = days;
-      [7, 14, 30, 90].forEach(d => {
+      try {
+        localStorage.setItem('flowstate_analytics_period', String(days));
+      } catch (e) {}
+      [1, 7, 14, 30, 90].forEach(d => {
         const btn = document.getElementById(`periodBtn_${d}`);
         if (btn) {
           if (d === days) {
@@ -7232,12 +7237,65 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       if (!state.analytics) {
         state.analytics = seedInitialAnalyticsHistory();
       }
-      const history = state.analytics.history || [];
-      const cutoffDate = new Date();
-      cutoffDate.setDate(cutoffDate.getDate() - currentAnalyticsPeriod);
-      const cutoffStr = cutoffDate.toISOString().split('T')[0];
 
-      const filtered = history.filter(h => (h.date || '') >= cutoffStr);
+      const periodBadge = document.getElementById('analyticsPeriodBadge');
+      if (periodBadge) {
+        if (currentAnalyticsPeriod === 1) {
+          periodBadge.textContent = 'Today (1D Live)';
+        } else if (currentAnalyticsPeriod === 90) {
+          periodBadge.textContent = 'Quarterly Trajectory';
+        } else {
+          periodBadge.textContent = `${currentAnalyticsPeriod}-Day Telemetry`;
+        }
+      }
+
+      // Ensure any tasks completed today from state.tasks are synchronized to telemetry history
+      const todayStr = getLocalDateString();
+      if (state.tasks && Array.isArray(state.tasks)) {
+        state.tasks.forEach(t => {
+          if (t.completed && (t.completedDate === todayStr || (!t.completedDate && isTaskScheduledForDate(t, new Date())))) {
+            const alreadyInHistory = (state.analytics.history || []).some(h => String(h.taskId) === String(t.id) && h.status === 'completed' && (h.date === todayStr || (h.completedAtISO && h.completedAtISO.startsWith(todayStr))));
+            if (!alreadyInHistory) {
+              const taskEnd = t.endMin != null ? t.endMin : (t.startMin != null ? t.startMin + (t.duration || 30) : 600);
+              state.analytics.history.push({
+                id: 'an_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+                taskId: t.id,
+                title: t.title,
+                type: t.type || 'LIT',
+                energy: t.energy || 'steady',
+                status: 'completed',
+                scheduledStartMin: t.startMin,
+                scheduledEndMin: t.endMin,
+                completedAtISO: t.completedAtISO || new Date().toISOString(),
+                completedAtMin: taskEnd,
+                date: todayStr,
+                dayOfWeek: new Date().getDay(),
+                hourOfDay: Math.floor(taskEnd / 60),
+                onTime: true,
+                durationMin: t.duration || 30
+              });
+            }
+          }
+        });
+      }
+
+      const history = state.analytics.history || [];
+      let filtered = [];
+
+      if (currentAnalyticsPeriod === 1) {
+        filtered = history.filter(h => {
+          const d = h.date || (h.completedAtISO ? h.completedAtISO.slice(0, 10) : '');
+          return d === todayStr;
+        });
+      } else {
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - currentAnalyticsPeriod);
+        const cutoffStr = cutoffDate.toISOString().split('T')[0];
+        filtered = history.filter(h => {
+          const d = h.date || (h.completedAtISO ? h.completedAtISO.slice(0, 10) : '');
+          return d >= cutoffStr;
+        });
+      }
 
       const completedList = filtered.filter(h => h.status === 'completed');
       const onTimeCount = completedList.filter(h => h.onTime).length;
@@ -7247,11 +7305,16 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       const deferredCount = filtered.filter(h => h.status === 'deferred').length;
       const skippedCount = filtered.filter(h => h.status === 'skipped').length;
       const deletedCount = filtered.filter(h => h.status === 'deleted').length;
-      const totalPlanned = completedList.length + deferredCount + skippedCount + deletedCount;
-      const completionRate = totalPlanned > 0 ? Math.round((completedList.length / totalPlanned) * 100) : 100;
+
+      const todayPendingTasks = (currentAnalyticsPeriod === 1)
+        ? (state.tasks || []).filter(t => !t.completed && isTaskScheduledForDate(t, new Date())).length
+        : 0;
+
+      const totalPlanned = completedList.length + todayPendingTasks + deferredCount + skippedCount + deletedCount;
+      const completionRate = totalPlanned > 0 ? Math.round((completedList.length / totalPlanned) * 100) : (currentAnalyticsPeriod === 1 ? 0 : 100);
 
       const rippleCount = state.analytics.rippleCount || 0;
-      const dailyRipples = (rippleCount / Math.max(1, Math.min(currentAnalyticsPeriod, 14))).toFixed(1);
+      const dailyRipples = currentAnalyticsPeriod === 1 ? rippleCount : (rippleCount / Math.max(1, Math.min(currentAnalyticsPeriod, 14))).toFixed(1);
 
       // Render 6 KPI Cards
       const kpiContainer = document.getElementById('analyticsKpiGrid');
@@ -7263,7 +7326,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
             <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
               <div class="bg-emerald-500 h-full rounded-full" style="width: ${onTimeRate}%"></div>
             </div>
-            <p class="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium pt-1">${onTimeCount} on-time • ${delayedCount} delayed</p>
+            <p class="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium pt-1">${completedList.length > 0 ? `${onTimeCount} on-time • ${delayedCount} delayed` : (currentAnalyticsPeriod === 1 ? 'Pending today\'s completions' : '0 on-time • 0 delayed')}</p>
           </div>
 
           <div class="p-4 rounded-2xl dark:bg-slate-900/90 bg-white border dark:border-slate-800 border-slate-200 shadow-sm space-y-1">
@@ -7272,7 +7335,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
             <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
               <div class="bg-indigo-500 h-full rounded-full" style="width: ${completionRate}%"></div>
             </div>
-            <p class="text-[10px] text-indigo-600 dark:text-indigo-400 font-medium pt-1">${completedList.length} of ${totalPlanned} finished</p>
+            <p class="text-[10px] text-indigo-600 dark:text-indigo-400 font-medium pt-1">${completedList.length} of ${totalPlanned} finished${todayPendingTasks > 0 ? ` • ${todayPendingTasks} pending` : ''}</p>
           </div>
 
           <div class="p-4 rounded-2xl dark:bg-slate-900/90 bg-white border dark:border-slate-800 border-slate-200 shadow-sm space-y-1">
@@ -7281,7 +7344,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
             <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
               <div class="bg-amber-500 h-full rounded-full" style="width: ${Math.min(100, deferredCount * 15)}%"></div>
             </div>
-            <p class="text-[10px] text-amber-600 dark:text-amber-400 font-medium pt-1">Workload protection</p>
+            <p class="text-[10px] text-amber-600 dark:text-amber-400 font-medium pt-1">${currentAnalyticsPeriod === 1 ? (deferredCount > 0 ? 'Deferred today' : 'No tasks deferred today') : 'Workload protection'}</p>
           </div>
 
           <div class="p-4 rounded-2xl dark:bg-slate-900/90 bg-white border dark:border-slate-800 border-slate-200 shadow-sm space-y-1">
@@ -7290,7 +7353,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
             <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
               <div class="bg-slate-400 h-full rounded-full" style="width: ${Math.min(100, skippedCount * 20)}%"></div>
             </div>
-            <p class="text-[10px] text-slate-500 dark:text-slate-400 font-medium pt-1">Intentional triage</p>
+            <p class="text-[10px] text-slate-500 dark:text-slate-400 font-medium pt-1">${currentAnalyticsPeriod === 1 ? (skippedCount > 0 ? 'Skipped today' : 'Zero skipped today') : 'Intentional triage'}</p>
           </div>
 
           <div class="p-4 rounded-2xl dark:bg-slate-900/90 bg-white border dark:border-slate-800 border-slate-200 shadow-sm space-y-1">
@@ -7299,7 +7362,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
             <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
               <div class="bg-rose-500 h-full rounded-full" style="width: ${Math.min(100, deletedCount * 20)}%"></div>
             </div>
-            <p class="text-[10px] text-rose-600 dark:text-rose-400 font-medium pt-1">Backlog pruning</p>
+            <p class="text-[10px] text-rose-600 dark:text-rose-400 font-medium pt-1">${currentAnalyticsPeriod === 1 ? (deletedCount > 0 ? 'Removed today' : 'No deletions today') : 'Backlog pruning'}</p>
           </div>
 
           <div class="p-4 rounded-2xl dark:bg-slate-900/90 bg-white border dark:border-slate-800 border-slate-200 shadow-sm space-y-1">
@@ -7308,7 +7371,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
             <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
               <div class="bg-indigo-500 h-full rounded-full" style="width: ${Math.min(100, rippleCount * 6)}%"></div>
             </div>
-            <p class="text-[10px] text-indigo-500 dark:text-indigo-400 font-medium pt-1">~${dailyRipples} auto-adjusts/day</p>
+            <p class="text-[10px] text-indigo-500 dark:text-indigo-400 font-medium pt-1">${currentAnalyticsPeriod === 1 ? `${rippleCount} auto-adjusts recorded` : `~${dailyRipples} auto-adjusts/day`}</p>
           </div>
         `;
       }
@@ -7318,10 +7381,29 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       const lits = filtered.filter(h => h.type === 'LIT');
       const mitCompleted = mits.filter(h => h.status === 'completed');
       const litCompleted = lits.filter(h => h.status === 'completed');
-      const mitCompRate = mits.length > 0 ? Math.round((mitCompleted.length / mits.length) * 100) : 75;
-      const litCompRate = lits.length > 0 ? Math.round((litCompleted.length / lits.length) * 100) : 92;
-      const mitOnTime = mitCompleted.length > 0 ? Math.round((mitCompleted.filter(h => h.onTime).length / mitCompleted.length) * 100) : 62;
-      const litOnTime = litCompleted.length > 0 ? Math.round((litCompleted.filter(h => h.onTime).length / litCompleted.length) * 100) : 90;
+
+      let mitPlanned = mits.length;
+      let litPlanned = lits.length;
+      if (currentAnalyticsPeriod === 1) {
+        const todayMits = (state.tasks || []).filter(t => t.type === 'MIT' && isTaskScheduledForDate(t, new Date()));
+        const todayLits = (state.tasks || []).filter(t => t.type === 'LIT' && isTaskScheduledForDate(t, new Date()));
+        mitPlanned = Math.max(mits.length, todayMits.length);
+        litPlanned = Math.max(lits.length, todayLits.length);
+      }
+
+      const mitCompRate = mitPlanned > 0 ? Math.round((mitCompleted.length / mitPlanned) * 100) : (currentAnalyticsPeriod === 1 ? 0 : 75);
+      const litCompRate = litPlanned > 0 ? Math.round((litCompleted.length / litPlanned) * 100) : (currentAnalyticsPeriod === 1 ? 0 : 92);
+      const mitOnTime = mitCompleted.length > 0 ? Math.round((mitCompleted.filter(h => h.onTime).length / mitCompleted.length) * 100) : (currentAnalyticsPeriod === 1 ? 100 : 62);
+      const litOnTime = litCompleted.length > 0 ? Math.round((litCompleted.filter(h => h.onTime).length / litCompleted.length) * 100) : (currentAnalyticsPeriod === 1 ? 100 : 90);
+
+      const struggleBadge = document.getElementById('mitLitStruggleBadge');
+      if (struggleBadge) {
+        if (currentAnalyticsPeriod === 1) {
+          struggleBadge.textContent = `${mitCompleted.length}/${mitPlanned} MITs Done Today`;
+        } else {
+          struggleBadge.textContent = '2.1x Friction on MITs';
+        }
+      }
 
       const compContainer = document.getElementById('mitLitComparisonContainer');
       if (compContainer) {
@@ -7333,12 +7415,12 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
                 <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-600 dark:text-rose-400">Deep Work</span>
               </div>
               <div class="space-y-1.5">
-                <div class="flex justify-between text-[11px]"><span class="text-slate-500 dark:text-slate-400">Completion Rate:</span><span class="font-mono font-bold dark:text-white">${mitCompRate}%</span></div>
+                <div class="flex justify-between text-[11px]"><span class="text-slate-500 dark:text-slate-400">Completion Rate:</span><span class="font-mono font-bold dark:text-white">${mitCompRate}% ${currentAnalyticsPeriod === 1 ? `(${mitCompleted.length}/${mitPlanned})` : ''}</span></div>
                 <div class="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-1 overflow-hidden"><div class="bg-rose-500 h-full" style="width:${mitCompRate}%"></div></div>
                 <div class="flex justify-between text-[11px] pt-1"><span class="text-slate-500 dark:text-slate-400">On-Time Pacing:</span><span class="font-mono font-bold text-rose-600 dark:text-rose-400">${mitOnTime}%</span></div>
                 <div class="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-1 overflow-hidden"><div class="bg-rose-500 h-full" style="width:${mitOnTime}%"></div></div>
               </div>
-              <p class="text-[10px] text-rose-600 dark:text-rose-400/90 font-medium pt-0.5">⚠️ 2.1x more likely to overrun</p>
+              <p class="text-[10px] text-rose-600 dark:text-rose-400/90 font-medium pt-0.5">${currentAnalyticsPeriod === 1 ? `${mitCompleted.length} of ${mitPlanned} MITs cleared` : '⚠️ 2.1x more likely to overrun'}</p>
             </div>
 
             <div class="p-3.5 rounded-xl border border-emerald-500/30 bg-emerald-500/5 space-y-2">
@@ -7347,12 +7429,12 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
                 <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">Frictionless</span>
               </div>
               <div class="space-y-1.5">
-                <div class="flex justify-between text-[11px]"><span class="text-slate-500 dark:text-slate-400">Completion Rate:</span><span class="font-mono font-bold dark:text-white">${litCompRate}%</span></div>
+                <div class="flex justify-between text-[11px]"><span class="text-slate-500 dark:text-slate-400">Completion Rate:</span><span class="font-mono font-bold dark:text-white">${litCompRate}% ${currentAnalyticsPeriod === 1 ? `(${litCompleted.length}/${litPlanned})` : ''}</span></div>
                 <div class="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-1 overflow-hidden"><div class="bg-emerald-500 h-full" style="width:${litCompRate}%"></div></div>
                 <div class="flex justify-between text-[11px] pt-1"><span class="text-slate-500 dark:text-slate-400">On-Time Pacing:</span><span class="font-mono font-bold text-emerald-600 dark:text-emerald-400">${litOnTime}%</span></div>
                 <div class="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-1 overflow-hidden"><div class="bg-emerald-500 h-full" style="width:${litOnTime}%"></div></div>
               </div>
-              <p class="text-[10px] text-emerald-600 dark:text-emerald-400/90 font-medium pt-0.5">✓ 9 out of 10 finish smoothly</p>
+              <p class="text-[10px] text-emerald-600 dark:text-emerald-400/90 font-medium pt-0.5">${currentAnalyticsPeriod === 1 ? `${litCompleted.length} of ${litPlanned} LITs completed` : '✓ 9 out of 10 finish smoothly'}</p>
             </div>
           </div>
         `;
@@ -7360,15 +7442,27 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
 
       const adviceEl = document.getElementById('mitLitDiagnosticAdvice');
       if (adviceEl) {
-        adviceEl.innerHTML = `
-          <div class="flex items-start gap-2.5">
-            <span class="text-indigo-500 text-sm">💡</span>
-            <div>
-              <span class="font-bold dark:text-white text-slate-900">Cognitive Friction Diagnostic:</span>
-              <p class="mt-0.5">You struggle noticeably more with heavy <strong>MITs (${mitOnTime}% on-time vs ${litOnTime}% for LITs)</strong>. MITs are pushed or rippled twice as often. <strong>Recommendation:</strong> Do not schedule heavy MITs after 1:00 PM. Hard-cap MITs to 3 daily, schedule strictly inside your ${state.chronotype.name} peak window, and break complex MITs into 25-minute Pomodoro starter steps.</p>
+        if (currentAnalyticsPeriod === 1) {
+          adviceEl.innerHTML = `
+            <div class="flex items-start gap-2.5">
+              <span class="text-indigo-500 text-sm">💡</span>
+              <div>
+                <span class="font-bold dark:text-white text-slate-900">Today's Cognitive Pacing Diagnostic:</span>
+                <p class="mt-0.5">You have completed <strong>${mitCompleted.length} of ${mitPlanned} MITs (${mitCompRate}%)</strong> and <strong>${litCompleted.length} of ${litPlanned} LITs (${litCompRate}%)</strong> today. Protect your ${state.chronotype.name} peak window (${formatMinToTime(state.chronotype.peakStart)} – ${formatMinToTime(state.chronotype.peakEnd)}) for demanding deep work, and save routine LITs for your post-lunch trough reset.</p>
+              </div>
             </div>
-          </div>
-        `;
+          `;
+        } else {
+          adviceEl.innerHTML = `
+            <div class="flex items-start gap-2.5">
+              <span class="text-indigo-500 text-sm">💡</span>
+              <div>
+                <span class="font-bold dark:text-white text-slate-900">Cognitive Friction Diagnostic:</span>
+                <p class="mt-0.5">You struggle noticeably more with heavy <strong>MITs (${mitOnTime}% on-time vs ${litOnTime}% for LITs)</strong>. MITs are pushed or rippled twice as often. <strong>Recommendation:</strong> Do not schedule heavy MITs after 1:00 PM. Hard-cap MITs to 3 daily, schedule strictly inside your ${state.chronotype.name} peak window, and break complex MITs into 25-minute Pomodoro starter steps.</p>
+              </div>
+            </div>
+          `;
+        }
       }
 
       // Most Pushed Tasks
@@ -7377,23 +7471,51 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
 
       const pushedListEl = document.getElementById('mostPushedList');
       if (pushedListEl) {
-        if (sortedPushed.length === 0) {
-          pushedListEl.innerHTML = '<p class="text-xs text-slate-400 py-4 text-center">No pushed or delayed tasks recorded yet! Great momentum.</p>';
-        } else {
-          pushedListEl.innerHTML = sortedPushed.map(([title, count], idx) => `
-            <div class="p-2.5 rounded-xl border dark:border-slate-800 border-slate-200 dark:bg-slate-950/60 bg-slate-50 flex items-center justify-between gap-3 text-xs">
-              <div class="min-w-0 flex items-center gap-2">
-                <span class="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center font-mono font-bold text-[10px] shrink-0 text-slate-600 dark:text-slate-400">#${idx + 1}</span>
-                <div class="min-w-0">
-                  <div class="font-semibold dark:text-slate-200 text-slate-800 truncate">${title}</div>
-                  <p class="text-[10px] text-slate-400">Recommendation: Split into 15m starter step</p>
-                </div>
+        if (currentAnalyticsPeriod === 1) {
+          const todayPushed = filtered.filter(h => h.status === 'deferred' || h.status === 'skipped');
+          if (todayPushed.length === 0) {
+            pushedListEl.innerHTML = `
+              <div class="p-4 rounded-xl border border-dashed dark:border-slate-800 border-slate-200 text-center space-y-1">
+                <span class="text-base">🚀</span>
+                <p class="text-xs font-semibold dark:text-emerald-400 text-emerald-600">Zero Pushed Tasks Today</p>
+                <p class="text-[11px] text-slate-500 dark:text-slate-400">All planned tasks are executing on schedule without deferrals.</p>
               </div>
-              <span class="px-2 py-0.5 rounded-full font-mono text-[10px] font-bold ${count >= 3 ? 'bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30' : 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30'} shrink-0">
-                ${count}x pushed
-              </span>
-            </div>
-          `).join('');
+            `;
+          } else {
+            pushedListEl.innerHTML = todayPushed.map((h, idx) => `
+              <div class="p-2.5 rounded-xl border dark:border-slate-800 border-slate-200 dark:bg-slate-950/60 bg-slate-50 flex items-center justify-between gap-3 text-xs">
+                <div class="min-w-0 flex items-center gap-2">
+                  <span class="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center font-mono font-bold text-[10px] shrink-0 text-slate-600 dark:text-slate-400">#${idx + 1}</span>
+                  <div class="min-w-0">
+                    <div class="font-semibold dark:text-slate-200 text-slate-800 truncate">${h.title}</div>
+                    <p class="text-[10px] text-slate-400">${h.status === 'deferred' ? '🌅 Deferred to tomorrow' : '⏭️ Skipped today'}</p>
+                  </div>
+                </div>
+                <span class="px-2 py-0.5 rounded-full font-mono text-[10px] font-bold bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 shrink-0">
+                  ${h.status}
+                </span>
+              </div>
+            `).join('');
+          }
+        } else {
+          if (sortedPushed.length === 0) {
+            pushedListEl.innerHTML = '<p class="text-xs text-slate-400 py-4 text-center">No pushed or delayed tasks recorded yet! Great momentum.</p>';
+          } else {
+            pushedListEl.innerHTML = sortedPushed.map(([title, count], idx) => `
+              <div class="p-2.5 rounded-xl border dark:border-slate-800 border-slate-200 dark:bg-slate-950/60 bg-slate-50 flex items-center justify-between gap-3 text-xs">
+                <div class="min-w-0 flex items-center gap-2">
+                  <span class="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center font-mono font-bold text-[10px] shrink-0 text-slate-600 dark:text-slate-400">#${idx + 1}</span>
+                  <div class="min-w-0">
+                    <div class="font-semibold dark:text-slate-200 text-slate-800 truncate">${title}</div>
+                    <p class="text-[10px] text-slate-400">Recommendation: Split into 15m starter step</p>
+                  </div>
+                </div>
+                <span class="px-2 py-0.5 rounded-full font-mono text-[10px] font-bold ${count >= 3 ? 'bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30' : 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30'} shrink-0">
+                  ${count}x pushed
+                </span>
+              </div>
+            `).join('');
+          }
         }
       }
 
@@ -7446,25 +7568,59 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       // Hourly Insights Row
       const insightsRow = document.getElementById('hourlyInsightsRow');
       if (insightsRow) {
-        insightsRow.innerHTML = `
-          <div class="p-3 rounded-xl dark:bg-slate-950/60 bg-slate-50 border dark:border-slate-800 border-slate-200">
-            <span class="text-[10px] font-mono text-indigo-500 font-bold uppercase">⚡ Golden Velocity Peak</span>
-            <div class="text-sm font-bold dark:text-white text-slate-900 mt-0.5">10:00 AM – 11:30 AM</div>
-            <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Fastest completion speed & peak cognitive focus.</p>
-          </div>
+        if (currentAnalyticsPeriod === 1) {
+          let bestHourToday = -1;
+          let bestHourCount = 0;
+          hourlyCounts.forEach((cnt, h) => {
+            if (cnt > bestHourCount) {
+              bestHourCount = cnt;
+              bestHourToday = h;
+            }
+          });
+          const bestHourFormatted = bestHourToday >= 0 
+            ? `${bestHourToday >= 12 ? (bestHourToday === 12 ? '12 PM' : `${bestHourToday - 12} PM`) : `${bestHourToday} AM`} (${bestHourCount} tasks)`
+            : 'Pending completions';
 
-          <div class="p-3 rounded-xl dark:bg-slate-950/60 bg-slate-50 border dark:border-slate-800 border-slate-200">
-            <span class="text-[10px] font-mono text-amber-500 font-bold uppercase">🌆 Secondary Rebound Wave</span>
-            <div class="text-sm font-bold dark:text-white text-slate-900 mt-0.5">4:00 PM – 5:30 PM</div>
-            <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Strongest afternoon execution sprint.</p>
-          </div>
+          insightsRow.innerHTML = `
+            <div class="p-3 rounded-xl dark:bg-slate-950/60 bg-slate-50 border dark:border-slate-800 border-slate-200">
+              <span class="text-[10px] font-mono text-indigo-500 font-bold uppercase">⚡ Today's Peak Velocity Hour</span>
+              <div class="text-sm font-bold dark:text-white text-slate-900 mt-0.5">${bestHourFormatted}</div>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">${bestHourCount > 0 ? 'Your most productive execution window today.' : 'Complete tasks during your peak wave to establish velocity.'}</p>
+            </div>
 
-          <div class="p-3 rounded-xl dark:bg-slate-950/60 bg-slate-50 border dark:border-slate-800 border-slate-200">
-            <span class="text-[10px] font-mono text-emerald-500 font-bold uppercase">🌊 Circadian Dip (Lowest Output)</span>
-            <div class="text-sm font-bold dark:text-white text-slate-900 mt-0.5">1:30 PM – 3:00 PM</div>
-            <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Natural mental slowdown. Best for walks or light LITs.</p>
-          </div>
-        `;
+            <div class="p-3 rounded-xl dark:bg-slate-950/60 bg-slate-50 border dark:border-slate-800 border-slate-200">
+              <span class="text-[10px] font-mono text-amber-500 font-bold uppercase">🧬 ${state.chronotype.name} Peak Window</span>
+              <div class="text-sm font-bold dark:text-white text-slate-900 mt-0.5">${formatMinToTime(state.chronotype.peakStart)} – ${formatMinToTime(state.chronotype.peakEnd)}</div>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Optimal biological focus block for your hardest MITs.</p>
+            </div>
+
+            <div class="p-3 rounded-xl dark:bg-slate-950/60 bg-slate-50 border dark:border-slate-800 border-slate-200">
+              <span class="text-[10px] font-mono text-emerald-500 font-bold uppercase">🌊 Circadian Reset Window</span>
+              <div class="text-sm font-bold dark:text-white text-slate-900 mt-0.5">${formatMinToTime(state.chronotype.dipStart)} – ${formatMinToTime(state.chronotype.dipEnd)}</div>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Scheduled dip in vigilance. Best for walks, NSDR, or lunch.</p>
+            </div>
+          `;
+        } else {
+          insightsRow.innerHTML = `
+            <div class="p-3 rounded-xl dark:bg-slate-950/60 bg-slate-50 border dark:border-slate-800 border-slate-200">
+              <span class="text-[10px] font-mono text-indigo-500 font-bold uppercase">⚡ Golden Velocity Peak</span>
+              <div class="text-sm font-bold dark:text-white text-slate-900 mt-0.5">${formatMinToTime(state.chronotype.peakStart)} – ${formatMinToTime(state.chronotype.peakStart + 90)}</div>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Fastest completion speed & peak cognitive focus.</p>
+            </div>
+
+            <div class="p-3 rounded-xl dark:bg-slate-950/60 bg-slate-50 border dark:border-slate-800 border-slate-200">
+              <span class="text-[10px] font-mono text-amber-500 font-bold uppercase">🌆 Secondary Rebound Wave</span>
+              <div class="text-sm font-bold dark:text-white text-slate-900 mt-0.5">${formatMinToTime(state.chronotype.reboundStart)} – ${formatMinToTime(state.chronotype.reboundStart + 90)}</div>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Strongest afternoon execution sprint.</p>
+            </div>
+
+            <div class="p-3 rounded-xl dark:bg-slate-950/60 bg-slate-50 border dark:border-slate-800 border-slate-200">
+              <span class="text-[10px] font-mono text-emerald-500 font-bold uppercase">🌊 Circadian Dip (Lowest Output)</span>
+              <div class="text-sm font-bold dark:text-white text-slate-900 mt-0.5">${formatMinToTime(state.chronotype.dipStart)} – ${formatMinToTime(state.chronotype.dipEnd)}</div>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Natural mental slowdown. Best for walks or light LITs.</p>
+            </div>
+          `;
+        }
       }
 
       // Day of Week Distribution
@@ -7475,12 +7631,17 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       });
 
       const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const todayDow = new Date().getDay();
       const maxDay = Math.max(1, ...dayCounts);
-      const bestDayIdx = dayCounts.indexOf(maxDay);
+      const bestDayIdx = currentAnalyticsPeriod === 1 ? todayDow : dayCounts.indexOf(maxDay);
 
       const bestDayBadge = document.getElementById('bestDayBadge');
       if (bestDayBadge) {
-        bestDayBadge.textContent = `${dayNames[bestDayIdx]}: Peak Power Day`;
+        if (currentAnalyticsPeriod === 1) {
+          bestDayBadge.textContent = `Today (${dayNames[todayDow]}): ${dayCounts[todayDow]} Completed`;
+        } else {
+          bestDayBadge.textContent = `${dayNames[bestDayIdx]}: Peak Power Day`;
+        }
       }
 
       const dowChartEl = document.getElementById('dayOfWeekChart');
@@ -7490,13 +7651,15 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
             ${[1, 2, 3, 4, 5, 6, 0].map(dow => {
               const count = dayCounts[dow];
               const heightPct = Math.round((count / maxDay) * 100);
+              const isToday = dow === todayDow;
               const isBest = dow === bestDayIdx;
               const isWeekend = dow === 0 || dow === 6;
+              const highlight = currentAnalyticsPeriod === 1 ? isToday : isBest;
               return `
                 <div class="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer" title="${dayNames[dow]}: ${count} tasks completed">
                   <span class="text-[9px] font-mono text-slate-400 mb-1">${count}</span>
-                  <div class="w-full ${isBest ? 'bg-indigo-600 shadow-md shadow-indigo-500/30' : (isWeekend ? 'bg-slate-300 dark:bg-slate-700' : 'bg-indigo-400/80 dark:bg-indigo-500/70')} rounded-t transition-all duration-300 min-h-[4px]" style="height: ${Math.max(4, heightPct)}%"></div>
-                  <span class="text-[10px] font-mono dark:text-slate-400 text-slate-500 mt-1 font-semibold ${isBest ? 'text-indigo-600 dark:text-indigo-400' : ''}">${dayNames[dow]}</span>
+                  <div class="w-full ${highlight ? 'bg-indigo-600 shadow-md shadow-indigo-500/30' : (isWeekend ? 'bg-slate-300 dark:bg-slate-700' : 'bg-indigo-400/80 dark:bg-indigo-500/70')} rounded-t transition-all duration-300 min-h-[4px]" style="height: ${Math.max(4, heightPct)}%"></div>
+                  <span class="text-[10px] font-mono dark:text-slate-400 text-slate-500 mt-1 font-semibold ${highlight ? 'text-indigo-600 dark:text-indigo-400' : ''}">${dayNames[dow]}</span>
                 </div>
               `;
             }).join('')}
