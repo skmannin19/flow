@@ -1888,8 +1888,35 @@
     // Google Suite & Recurrence Variables
     const GOOGLE_CLIENT_ID_KEY = 'flowstate_os_google_client_id';
     const GOOGLE_SYNC_PREF_KEY = 'flowstate_os_google_auto_sync';
+    const GOOGLE_ACCESS_TOKEN_KEY = 'flowstate_os_google_access_token';
+    const GOOGLE_TOKEN_EXPIRY_KEY = 'flowstate_os_google_token_expiry';
     let googleTokenClient = null;
     let googleAccessToken = null;
+
+    function getStoredGoogleAccessToken() {
+      try {
+        const token = localStorage.getItem(GOOGLE_ACCESS_TOKEN_KEY);
+        const expiry = parseInt(localStorage.getItem(GOOGLE_TOKEN_EXPIRY_KEY) || '0', 10);
+        if (token && expiry && Date.now() < expiry) {
+          return token;
+        }
+      } catch (e) {}
+      return null;
+    }
+
+    function setStoredGoogleAccessToken(token, expiresInSeconds = 3500) {
+      googleAccessToken = token;
+      try {
+        if (token) {
+          localStorage.setItem(GOOGLE_ACCESS_TOKEN_KEY, token);
+          localStorage.setItem(GOOGLE_TOKEN_EXPIRY_KEY, String(Date.now() + expiresInSeconds * 1000));
+        } else {
+          localStorage.removeItem(GOOGLE_ACCESS_TOKEN_KEY);
+          localStorage.removeItem(GOOGLE_TOKEN_EXPIRY_KEY);
+        }
+      } catch (e) {}
+    }
+
     let captureRecurDays = [1, 2, 3, 4, 5];
     let modalRecurDays = [1, 2, 3, 4, 5];
     let editingRecurrenceTaskId = null;
@@ -1975,14 +2002,14 @@
         });
       }
 
-      // Safety check: prune any past-completed non-recurring tasks that exist in archivedTasks from state.tasks
+      // Safety check: prune any past-completed non-recurring tasks that exist in archivedTasks from state.tasks (keeping calendar events safe)
       if (state.archivedTasks && state.archivedTasks.length > 0) {
         const archivedTitles = new Set(
           state.archivedTasks
             .filter(at => !at.recurring)
             .map(at => (at.title || '').trim().toLowerCase())
         );
-        state.tasks = state.tasks.filter(t => t.recurring || !archivedTitles.has((t.title || '').trim().toLowerCase()));
+        state.tasks = state.tasks.filter(t => t.recurring || t.fromCalendar || !archivedTitles.has((t.title || '').trim().toLowerCase()));
       }
 
       // Ensure "Take off nail polish" (completed on 2026-10-20) remains archived and does not appear on today's schedule
@@ -2144,6 +2171,10 @@
       if (savedGoogleClientId) state.googleClientId = savedGoogleClientId;
       const savedGoogleSync = localStorage.getItem(GOOGLE_SYNC_PREF_KEY);
       if (savedGoogleSync !== null) state.autoSyncGoogle = (savedGoogleSync === 'true');
+
+      // Restore active Google Access Token if available
+      googleAccessToken = getStoredGoogleAccessToken();
+      updateGoogleAuthUI(!!googleAccessToken);
 
       // Initialize GIS Google Auth Client once accounts SDK is ready
       if (window.google && window.google.accounts) {
@@ -9385,8 +9416,8 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         state.tasks = state.tasks.filter(t => !t.completed || t.recurring);
       }
 
-      // 3. Clear yesterday's Google Calendar events so today's calendar sync brings in fresh events
-      state.tasks = state.tasks.filter(t => !t.fromCalendar);
+      // 3. Clear past-day Google Calendar events, keeping today's events, user-shifted, and renamed events safe
+      state.tasks = state.tasks.filter(t => !t.fromCalendar || t.completed || t.userShifted || t.userRenamed || (t.scheduledDate && t.scheduledDate >= todayKey));
 
       state.lastActiveDate = todayKey;
       saveState();
@@ -9769,8 +9800,10 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
 
     // --- GOOGLE SUITE OAUTH & DIRECT SYNC INTEGRATION ---
     function initGoogleAuthClient() {
+      googleAccessToken = getStoredGoogleAccessToken();
       const clientId = localStorage.getItem(GOOGLE_CLIENT_ID_KEY) || state.googleClientId;
       if (!clientId || typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
+        updateGoogleAuthUI(!!googleAccessToken);
         return;
       }
       try {
@@ -9779,7 +9812,8 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
           scope: 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/gmail.readonly',
           callback: (tokenResponse) => {
             if (tokenResponse && tokenResponse.access_token) {
-              googleAccessToken = tokenResponse.access_token;
+              const expiresIn = tokenResponse.expires_in ? parseInt(tokenResponse.expires_in, 10) : 3500;
+              setStoredGoogleAccessToken(tokenResponse.access_token, expiresIn);
               updateGoogleAuthUI(true);
               showGoogleFeedback('✓ Successfully connected to Google Suite!', false);
               fetchGoogleCalendarLive(false);
@@ -9789,6 +9823,9 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
           }
         });
         updateGoogleAuthUI(!!googleAccessToken);
+        if (googleAccessToken && state.autoSyncGoogle !== false) {
+          fetchGoogleCalendarLive(false);
+        }
       } catch (err) {
         console.warn('Google Token Client init error:', err);
       }
@@ -9856,6 +9893,9 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
 
     async function fetchGoogleCalendarLive(showFeedback = true) {
       if (!googleAccessToken) {
+        googleAccessToken = getStoredGoogleAccessToken();
+      }
+      if (!googleAccessToken) {
         if (showFeedback) {
           showGoogleFeedback('⚠️ Please click "Sign In with Google" first to authorize calendar access.', true);
           requestGoogleAuth();
@@ -9877,7 +9917,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
           });
 
           if (listRes.status === 401) {
-            googleAccessToken = null;
+            setStoredGoogleAccessToken(null);
             updateGoogleAuthUI(false);
             showGoogleFeedback('⚠️ Google session expired. Please click "Sign In with Google" again.', true);
             return;
@@ -10094,14 +10134,20 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
           }
         });
 
-        // 4. Prune any gcal_ tasks deleted from Google Calendar
+        // 4. Prune only uncompleted, non-shifted calendar tasks deleted from Google Calendar
         const prevCount = state.tasks.length;
-        state.tasks = state.tasks.filter(t => {
-          if (t.id && t.id.startsWith('gcal_')) {
-            return activeGcalIds.has(t.id);
-          }
-          return true;
-        });
+        if (targetCalendars.length > 0 && allEvents.length > 0) {
+          state.tasks = state.tasks.filter(t => {
+            if (t.id && t.id.startsWith('gcal_')) {
+              // Never prune tasks that were completed, shifted, or renamed by the user
+              if (t.completed || t.userShifted || t.userRenamed || t.manuallyPositioned) {
+                return true;
+              }
+              return activeGcalIds.has(t.id);
+            }
+            return true;
+          });
+        }
         const deletedCount = prevCount - state.tasks.length;
 
         saveState();
@@ -10118,7 +10164,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         }
       } catch (err) {
         if (err.message === '401_EXPIRED') {
-          googleAccessToken = null;
+          setStoredGoogleAccessToken(null);
           updateGoogleAuthUI(false);
           showGoogleFeedback('⚠️ Google session expired. Please click "Sign In with Google" again.', true);
           return;
@@ -10129,6 +10175,9 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
     }
 
     async function fetchGmailActionItemsLive() {
+      if (!googleAccessToken) {
+        googleAccessToken = getStoredGoogleAccessToken();
+      }
       if (!googleAccessToken) {
         showGoogleFeedback('⚠️ Please click "Sign In with Google" first to authorize Gmail access.', true);
         requestGoogleAuth();
@@ -10141,7 +10190,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         const listRes = await fetch(listUrl, { headers: { 'Authorization': `Bearer ${googleAccessToken}` } });
 
         if (listRes.status === 401) {
-          googleAccessToken = null;
+          setStoredGoogleAccessToken(null);
           updateGoogleAuthUI(false);
           showGoogleFeedback('⚠️ Google session expired. Please click "Sign In with Google" again.', true);
           return;
