@@ -12,6 +12,7 @@
   <link rel="alternate icon" href="favicon.ico" />
   <link rel="apple-touch-icon" href="app-icon.png" />
   <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <script>
@@ -4852,13 +4853,17 @@
     }
 
     // ========================================================
-    // REAL-TIME CROSS-DEVICE CLOUD SYNC ENGINE (WebSockets & REST)
+    // REAL-TIME CROSS-DEVICE CLOUD SYNC ENGINE (MQTT over WebSocket)
     // ========================================================
-    const LIVE_SYNC_TOPIC = 'flowstate_os_skmannin19_live_sync';
-    const LIVE_SYNC_WS_URL = `wss://ntfy.sh/${LIVE_SYNC_TOPIC}/ws`;
-    const LIVE_SYNC_PUB_URL = `https://ntfy.sh/${LIVE_SYNC_TOPIC}`;
+    const MQTT_BROKERS = [
+      { host: 'broker.emqx.io', port: 8084, path: '/mqtt' },
+      { host: 'broker.hivemq.com', port: 8884, path: '/mqtt' }
+    ];
+    let currentBrokerIdx = 0;
+    const LIVE_SYNC_TOPIC = 'flowstate/sync/skmannin19';
 
-    let liveSyncSocket = null;
+    let mqttClient = null;
+    let isMqttConnected = false;
     let liveSyncDebounceTimer = null;
     let lastReceivedSyncTimestamp = 0;
     let localClientId = localStorage.getItem('flowstate_client_id');
@@ -4918,103 +4923,80 @@
               optimizeByChronotype();
               renderPriorityLists();
               recalculateSchedule();
-              if (typeof isAnalyticsViewActive !== 'undefined' && isAnalyticsViewActive) {
-                renderAnalyticsDashboard();
-              }
-              const archModal = document.getElementById('archiveModal');
-              if (archModal && !archModal.classList.contains('hidden')) {
-                renderArchiveList();
-              }
             }
           } catch(err) {}
         }
       });
 
-      // 3. Connect real-time WebSocket
-      connectLiveSyncWebSocket();
-
-      // 4. Catch-up fetch in case device was asleep or closed
-      fetchLatestCatchupState();
+      // 3. Connect real-time MQTT WebSocket broker
+      connectLiveSyncMQTT();
     }
 
-    function connectLiveSyncWebSocket() {
-      try {
-        if (liveSyncSocket) {
-          try { liveSyncSocket.close(); } catch(e) {}
-        }
-        updateLiveSyncStatusUI('connecting', '⚪ Connecting...');
-        liveSyncSocket = new WebSocket(LIVE_SYNC_WS_URL);
+    function connectLiveSyncMQTT() {
+      if (typeof Paho === 'undefined' || !Paho.MQTT) {
+        setTimeout(connectLiveSyncMQTT, 1000);
+        return;
+      }
 
-        liveSyncSocket.onopen = () => {
-          updateLiveSyncStatusUI('connected', '🟢 Connected (Live)');
-          // Announce presence and broadcast current state if newer
-          publishCurrentStateToLiveSync();
+      try {
+        if (mqttClient) {
+          try { mqttClient.disconnect(); } catch(e) {}
+        }
+
+        const broker = MQTT_BROKERS[currentBrokerIdx % MQTT_BROKERS.length];
+        updateLiveSyncStatusUI('connecting', '⚪ Connecting...');
+        
+        mqttClient = new Paho.MQTT.Client(broker.host, broker.port, broker.path, localClientId);
+
+        mqttClient.onConnectionLost = (responseObject) => {
+          isMqttConnected = false;
+          updateLiveSyncStatusUI('disconnected', '⚪ Reconnecting...');
+          currentBrokerIdx++;
+          setTimeout(connectLiveSyncMQTT, 4000);
         };
 
-        liveSyncSocket.onmessage = async (event) => {
+        mqttClient.onMessageArrived = (message) => {
           try {
-            const data = JSON.parse(event.data);
-            if (data.event === 'message') {
-              let payloadStr = data.message;
-              if (data.attachment && data.attachment.url) {
-                try {
-                  const resp = await fetch(data.attachment.url);
-                  payloadStr = await resp.text();
-                } catch(e) {}
-              }
-              if (payloadStr) {
-                const parsed = JSON.parse(payloadStr);
+            const payloadStr = message.payloadString;
+            if (payloadStr) {
+              const parsed = JSON.parse(payloadStr);
+              if (parsed && parsed.senderId !== localClientId) {
                 applyIncomingSyncData(parsed, true);
               }
             }
           } catch (e) {
-            // Non-JSON frame, ignore
+            console.warn('Failed parsing MQTT message:', e);
           }
         };
 
-        liveSyncSocket.onerror = () => {
-          updateLiveSyncStatusUI('disconnected', '⚠️ Offline');
-        };
-
-        liveSyncSocket.onclose = () => {
-          updateLiveSyncStatusUI('disconnected', '⚪ Reconnecting...');
-          setTimeout(connectLiveSyncWebSocket, 6000);
-        };
+        mqttClient.connect({
+          useSSL: true,
+          timeout: 8,
+          keepAliveInterval: 30,
+          cleanSession: false,
+          onSuccess: () => {
+            isMqttConnected = true;
+            updateLiveSyncStatusUI('connected', '🟢 Connected (Live)');
+            mqttClient.subscribe(LIVE_SYNC_TOPIC, { qos: 1 });
+            // Broadcast state if newer
+            publishCurrentStateToLiveSync();
+          },
+          onFailure: (err) => {
+            isMqttConnected = false;
+            updateLiveSyncStatusUI('disconnected', '⚪ Retrying...');
+            currentBrokerIdx++;
+            setTimeout(connectLiveSyncMQTT, 6000);
+          }
+        });
       } catch (err) {
-        console.warn('Live Cloud Sync connection error:', err);
+        console.warn('Live MQTT Cloud Sync error:', err);
       }
     }
 
-    async function fetchLatestCatchupState() {
-      try {
-        const url = `${LIVE_SYNC_PUB_URL}/json?since=12h&poll=1`;
-        const resp = await fetch(url);
-        if (!resp.ok) return;
-        const text = await resp.text();
-        const lines = text.trim().split('\n');
-        for (let i = lines.length - 1; i >= 0; i--) {
-          try {
-            const row = JSON.parse(lines[i]);
-            if (row.event === 'message') {
-              let payloadStr = row.message;
-              if (row.attachment && row.attachment.url) {
-                try {
-                  const aResp = await fetch(row.attachment.url);
-                  payloadStr = await aResp.text();
-                } catch(e) {}
-              }
-              if (payloadStr) {
-                const parsed = JSON.parse(payloadStr);
-                if (parsed && parsed.senderId !== localClientId && parsed.timestamp) {
-                  applyIncomingSyncData(parsed, false);
-                  break;
-                }
-              }
-            }
-          } catch(e) {}
-        }
-      } catch (e) {
-        // Fallback to local storage
+    function fetchLatestCatchupState() {
+      // Re-connect / verify MQTT connection and poll GitHub fallback
+      if (!isMqttConnected) {
+        connectLiveSyncMQTT();
       }
     }
 
@@ -5025,18 +5007,20 @@
       }, 350);
     }
 
-    async function publishCurrentStateToLiveSync() {
+    function publishCurrentStateToLiveSync() {
       const now = Date.now();
       state.lastModifiedTimestamp = now;
       const payload = {
         senderId: localClientId,
         timestamp: now,
         type: 'FULL_SYNC',
-        tasks: state.tasks,
-        chronotype: state.chronotype,
-        goals: state.goals,
-        energy: state.energy,
+        tasks: state.tasks || [],
+        chronotype: state.chronotype || {},
+        goals: state.goals || {},
+        energy: state.energy || 'steady',
         manualEnergyOverride: state.manualEnergyOverride,
+        googleClientId: state.googleClientId || localStorage.getItem(GOOGLE_CLIENT_ID_KEY) || '',
+        autoSyncGoogle: !!state.autoSyncGoogle,
         archivedTasks: state.archivedTasks || [],
         analytics: state.analytics || { history: [], rippleCount: 0, pushCounts: {}, chronotypeHistory: [] }
       };
@@ -5045,22 +5029,18 @@
         try { localBroadcastChannel.postMessage(payload); } catch(e) {}
       }
 
-      try {
-        updateLiveSyncStatusUI('syncing', '🟡 Syncing...');
-        const res = await fetch(LIVE_SYNC_PUB_URL, {
-          method: 'POST',
-          headers: {
-            'Title': 'FlowLiveSync',
-            'X-Sender': localClientId,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(payload)
-        });
-        if (res.ok) {
+      if (mqttClient && isMqttConnected) {
+        try {
+          updateLiveSyncStatusUI('syncing', '🟡 Syncing...');
+          const msg = new Paho.MQTT.Message(JSON.stringify(payload));
+          msg.destinationName = LIVE_SYNC_TOPIC;
+          msg.qos = 1;
+          msg.retained = true;
+          mqttClient.send(msg);
           updateLiveSyncStatusUI('connected', '🟢 Connected (Live)');
+        } catch (e) {
+          console.warn('Failed publishing MQTT message:', e);
         }
-      } catch (e) {
-        updateLiveSyncStatusUI('connected', '🟢 Connected (Local)');
       }
     }
 
