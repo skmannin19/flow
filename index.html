@@ -180,6 +180,12 @@
           <span>💾 Sync</span>
         </button>
 
+        <!-- Direct Instant Mobile Sync Trigger -->
+        <button onclick="openMobileSyncModal()" class="text-xs px-3 py-2 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 border border-indigo-500/30 transition flex items-center gap-1.5 font-medium" title="Mirror your exact schedule to your phone via QR code or pairing link">
+          <span>📱</span>
+          <span>Sync Mobile</span>
+        </button>
+
         <button onclick="toggleHorizonModal()" class="text-xs px-3 py-2 rounded-lg dark:bg-slate-800 bg-slate-200 hover:dark:bg-slate-700 hover:bg-slate-300 dark:text-slate-200 text-slate-800 dark:border-slate-700 border-slate-300 border transition flex items-center gap-1.5">
           <span>🎯</span> <span class="hidden sm:inline">Horizons</span>
         </button>
@@ -927,6 +933,53 @@
             Make One-Off (Stop Repeating)
           </button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MOBILE SYNC MODAL -->
+  <div id="mobileSyncModal" onclick="if(event.target === this) closeMobileSyncModal()" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden items-center justify-center p-3 sm:p-6 overflow-y-auto">
+    <div class="dark:bg-slate-900 bg-white border dark:border-slate-800 border-slate-200 rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl my-auto flex flex-col space-y-4">
+      <div class="flex items-start justify-between gap-4 border-b dark:border-slate-800 border-slate-200 pb-3">
+        <div>
+          <span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 border border-indigo-500/30">Cross-Device Pairing</span>
+          <h2 class="text-lg font-bold dark:text-white text-slate-900 mt-1">📱 Sync to Mobile</h2>
+          <p class="text-xs dark:text-slate-400 text-slate-500 mt-0.5">Instantly mirror your exact desktop schedule & tasks on your phone.</p>
+        </div>
+        <button type="button" onclick="closeMobileSyncModal()" class="text-slate-400 hover:text-white text-sm px-2.5 py-1 rounded-lg bg-slate-200 dark:bg-slate-800 transition">✕</button>
+      </div>
+
+      <!-- QR Code Display -->
+      <div class="flex flex-col items-center justify-center p-4 rounded-2xl dark:bg-slate-950 bg-slate-50 border dark:border-slate-800 border-slate-200 space-y-3 text-center">
+        <div class="p-2.5 rounded-xl bg-white shadow-sm inline-block border border-slate-200">
+          <img id="mobileSyncQrImg" src="" alt="Mobile Sync QR Code" class="w-48 h-48 rounded object-contain mx-auto" />
+        </div>
+        <p class="text-[11px] dark:text-slate-300 text-slate-700 font-medium">📷 Scan with your phone's camera to load your schedule instantly.</p>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="space-y-2">
+        <button onclick="copyMobileSyncLink()" id="copySyncLinkBtn" class="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition flex items-center justify-center gap-2 shadow-sm">
+          <span>📋</span> <span id="copySyncLinkBtnText">Copy Mobile Sync Link</span>
+        </button>
+        <p class="text-[10px] text-center dark:text-slate-500 text-slate-400">Open this link on your phone (AirDrop, Messages, Notes, or Slack) to mirror your schedule in one tap.</p>
+      </div>
+
+      <!-- Manual JSON Transfer Option -->
+      <div class="border-t dark:border-slate-800 border-slate-200 pt-3">
+        <details class="text-xs group">
+          <summary class="cursor-pointer text-slate-500 dark:text-slate-400 hover:text-indigo-500 text-[11px] font-mono flex items-center justify-between">
+            <span>⚙️ Advanced: Manual JSON Export / Import</span>
+            <span class="group-open:rotate-180 transition">▾</span>
+          </summary>
+          <div class="mt-2.5 space-y-2">
+            <textarea id="mobileSyncJsonText" readonly rows="3" class="w-full p-2 text-[10px] font-mono dark:bg-slate-950 bg-slate-50 border dark:border-slate-800 border-slate-200 rounded-lg dark:text-slate-300 text-slate-700 focus:outline-none"></textarea>
+            <div class="flex gap-2">
+              <button onclick="copyMobileSyncJson()" class="flex-1 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-800 text-[11px] font-semibold dark:text-slate-200 text-slate-800">📋 Copy JSON</button>
+              <button onclick="promptImportMobileSyncJson()" class="flex-1 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-800 text-[11px] font-semibold dark:text-slate-200 text-slate-800">📥 Paste & Import</button>
+            </div>
+          </div>
+        </details>
       </div>
     </div>
   </div>
@@ -1922,43 +1975,48 @@
     let editingRecurrenceTaskId = null;
 
     async function init() {
+      // 0. Check for incoming mobile sync payload in URL (#sync=...)
+      const didSyncFromUrl = checkIncomingMobileSync();
+
       // 1. Load GitHub Config
       const savedGh = localStorage.getItem(GH_CONFIG_KEY);
       if (savedGh) { try { ghConfig = { ...ghConfig, ...JSON.parse(savedGh) }; } catch (e) {} }
       populateGitHubModalInputs();
 
       // 2. Safe State Loading: Ensures user modifications in localStorage ALWAYS persist
-      const masterSaved = localStorage.getItem(MASTER_STORAGE_KEY);
-      if (masterSaved) {
-        try {
-          const parsed = JSON.parse(masterSaved);
-          state = {
-            ...state,
-            ...parsed,
-            goals: { ...state.goals, ...(parsed.goals || {}) },
-            chronotype: { ...state.chronotype, ...(parsed.chronotype || {}) },
-            tasks: (Array.isArray(parsed.tasks) && parsed.tasks.length > 0) ? parsed.tasks : JSON.parse(JSON.stringify(DEFAULT_TASKS))
-          };
-        } catch (e) {
-          console.error('Error loading master saved state:', e);
-          state.tasks = JSON.parse(JSON.stringify(DEFAULT_TASKS));
-        }
-      } else {
-        try {
-          const resp = await fetch('./flow-data.json', { cache: 'no-cache' });
-          if (resp.ok) {
-            const remoteData = await resp.json();
-            if (remoteData && remoteData.tasks) {
-              state = { ...state, ...remoteData };
-              localStorage.setItem(MASTER_STORAGE_KEY, JSON.stringify(state));
+      if (!didSyncFromUrl) {
+        const masterSaved = localStorage.getItem(MASTER_STORAGE_KEY);
+        if (masterSaved) {
+          try {
+            const parsed = JSON.parse(masterSaved);
+            state = {
+              ...state,
+              ...parsed,
+              goals: { ...state.goals, ...(parsed.goals || {}) },
+              chronotype: { ...state.chronotype, ...(parsed.chronotype || {}) },
+              tasks: (Array.isArray(parsed.tasks) && parsed.tasks.length > 0) ? parsed.tasks : JSON.parse(JSON.stringify(DEFAULT_TASKS))
+            };
+          } catch (e) {
+            console.error('Error loading master saved state:', e);
+            state.tasks = JSON.parse(JSON.stringify(DEFAULT_TASKS));
+          }
+        } else {
+          try {
+            const resp = await fetch('./flow-data.json', { cache: 'no-cache' });
+            if (resp.ok) {
+              const remoteData = await resp.json();
+              if (remoteData && remoteData.tasks) {
+                state = { ...state, ...remoteData };
+                localStorage.setItem(MASTER_STORAGE_KEY, JSON.stringify(state));
+              } else {
+                state.tasks = JSON.parse(JSON.stringify(DEFAULT_TASKS));
+              }
             } else {
               state.tasks = JSON.parse(JSON.stringify(DEFAULT_TASKS));
             }
-          } else {
+          } catch (e) {
             state.tasks = JSON.parse(JSON.stringify(DEFAULT_TASKS));
           }
-        } catch (e) {
-          state.tasks = JSON.parse(JSON.stringify(DEFAULT_TASKS));
         }
       }
 
@@ -4614,6 +4672,137 @@
     }
     function utf8ToBase64(str) { return btoa(unescape(encodeURIComponent(str))); }
     function base64ToUtf8(b64) { return decodeURIComponent(escape(atob(b64.replace(/\s/g, '')))); }
+
+    function generateMobileSyncUrl() {
+      const syncData = {
+        v: 1,
+        t: Date.now(),
+        lastActiveDate: state.lastActiveDate || getLocalDateString(),
+        tasks: state.tasks || [],
+        goals: state.goals || {},
+        chronotype: state.chronotype || {},
+        energy: state.energy || 'steady',
+        googleClientId: state.googleClientId || localStorage.getItem(GOOGLE_CLIENT_ID_KEY) || '',
+        autoSyncGoogle: !!state.autoSyncGoogle
+      };
+      const b64 = utf8ToBase64(JSON.stringify(syncData));
+      const origin = window.location.origin;
+      const pathname = window.location.pathname;
+      return `${origin}${pathname}#sync=${b64}`;
+    }
+
+    function openMobileSyncModal() {
+      const syncUrl = generateMobileSyncUrl();
+      const qrImg = document.getElementById('mobileSyncQrImg');
+      if (qrImg) {
+        qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(syncUrl)}`;
+      }
+      const jsonArea = document.getElementById('mobileSyncJsonText');
+      if (jsonArea) {
+        jsonArea.value = JSON.stringify(state, null, 2);
+      }
+      const modal = document.getElementById('mobileSyncModal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+    }
+
+    function closeMobileSyncModal() {
+      const modal = document.getElementById('mobileSyncModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    async function copyMobileSyncLink() {
+      const syncUrl = generateMobileSyncUrl();
+      try {
+        await navigator.clipboard.writeText(syncUrl);
+        const btnText = document.getElementById('copySyncLinkBtnText');
+        if (btnText) {
+          const original = btnText.textContent;
+          btnText.textContent = '✓ Copied to Clipboard!';
+          setTimeout(() => { btnText.textContent = original; }, 2500);
+        }
+        showRippleNotice('📋 Mobile sync link copied! Send to your phone to sync.');
+      } catch (err) {
+        prompt('Copy this link to open on your phone:', syncUrl);
+      }
+    }
+
+    function copyMobileSyncJson() {
+      const jsonArea = document.getElementById('mobileSyncJsonText');
+      if (!jsonArea) return;
+      navigator.clipboard.writeText(jsonArea.value);
+      showRippleNotice('📋 Copied full schedule JSON to clipboard.');
+    }
+
+    function promptImportMobileSyncJson() {
+      const input = prompt('Paste schedule JSON here:');
+      if (!input) return;
+      try {
+        const parsed = JSON.parse(input);
+        if (parsed && Array.isArray(parsed.tasks)) {
+          state.tasks = parsed.tasks;
+          if (parsed.goals) state.goals = { ...state.goals, ...parsed.goals };
+          if (parsed.chronotype) state.chronotype = { ...state.chronotype, ...parsed.chronotype };
+          if (parsed.energy) state.energy = parsed.energy;
+          saveState();
+          recalculateSchedule();
+          closeMobileSyncModal();
+          showRippleNotice('✓ Successfully imported schedule!');
+        } else {
+          alert('Invalid schedule JSON format.');
+        }
+      } catch (e) {
+        alert('Could not parse JSON: ' + e.message);
+      }
+    }
+
+    function checkIncomingMobileSync() {
+      const hash = window.location.hash || '';
+      const search = window.location.search || '';
+      let rawB64 = null;
+      if (hash.includes('sync=')) {
+        rawB64 = hash.split('sync=')[1].split('&')[0];
+      } else if (search.includes('sync=')) {
+        const params = new URLSearchParams(search);
+        rawB64 = params.get('sync');
+      }
+      if (!rawB64) return false;
+
+      try {
+        const jsonStr = base64ToUtf8(rawB64);
+        const parsed = JSON.parse(jsonStr);
+        if (parsed && Array.isArray(parsed.tasks)) {
+          state.tasks = parsed.tasks;
+          if (parsed.goals) state.goals = { ...state.goals, ...parsed.goals };
+          if (parsed.chronotype) state.chronotype = { ...state.chronotype, ...parsed.chronotype };
+          if (parsed.energy) state.energy = parsed.energy;
+          if (parsed.googleClientId) {
+            state.googleClientId = parsed.googleClientId;
+            localStorage.setItem(GOOGLE_CLIENT_ID_KEY, parsed.googleClientId);
+          }
+          if (parsed.autoSyncGoogle !== undefined) state.autoSyncGoogle = parsed.autoSyncGoogle;
+          if (Array.isArray(parsed.archivedTasks)) {
+            state.archivedTasks = parsed.archivedTasks;
+          }
+          if (parsed.lastActiveDate) {
+            state.lastActiveDate = parsed.lastActiveDate;
+          }
+          localStorage.setItem(MASTER_STORAGE_KEY, JSON.stringify(state));
+          try {
+            history.replaceState(null, '', window.location.pathname);
+          } catch(e) {}
+          return true;
+        }
+      } catch (err) {
+        console.warn('Failed to parse incoming sync URL:', err);
+      }
+      return false;
+    }
 
     async function getGitHubFileSha(path) {
       const url = `https://api.github.com/repos/${ghConfig.owner}/${ghConfig.repo}/contents/${path}?ref=${ghConfig.branch}`;
