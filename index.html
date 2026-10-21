@@ -139,10 +139,10 @@
       <!-- Chronotype Pill, Theme Toggle, Audio Toggle, Data & GitHub Sync, & Horizons -->
       <div class="flex items-center gap-2 overflow-x-auto no-scrollbar max-w-full py-1">
         <button onclick="openChronotypeModal('overview')" class="px-3 py-1.5 rounded-xl dark:bg-slate-950 bg-slate-100 hover:dark:bg-slate-800 hover:bg-slate-200 dark:border-indigo-500/30 border-slate-300 border text-xs flex items-center gap-2 transition shadow-sm" title="Calibrate Quarterly Productivity Chronotype">
-          <span id="chronoHeaderEmoji" class="text-base">🐻</span>
+          <span id="chronoHeaderEmoji" class="text-base">🐺</span>
           <div class="text-left">
-            <div id="chronoHeaderName" class="font-semibold dark:text-slate-200 text-slate-800 leading-none">Solar Bear</div>
-            <div id="chronoHeaderSub" class="text-[10px] font-mono text-indigo-500 dark:text-indigo-400 mt-0.5">Peak: 9a–1p</div>
+            <div id="chronoHeaderName" class="font-semibold dark:text-slate-200 text-slate-800 leading-none">Evening Wolf</div>
+            <div id="chronoHeaderSub" class="text-[10px] font-mono text-indigo-500 dark:text-indigo-400 mt-0.5">Peak: 4:30p–9p</div>
           </div>
         </button>
 
@@ -246,8 +246,8 @@
             <span class="text-[11px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 font-semibold">Zero-Friction Next Action</span>
             <span id="recEnergyStatus" class="text-xs dark:text-slate-400 text-slate-500">Matched to your Chronotype & Bandwidth</span>
           </div>
-          <h2 id="recTaskTitle" class="text-base font-semibold dark:text-white text-slate-900 mt-1">Draft CO Dosing & Potency Testing Compliance Matrix</h2>
-          <p id="recSubStep" class="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5 font-medium">👉 First 2-Min Micro-Step: Open state PDF & list 3 required lab potency thresholds</p>
+          <h2 id="recTaskTitle" class="text-base font-semibold dark:text-white text-slate-900 mt-1">Ready for your focus block</h2>
+          <p id="recSubStep" class="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5 font-medium">👉 Click any task to start or let FlowState auto-match your peak window</p>
         </div>
       </div>
       <div class="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
@@ -4850,12 +4850,6 @@
                 }
               });
             }
-                mergedPushCounts[title] = Math.max(
-                  mergedPushCounts[title] || 0,
-                  payload.analytics.pushCounts[title] || 0
-                );
-              });
-            }
 
             const mergedRippleCount = Math.max(
               state.analytics.rippleCount || 0,
@@ -8711,11 +8705,13 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
             t.subtasks.forEach(st => st.done = false);
           }
         } else if (!t.completed) {
-          lingeringCount++;
-          t.rolledOver = true;
-          if (!isTaskLocked(t)) {
-            t.startMin = null;
-            t.endMin = null;
+          if (!t.fromCalendar) {
+            lingeringCount++;
+            t.rolledOver = true;
+            if (!isTaskLocked(t)) {
+              t.startMin = null;
+              t.endMin = null;
+            }
           }
         }
       });
@@ -8743,9 +8739,17 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         state.tasks = state.tasks.filter(t => !t.completed || t.recurring);
       }
 
+      // 3. Clear yesterday's Google Calendar events so today's calendar sync brings in fresh events
+      state.tasks = state.tasks.filter(t => !t.fromCalendar);
+
       state.lastActiveDate = todayKey;
       saveState();
       recalculateSchedule();
+
+      // Automatically pull today's Google Calendar events if connected
+      if (typeof fetchGoogleCalendarLive === 'function' && typeof googleAccessToken !== 'undefined' && googleAccessToken) {
+        fetchGoogleCalendarLive(false);
+      }
       
       const badge = document.getElementById('rolloverBadge');
       if (badge) {
