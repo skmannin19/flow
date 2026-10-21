@@ -1021,6 +1021,19 @@
           </label>
         </div>
 
+        <!-- Allow Overlap Toggle -->
+        <div class="flex items-center justify-between p-3 rounded-xl dark:bg-slate-950 bg-slate-50 border dark:border-slate-800 border-slate-200">
+          <div>
+            <div class="text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500">Concurrency & Overlap</div>
+            <div class="text-xs font-semibold text-slate-700 dark:text-slate-300 mt-0.5">🥞 Allow Schedule Overlap (Run Concurrently)</div>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Allows this task to run concurrently with other tasks without shifting them.</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer ml-3">
+            <input type="checkbox" id="editTaskAllowOverlap" class="sr-only peer" />
+            <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-violet-600"></div>
+          </label>
+        </div>
+
         <!-- Recurrence Shortcut -->
         <div class="flex items-center justify-between p-3 rounded-xl dark:bg-slate-950 bg-slate-50 border dark:border-slate-800 border-slate-200">
           <div>
@@ -6171,6 +6184,18 @@
       showRippleNotice(t.locked ? `🔒 Locked "${t.title}" at ${formatMinToTime(t.startMin)} (Non-movable anchor)` : `🔓 Unlocked "${t.title}" (Now flexible & rippling)`);
     }
 
+    function toggleTaskAllowOverlap(taskId) {
+      const t = state.tasks.find(x => String(x.id) === String(taskId));
+      if (!t) return;
+      t.allowOverlap = !t.allowOverlap;
+      saveState();
+      recalculateSchedule();
+      showRippleNotice(t.allowOverlap 
+        ? `🥞 Allowed overlap for "${t.title}". It can now run concurrently with other tasks.` 
+        : `🚫 Overlap disabled for "${t.title}". Tasks will avoid colliding.`
+      );
+    }
+
     function rippleShiftScheduleToNow(notify = true) {
       const today = new Date();
       const nowMin = today.getHours() * 60 + today.getMinutes();
@@ -7939,6 +7964,11 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         lockedCheck.checked = isTaskLocked(t);
       }
 
+      const overlapCheck = document.getElementById('editTaskAllowOverlap');
+      if (overlapCheck) {
+        overlapCheck.checked = !!t.allowOverlap;
+      }
+
       const recurEl = document.getElementById('editTaskRecurrenceText');
       if (recurEl) {
         recurEl.textContent = t.recurring ? `Repeats: ${formatRecurrenceLabel(t)}` : 'One-off (Does not repeat)';
@@ -8109,6 +8139,9 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       const isLocked = document.getElementById('editTaskLocked')?.checked || false;
       t.locked = isLocked;
 
+      const isAllowOverlap = document.getElementById('editTaskAllowOverlap')?.checked || false;
+      t.allowOverlap = isAllowOverlap;
+
       const timeChanged = (t.startMin !== newStartMin) || (t.endMin !== newEndMin);
       const statusChanged = (t.completed !== isCompleted);
 
@@ -8155,8 +8188,8 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         t.completedAtMin = null;
       }
 
-      // If active (incomplete) task time was updated, ripple subsequent flexible tasks
-      if (timeChanged && !t.completed) {
+      // If active (incomplete) task time was updated, ripple subsequent flexible tasks only if neither task allows overlap
+      if (timeChanged && !t.completed && !t.allowOverlap) {
         const today = new Date();
         const includeBuffers = document.getElementById('bufferToggle')?.checked || false;
         const bufferMin = includeBuffers ? 10 : 0;
@@ -8170,7 +8203,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
           .sort((a, b) => a.start - b.start);
 
         const subsequentFlexible = activeTasks
-          .filter(x => !isTaskLocked(x) && x.id !== t.id && x.startMin != null && x.startMin >= t.startMin && !x.completed)
+          .filter(x => !isTaskLocked(x) && x.id !== t.id && x.startMin != null && x.startMin >= t.startMin && !x.completed && !x.allowOverlap)
           .sort((a, b) => a.startMin - b.startMin);
 
         let cursor = t.endMin + bufferMin;
@@ -8351,6 +8384,27 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         }
       });
 
+      // Ensure tasks that do not allow overlap avoid accidental collisions
+      preservedTasks.sort((a, b) => (a.startMin || 0) - (b.startMin || 0));
+      for (let i = 0; i < preservedTasks.length; i++) {
+        const cur = preservedTasks[i];
+        if (cur.completed || cur.fromCalendar || cur.allowOverlap) continue;
+
+        const conflict = [
+          ...lockedAnchors,
+          ...preservedTasks.slice(0, i)
+        ].find(other => !other.allowOverlap && Math.max(cur.startMin, other.startMin) < Math.min(cur.endMin, other.endMin));
+
+        if (conflict) {
+          const shiftStart = conflict.endMin + (includeBuffers ? 10 : 0);
+          const dur = cur.duration || 30;
+          if (shiftStart + dur <= (cur.overrideEvening ? 1435 : 1350)) {
+            cur.startMin = shiftStart;
+            cur.endMin = shiftStart + dur;
+          }
+        }
+      }
+
       // 4. Slot unassigned tasks (e.g. "paint my nails" or new tasks)
       // Find open gaps between all currently scheduled blocks starting at or after roundedNowMin
       let focusMins = 0;
@@ -8360,10 +8414,10 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       });
 
       unassignedTasks.forEach(t => {
-        // Collect occupied intervals
+        // Collect occupied intervals from tasks that cannot overlap
         const occupied = [
-          ...lockedAnchors.map(f => ({ start: f.startMin, end: f.endMin })),
-          ...preservedTasks.map(p => ({ start: p.startMin, end: p.endMin }))
+          ...lockedAnchors.filter(f => !t.allowOverlap && !f.allowOverlap).map(f => ({ start: f.startMin, end: f.endMin })),
+          ...preservedTasks.filter(p => !t.allowOverlap && !p.allowOverlap).map(p => ({ start: p.startMin, end: p.endMin }))
         ].sort((a, b) => a.start - b.start);
 
         let searchCursor = roundedNowMin;
@@ -8449,6 +8503,9 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         : '';
       const rolloverBadge = t.rolledOver ? '<span class="text-[10px] font-mono px-1.5 py-0.5 rounded border border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400" title="Rolled over from previous day">↩ Rolled</span>' : '';
       const calendarBadge = t.fromCalendar ? `<span class="text-[10px] font-mono px-1.5 py-0.5 rounded border border-indigo-400/40 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400" title="Pulled from Google Calendar (${t.calendarName || 'Calendar'})">🗓️ ${t.calendarName || 'Calendar'}</span>` : '';
+      const overlapBadge = t.allowOverlap 
+        ? `<button onclick="toggleTaskAllowOverlap('${t.id}')" class="text-[10px] font-mono px-1.5 py-0.5 rounded border border-violet-500/40 bg-violet-500/10 text-violet-600 dark:text-violet-400 hover:bg-violet-500/20 transition flex items-center gap-1" title="Concurrent task: Allowed to overlap. Click to toggle.">🥞 Overlap OK</button>` 
+        : '';
       const subs = t.subtasks?.map((st, i) => `<label class="flex items-center gap-2 text-xs ${st.done ? 'line-through text-slate-400' : 'dark:text-slate-300 text-slate-700'} cursor-pointer"><input type="checkbox" ${st.done ? 'checked' : ''} onchange="toggleSubtask('${t.id}', ${i})" class="accent-emerald-500 rounded" /><span>${st.text}</span></label>`).join('') || '';
 
       const reviewBanner = t.needsReview ? `
@@ -8476,6 +8533,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
                   ${calendarBadge}
                   ${recurringBadge}
                   ${rolloverBadge}
+                  ${overlapBadge}
                   <span class="text-[10px] font-mono dark:text-slate-400 text-slate-500">${t.duration}m</span>
                 </div>
                 <p class="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1">↳ 2m Starter: ${t.microStep}</p>
@@ -8487,6 +8545,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
                 <button onclick="openDeferTomorrowModal('${t.id}')" class="p-1 hover:text-emerald-500 text-xs text-slate-400 transition" title="Defer task & schedule for tomorrow">🌅</button>
                 <button onclick="skipTask('${t.id}')" class="p-1 hover:text-amber-500 text-xs text-slate-400 transition" title="Skip task for today">⏭️</button>
               ` : ''}
+              <button onclick="toggleTaskAllowOverlap('${t.id}')" class="p-1 hover:text-violet-400 text-xs ${t.allowOverlap ? 'text-violet-500 dark:text-violet-400 font-bold' : 'text-slate-400'}" title="${t.allowOverlap ? 'Overlap allowed (Concurrent task). Click to disable.' : 'Allow schedule overlap (Concurrent task)'}">🥞</button>
               <button onclick="openEditTaskModal('${t.id}')" class="p-1 hover:text-indigo-400 text-xs text-slate-400 transition" title="Edit Task Details">✏️</button>
               <button onclick="openRecurrenceModal('${t.id}')" class="p-1 hover:text-indigo-400 text-xs ${t.recurring ? 'text-indigo-500 dark:text-indigo-400 font-bold' : 'text-slate-400'}" title="${t.recurring ? 'Edit Repeat Schedule' : 'Make Recurring Schedule'}">🔁</button>
               <button onclick="autoBreakdownTask('${t.id}')" class="p-1 hover:text-emerald-500 text-xs" title="Auto-breakdown into micro-steps">🪄</button>
@@ -8625,7 +8684,9 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       const targetStart = isTaskLocked(targetTask) ? (targetTask.fixedStartMin || targetTask.startMin || 540) : (targetTask.startMin != null ? targetTask.startMin : 540);
       const targetEnd = targetStart + (targetTask.duration || 30);
 
-      if (dropBefore) {
+      if (sourceTask.allowOverlap || targetTask.allowOverlap) {
+        desiredStart = targetStart;
+      } else if (dropBefore) {
         if (isTaskLocked(targetTask)) {
           desiredStart = Math.max(360, targetStart - (sourceTask.duration || 30) - bufferMin);
         } else {
@@ -8641,7 +8702,8 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         .filter(t => isTaskLocked(t) && String(t.id) !== String(sourceId))
         .map(f => ({
           start: f.fixedStartMin || f.startMin || 540,
-          end: (f.fixedStartMin || f.startMin || 540) + (f.duration || 30)
+          end: (f.fixedStartMin || f.startMin || 540) + (f.duration || 30),
+          allowOverlap: !!f.allowOverlap
         }))
         .sort((a, b) => a.start - b.start);
 
@@ -8651,7 +8713,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
 
       let placed = false;
       while (!placed) {
-        const conflict = lockedIntervals.find(f => Math.max(cursor, f.start) < Math.min(cursor + sDuration, f.end));
+        const conflict = lockedIntervals.find(f => !sourceTask.allowOverlap && !f.allowOverlap && Math.max(cursor, f.start) < Math.min(cursor + sDuration, f.end));
         if (conflict) {
           cursor = conflict.end + bufferMin;
         } else {
@@ -8666,34 +8728,36 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         sourceTask.fixedStartMin = cursor;
       }
 
-      // 4. Ripple only SUBSEQUENT flexible tasks that collide
-      const otherFlexible = activeTasks
-        .filter(t => String(t.id) !== String(sourceId) && !isTaskLocked(t) && t.startMin != null && !t.completed)
-        .sort((a, b) => a.startMin - b.startMin);
+      // 4. Ripple only SUBSEQUENT flexible tasks that collide if neither allows overlap
+      if (!sourceTask.allowOverlap) {
+        const otherFlexible = activeTasks
+          .filter(t => String(t.id) !== String(sourceId) && !isTaskLocked(t) && t.startMin != null && !t.completed && !t.allowOverlap)
+          .sort((a, b) => a.startMin - b.startMin);
 
-      let rippleCursor = sourceTask.endMin + bufferMin;
+        let rippleCursor = sourceTask.endMin + bufferMin;
 
-      otherFlexible.forEach(st => {
-        if (st.startMin < rippleCursor && st.startMin >= (desiredStart - bufferMin)) {
-          let stPlaced = false;
-          let stCur = rippleCursor;
-          const stDur = st.duration || 30;
-          while (!stPlaced) {
-            const conflict = lockedIntervals.find(f => Math.max(stCur, f.start) < Math.min(stCur + stDur, f.end));
-            if (conflict) {
-              stCur = conflict.end + bufferMin;
-            } else {
-              st.startMin = stCur;
-              st.endMin = stCur + stDur;
-              st.manuallyPositioned = true;
-              rippleCursor = st.endMin + bufferMin;
-              stPlaced = true;
+        otherFlexible.forEach(st => {
+          if (st.startMin < rippleCursor && st.startMin >= (desiredStart - bufferMin)) {
+            let stPlaced = false;
+            let stCur = rippleCursor;
+            const stDur = st.duration || 30;
+            while (!stPlaced) {
+              const conflict = lockedIntervals.find(f => !st.allowOverlap && !f.allowOverlap && Math.max(stCur, f.start) < Math.min(stCur + stDur, f.end));
+              if (conflict) {
+                stCur = conflict.end + bufferMin;
+              } else {
+                st.startMin = stCur;
+                st.endMin = stCur + stDur;
+                st.manuallyPositioned = true;
+                rippleCursor = st.endMin + bufferMin;
+                stPlaced = true;
+              }
             }
+          } else if (st.startMin >= rippleCursor) {
+            rippleCursor = Math.max(rippleCursor, (st.endMin || (st.startMin + (st.duration || 30))) + bufferMin);
           }
-        } else if (st.startMin >= rippleCursor) {
-          rippleCursor = Math.max(rippleCursor, (st.endMin || (st.startMin + (st.duration || 30))) + bufferMin);
-        }
-      });
+        });
+      }
 
       saveState();
       recalculateSchedule();
@@ -8714,19 +8778,20 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       if (isTaskLocked(t)) t.fixedStartMin = t.startMin;
       if (t.completed) t.completedAtMin = t.endMin;
 
-      // Ripple any subsequent overlapping flexible tasks only if active
-      if (!t.completed) {
+      // Ripple any subsequent overlapping flexible tasks only if active and overlap is NOT allowed
+      if (!t.completed && !t.allowOverlap) {
         const today = new Date();
         const includeBuffers = document.getElementById('bufferToggle')?.checked || false;
         const bufferMin = includeBuffers ? 10 : 0;
         const activeTasks = state.tasks.filter(x => isTaskScheduledForDate(x, today));
         const lockedIntervals = activeTasks.filter(x => isTaskLocked(x) && x.id !== taskId).map(f => ({
           start: f.fixedStartMin || f.startMin || 540,
-          end: (f.fixedStartMin || f.startMin || 540) + (f.duration || 30)
+          end: (f.fixedStartMin || f.startMin || 540) + (f.duration || 30),
+          allowOverlap: !!f.allowOverlap
         }));
 
         const subsequentFlexible = activeTasks
-          .filter(x => !isTaskLocked(x) && x.id !== taskId && x.startMin != null && x.startMin >= newStart && !x.completed)
+          .filter(x => !isTaskLocked(x) && x.id !== taskId && x.startMin != null && x.startMin >= newStart && !x.completed && !x.allowOverlap)
           .sort((a, b) => a.startMin - b.startMin);
 
         let cursor = t.endMin + bufferMin;
@@ -8734,7 +8799,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
           if (st.startMin < cursor) {
             let placed = false;
             while (!placed) {
-              const conflict = lockedIntervals.find(f => Math.max(cursor, f.start) < Math.min(cursor + (st.duration || 30), f.end));
+              const conflict = lockedIntervals.find(f => !st.allowOverlap && !f.allowOverlap && Math.max(cursor, f.start) < Math.min(cursor + (st.duration || 30), f.end));
               if (conflict) {
                 cursor = conflict.end + bufferMin;
               } else {
@@ -8788,8 +8853,29 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         const isPast = t.completed || (t.endMin < nowMin);
         const locked = isTaskLocked(t);
 
-        // Check if locked event overlaps with any other locked anchor
-        const hasOverlap = locked && fixedList.some(other => other !== t && Math.max(t.startMin, other.startMin) < Math.min(t.endMin, other.endMin));
+        // Find all other scheduled tasks in blocks overlapping in time with t
+        const overlappingBlocks = blocks.filter(b => b.kind === 'task' && b.task !== t && b.task.startMin != null && b.task.endMin != null && Math.max(t.startMin, b.task.startMin) < Math.min(t.endMin, b.task.endMin));
+        const isOverlapping = overlappingBlocks.length > 0;
+        const isAllowedOverlap = isOverlapping && (t.allowOverlap || overlappingBlocks.some(b => b.task.allowOverlap));
+        const isConflictingOverlap = isOverlapping && !isAllowedOverlap;
+
+        let overlapCardClasses = '';
+        if (isAllowedOverlap) {
+          overlapCardClasses = 'border-violet-500/70 dark:border-violet-500/60 bg-violet-50/70 dark:bg-violet-950/30 ring-1 ring-violet-500/30';
+        } else if (isConflictingOverlap) {
+          overlapCardClasses = 'border-amber-500/80 dark:border-amber-500/70 bg-amber-50/60 dark:bg-amber-950/25 ring-1 ring-amber-500/30';
+        } else if (t.allowOverlap) {
+          overlapCardClasses = 'border-violet-400/40 dark:border-violet-600/40';
+        }
+
+        let overlapBadge = '';
+        if (isAllowedOverlap) {
+          const names = overlappingBlocks.map(b => b.task.title).join(', ');
+          overlapBadge = `<span class="text-[9px] font-mono px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-700 dark:text-violet-300 border border-violet-500/40 font-semibold flex items-center gap-1" title="Concurrent session with: ${names}">🥞 Concurrent</span>`;
+        } else if (isConflictingOverlap) {
+          const names = overlappingBlocks.map(b => b.task.title).join(', ');
+          overlapBadge = `<span class="text-[9px] font-mono px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/40 font-semibold flex items-center gap-1" title="Schedule conflict with: ${names}. Click 🥞 to allow overlap or move task.">⚠️ Conflict</span>`;
+        }
 
         htmlItems.push(`
           <div draggable="true" 
@@ -8800,7 +8886,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
                ondragleave="onTimelineDragLeave(event)" 
                ondrop="onTimelineDrop(event, '${t.id}')"
                ondblclick="openEditTaskModal('${t.id}')"
-               class="timeline-card group p-3 rounded-xl border dark:border-slate-800 border-slate-200 dark:bg-slate-950/90 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition cursor-grab active:cursor-grabbing hover:border-indigo-400/50 ${isPast ? 'opacity-75 bg-slate-50/50 dark:bg-slate-950/40' : ''}">
+               class="timeline-card group p-3 rounded-xl border ${overlapCardClasses || 'dark:border-slate-800 border-slate-200 dark:bg-slate-950/90 bg-white'} flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition cursor-grab active:cursor-grabbing hover:border-indigo-400/50 ${isPast ? 'opacity-75 bg-slate-50/50 dark:bg-slate-950/40' : ''}">
             <div class="flex items-center gap-2.5 min-w-0">
               <span class="text-slate-400 dark:text-slate-500 hover:text-slate-600 cursor-grab text-base select-none shrink-0" title="Drag to reorder/swap schedule position">⠿</span>
               <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTaskComplete('${t.id}')" class="w-4 h-4 accent-emerald-500 rounded cursor-pointer shrink-0" title="${t.completed ? 'Mark incomplete' : 'Mark completed'}" />
@@ -8827,7 +8913,10 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
                   <button onclick="toggleTaskLock('${t.id}')" class="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold transition flex items-center gap-1 ${locked ? 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-300 border border-amber-500/30' : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-300 dark:border-slate-700'}" title="${locked ? 'Locked anchor (immovable). Click to unlock & make flexible.' : 'Flexible (ripples). Click to lock in place.'}">
                     ${locked ? '🔒 Locked' : '🔓 Flexible'}
                   </button>
-                  ${hasOverlap ? '<span class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-semibold" title="Overlapping session on your calendar">⚠️ Overlap</span>' : ''}
+                  <button onclick="toggleTaskAllowOverlap('${t.id}')" class="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold transition flex items-center gap-1 ${t.allowOverlap ? 'bg-violet-500/15 hover:bg-violet-500/25 text-violet-700 dark:text-violet-300 border border-violet-500/40' : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-300 dark:border-slate-700'}" title="${t.allowOverlap ? 'Concurrent task: Allowed to overlap with other tasks without pushing them. Click to make sequential.' : 'Sequential task: Cannot overlap (will push other tasks). Click to allow overlap.'}">
+                    ${t.allowOverlap ? '🥞 Overlap OK' : '🥞 No Overlap'}
+                  </button>
+                  ${overlapBadge}
                   ${t.completed ? '<span class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">✓ Done</span>' : ''}
                 </div>
                 <p class="text-[11px] dark:text-slate-400 text-slate-500 truncate">${t.microStep || ''}</p>
