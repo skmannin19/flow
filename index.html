@@ -1038,7 +1038,10 @@
         <!-- Schedule & Completed Timing Grid -->
         <div class="p-3.5 rounded-2xl dark:bg-slate-950/70 bg-slate-50 border dark:border-slate-800 border-slate-200 space-y-2.5">
           <div class="flex items-center justify-between flex-wrap gap-2">
-            <span class="text-[10px] font-mono uppercase font-bold text-indigo-600 dark:text-indigo-400 tracking-wider">Schedule & Completion Timing</span>
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] font-mono uppercase font-bold text-indigo-600 dark:text-indigo-400 tracking-wider">Schedule & Completion Timing</span>
+              <button type="button" id="editTaskRevertTimeBtn" onclick="revertEditModalTime()" class="text-[10px] text-amber-500 dark:text-amber-400 hover:underline hidden font-medium"></button>
+            </div>
             <div class="flex items-center gap-2">
               <label class="flex items-center gap-1.5 cursor-pointer select-none text-[11px] font-medium text-slate-600 dark:text-slate-300">
                 <input type="checkbox" id="editTaskCompletedCheck" onchange="onEditModalCompletedToggle()" class="w-3.5 h-3.5 accent-emerald-500 rounded cursor-pointer" />
@@ -6444,7 +6447,7 @@
       const bufferMin = includeBuffers ? 10 : 0;
 
       const activeTasks = state.tasks.filter(t => isTaskScheduledForDate(t, today));
-      const isAnchored = (t) => isTaskLocked(t) || (t.fromCalendar && !t.userShifted);
+      const isAnchored = (t) => isTaskLocked(t) || t.fromCalendar;
 
       const lockedIntervals = activeTasks
         .filter(t => isAnchored(t))
@@ -8118,7 +8121,11 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       if (!t) return;
       t.duration = Math.max(10, (t.duration || 30) + delta);
       t.manuallyPositioned = true;
-      t.userShifted = true;
+      if (t.fromCalendar && t.gcalDuration != null && t.duration === t.gcalDuration && (t.gcalStartMin == null || t.startMin === t.gcalStartMin)) {
+        t.userShifted = false;
+      } else {
+        t.userShifted = true;
+      }
       if (t.startMin != null) {
         t.endMin = t.startMin + t.duration;
       }
@@ -8247,6 +8254,17 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         }
       }
 
+      const revertTimeBtn = document.getElementById('editTaskRevertTimeBtn');
+      if (revertTimeBtn) {
+        if (t.fromCalendar && t.gcalStartMin != null && (t.userShifted || currentStart !== t.gcalStartMin || duration !== (t.gcalDuration || duration))) {
+          revertTimeBtn.textContent = `↺ Reset to GCal: ${formatMinToTime(t.gcalStartMin)}`;
+          revertTimeBtn.classList.remove('hidden');
+        } else {
+          revertTimeBtn.textContent = '';
+          revertTimeBtn.classList.add('hidden');
+        }
+      }
+
       renderEditModalSubtasks();
 
       const modal = document.getElementById('editTaskModal');
@@ -8261,6 +8279,21 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       const titleInput = document.getElementById('editTaskTitle');
       if (titleInput) titleInput.value = t.gcalTitle;
       const btn = document.getElementById('editTaskRevertTitleBtn');
+      if (btn) btn.classList.add('hidden');
+    }
+
+    function revertEditModalTime() {
+      if (!editingTaskId) return;
+      const t = state.tasks.find(x => String(x.id) === String(editingTaskId));
+      if (!t || t.gcalStartMin == null) return;
+      const dur = t.gcalDuration || t.duration || 30;
+      const startEl = document.getElementById('editTaskStartTime');
+      const durEl = document.getElementById('editTaskDuration');
+      const endEl = document.getElementById('editTaskEndTime');
+      if (startEl) startEl.value = minToTimeInputValue(t.gcalStartMin);
+      if (durEl) durEl.value = dur;
+      if (endEl) endEl.value = minToTimeInputValue(t.gcalStartMin + dur);
+      const btn = document.getElementById('editTaskRevertTimeBtn');
       if (btn) btn.classList.add('hidden');
     }
 
@@ -8317,6 +8350,22 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       } else if (field === 'duration') {
         const startMin = timeInputValueToMin(startEl.value);
         endEl.value = minToTimeInputValue(startMin + dur);
+      }
+
+      if (editingTaskId) {
+        const t = state.tasks.find(x => String(x.id) === String(editingTaskId));
+        const revertTimeBtn = document.getElementById('editTaskRevertTimeBtn');
+        if (t && t.fromCalendar && t.gcalStartMin != null && revertTimeBtn) {
+          const curStart = timeInputValueToMin(startEl.value);
+          const curDur = parseInt(durEl.value, 10) || 30;
+          if (curStart !== t.gcalStartMin || curDur !== (t.gcalDuration || curDur)) {
+            revertTimeBtn.textContent = `↺ Reset to GCal: ${formatMinToTime(t.gcalStartMin)}`;
+            revertTimeBtn.classList.remove('hidden');
+          } else {
+            revertTimeBtn.textContent = '';
+            revertTimeBtn.classList.add('hidden');
+          }
+        }
       }
     }
 
@@ -8450,8 +8499,20 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       t.startMin = newStartMin;
       t.endMin = newEndMin;
       t.manuallyPositioned = true;
-      if (timeChanged || (t.gcalStartMin != null && newStartMin !== t.gcalStartMin)) {
-        t.userShifted = true;
+      if (t.fromCalendar || t.gcalStartMin != null) {
+        if (t.gcalStartMin == null && t.startMin != null) {
+          t.gcalStartMin = t.startMin;
+          t.gcalDuration = t.duration;
+        }
+        if (t.gcalStartMin != null && newStartMin === t.gcalStartMin && newDuration === (t.gcalDuration || t.duration)) {
+          t.userShifted = false;
+        } else if (timeChanged || (t.gcalStartMin != null && newStartMin !== t.gcalStartMin)) {
+          t.userShifted = true;
+        }
+      } else {
+        if (timeChanged) {
+          t.userShifted = true;
+        }
       }
 
       if (isLocked) {
@@ -8629,12 +8690,13 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       // 1.4 Ensure Google Calendar events without an explicit user shift remain anchored to their gcalStartMin
       state.tasks.forEach(t => {
         if (t.fromCalendar && t.gcalStartMin != null && !t.completed) {
-          if (t.startMin !== t.gcalStartMin) {
-            t.startMin = t.gcalStartMin;
-            t.duration = t.gcalDuration || t.duration || 30;
-            t.endMin = t.startMin + t.duration;
-            t.userShifted = false;
-            t.manuallyPositioned = false;
+          if (!t.userShifted) {
+            if (t.startMin !== t.gcalStartMin) {
+              t.startMin = t.gcalStartMin;
+              t.duration = t.gcalDuration || t.duration || 30;
+              t.endMin = t.startMin + t.duration;
+              t.manuallyPositioned = false;
+            }
           }
         }
       });
@@ -8679,7 +8741,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       }
 
       const activeTasks = state.tasks.filter(t => isTaskScheduledForDate(t, today));
-      const isAnchored = (t) => isTaskLocked(t) || (t.fromCalendar && !t.userShifted);
+      const isAnchored = (t) => isTaskLocked(t) || t.fromCalendar;
       const lockedAnchors = activeTasks.filter(t => isAnchored(t)).sort((a, b) => (a.fixedStartMin || a.startMin || 540) - (b.fixedStartMin || b.startMin || 540));
       lockedAnchors.forEach(ft => {
         if (ft.fixedStartMin != null) ft.startMin = ft.fixedStartMin;
@@ -9104,7 +9166,11 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       t.startMin = newStart;
       t.endMin = newStart + (t.duration || 30);
       t.manuallyPositioned = true;
-      t.userShifted = true;
+      if (t.fromCalendar && t.gcalStartMin != null && newStart === t.gcalStartMin) {
+        t.userShifted = false;
+      } else {
+        t.userShifted = true;
+      }
       if (isTaskLocked(t)) t.fixedStartMin = t.startMin;
       if (t.completed) t.completedAtMin = t.endMin;
 
@@ -10283,27 +10349,31 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
               existing.needsReview = pInfo.needsReview;
             }
 
-            // When syncing calendar, always restore to Google Calendar's true scheduled time
+            // When syncing calendar, track the official Google Calendar scheduled time
             existing.gcalStartMin = startMin;
             existing.gcalDuration = duration;
             let changed = false;
 
             if (!existing.completed) {
-              if (existing.startMin !== startMin) {
-                existing.startMin = startMin;
-                existing.endMin = startMin + duration;
-                existing.userShifted = false;
-                existing.manuallyPositioned = false;
-                changed = true;
-              }
-              if (existing.duration !== duration) {
-                existing.duration = duration;
-                existing.endMin = existing.startMin + duration;
-                changed = true;
-              }
-              if (isTaskLocked(existing) && existing.fixedStartMin !== startMin) {
-                existing.fixedStartMin = startMin;
-                changed = true;
+              if (existing.userShifted) {
+                // User has manually shifted this event in Flow App:
+                // PRESERVE the user's custom shifted time!
+                // Do not overwrite existing.startMin, existing.endMin, or existing.userShifted.
+              } else {
+                if (existing.startMin !== startMin) {
+                  existing.startMin = startMin;
+                  existing.endMin = startMin + duration;
+                  changed = true;
+                }
+                if (existing.duration !== duration) {
+                  existing.duration = duration;
+                  existing.endMin = existing.startMin + duration;
+                  changed = true;
+                }
+                if (isTaskLocked(existing) && existing.fixedStartMin !== startMin) {
+                  existing.fixedStartMin = startMin;
+                  changed = true;
+                }
               }
             } else if (existing.startMin == null) {
               existing.startMin = startMin;
