@@ -800,6 +800,9 @@
             <button onclick="fetchGoogleCalendarLive(true)" class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition flex items-center gap-1.5">
               <span>🔄</span> Auto-Pull Calendar Now
             </button>
+            <button onclick="resetAllTasksToCalendarTimes()" class="px-3 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-300 border border-amber-500/30 font-semibold text-xs transition flex items-center gap-1.5" title="Reset all calendar events back to their original scheduled Google Calendar slots">
+              <span>↺</span> Reset All to Calendar Times
+            </button>
             <button onclick="fetchGmailActionItemsLive()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs transition flex items-center gap-1.5">
               <span>✉️</span> Pull Gmail Action Items
             </button>
@@ -6415,6 +6418,24 @@
       showRippleNotice(`↺ Reset "${t.title}" to Google Calendar time (${formatMinToTime(t.startMin)})`);
     }
 
+    function resetAllTasksToCalendarTimes() {
+      let resetCount = 0;
+      state.tasks.forEach(t => {
+        if (t.fromCalendar && t.gcalStartMin != null) {
+          t.startMin = t.gcalStartMin;
+          t.duration = t.gcalDuration || t.duration || 30;
+          t.endMin = t.startMin + t.duration;
+          t.userShifted = false;
+          t.manuallyPositioned = false;
+          if (isTaskLocked(t)) t.fixedStartMin = t.startMin;
+          resetCount++;
+        }
+      });
+      saveState();
+      recalculateSchedule();
+      showRippleNotice(`↺ Restored ${resetCount} calendar events to scheduled Google Calendar times.`);
+    }
+
     function rippleShiftScheduleToNow(notify = true) {
       const today = new Date();
       const nowMin = today.getHours() * 60 + today.getMinutes();
@@ -6423,17 +6444,19 @@
       const bufferMin = includeBuffers ? 10 : 0;
 
       const activeTasks = state.tasks.filter(t => isTaskScheduledForDate(t, today));
+      const isAnchored = (t) => isTaskLocked(t) || (t.fromCalendar && !t.userShifted);
+
       const lockedIntervals = activeTasks
-        .filter(t => isTaskLocked(t))
+        .filter(t => isAnchored(t))
         .map(f => ({
           start: f.startMin != null ? f.startMin : (f.fixedStartMin || 540),
           end: (f.startMin != null ? f.startMin : (f.fixedStartMin || 540)) + (f.duration || 30)
         }))
         .sort((a, b) => a.start - b.start);
 
-      // Incomplete flexible tasks currently on today's schedule
+      // Incomplete flexible tasks currently on today's schedule (never auto-ripple Google Calendar events!)
       const flexibleTasks = activeTasks
-        .filter(t => !isTaskLocked(t) && !t.completed && t.startMin != null)
+        .filter(t => !isAnchored(t) && !t.completed && t.startMin != null)
         .sort((a, b) => a.startMin - b.startMin);
 
       if (flexibleTasks.length === 0) {
@@ -8112,7 +8135,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
 
         const activeTasks = state.tasks.filter(x => isTaskScheduledForDate(x, today));
         const lockedIntervals = activeTasks
-          .filter(x => isTaskLocked(x) && String(x.id) !== String(taskId))
+          .filter(x => (isTaskLocked(x) || x.fromCalendar) && String(x.id) !== String(taskId))
           .map(f => ({
             start: f.fixedStartMin || f.startMin || 540,
             end: (f.fixedStartMin || f.startMin || 540) + (f.duration || 30)
@@ -8120,7 +8143,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
           .sort((a, b) => a.start - b.start);
 
         const downstreamFlexible = activeTasks
-          .filter(x => String(x.id) !== String(taskId) && !isTaskLocked(x) && x.startMin != null && !x.completed)
+          .filter(x => String(x.id) !== String(taskId) && !isTaskLocked(x) && !x.fromCalendar && x.startMin != null && !x.completed)
           .sort((a, b) => a.startMin - b.startMin);
 
         let rippleCursor = tEnd + bufferMin;
@@ -8137,7 +8160,6 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
                 st.startMin = stCur;
                 st.endMin = stCur + stDur;
                 st.manuallyPositioned = true;
-                st.userShifted = true;
                 rippleCursor = st.endMin + bufferMin;
                 stPlaced = true;
               }
@@ -8477,7 +8499,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         const bufferMin = includeBuffers ? 10 : 0;
         const activeTasks = state.tasks.filter(x => isTaskScheduledForDate(x, today));
         const lockedIntervals = activeTasks
-          .filter(x => isTaskLocked(x) && x.id !== t.id)
+          .filter(x => (isTaskLocked(x) || x.fromCalendar) && x.id !== t.id)
           .map(f => ({
             start: f.fixedStartMin || f.startMin || 540,
             end: (f.fixedStartMin || f.startMin || 540) + (f.duration || 30)
@@ -8485,7 +8507,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
           .sort((a, b) => a.start - b.start);
 
         const subsequentFlexible = activeTasks
-          .filter(x => !isTaskLocked(x) && x.id !== t.id && x.startMin != null && x.startMin >= t.startMin && !x.completed && !x.allowOverlap)
+          .filter(x => !isTaskLocked(x) && !x.fromCalendar && x.id !== t.id && x.startMin != null && x.startMin >= t.startMin && !x.completed && !x.allowOverlap)
           .sort((a, b) => a.startMin - b.startMin);
 
         let cursor = t.endMin + bufferMin;
@@ -8604,6 +8626,19 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         return true;
       });
 
+      // 1.4 Ensure Google Calendar events without an explicit user shift remain anchored to their gcalStartMin
+      state.tasks.forEach(t => {
+        if (t.fromCalendar && t.gcalStartMin != null && !t.completed) {
+          if (t.startMin !== t.gcalStartMin) {
+            t.startMin = t.gcalStartMin;
+            t.duration = t.gcalDuration || t.duration || 30;
+            t.endMin = t.startMin + t.duration;
+            t.userShifted = false;
+            t.manuallyPositioned = false;
+          }
+        }
+      });
+
       // 1.5 Auto-correct "Make Pumpkin Bread" or completed tasks marked completed today that were erroneously left extending into the future
       state.tasks.forEach(t => {
         if (t.completed && (t.title || '').toLowerCase().includes('pumpkin bread') && t.endMin != null && t.endMin > roundedNowMin) {
@@ -8644,13 +8679,14 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       }
 
       const activeTasks = state.tasks.filter(t => isTaskScheduledForDate(t, today));
-      const lockedAnchors = activeTasks.filter(t => isTaskLocked(t)).sort((a, b) => (a.fixedStartMin || a.startMin || 540) - (b.fixedStartMin || b.startMin || 540));
+      const isAnchored = (t) => isTaskLocked(t) || (t.fromCalendar && !t.userShifted);
+      const lockedAnchors = activeTasks.filter(t => isAnchored(t)).sort((a, b) => (a.fixedStartMin || a.startMin || 540) - (b.fixedStartMin || b.startMin || 540));
       lockedAnchors.forEach(ft => {
         if (ft.fixedStartMin != null) ft.startMin = ft.fixedStartMin;
         ft.endMin = ft.startMin + (ft.duration || 30);
       });
 
-      const flexible = activeTasks.filter(t => !isTaskLocked(t));
+      const flexible = activeTasks.filter(t => !isAnchored(t));
 
       // 3. Separate preserved tasks (completed, calendar events, or already scheduled in a valid upcoming slot) from unassigned tasks
       const overflow = [];
@@ -8991,7 +9027,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       // 2. Locked events (anchors that cannot move unless sourceTask itself is locked)
       const activeTasks = state.tasks.filter(t => isTaskScheduledForDate(t, today));
       const lockedIntervals = activeTasks
-        .filter(t => isTaskLocked(t) && String(t.id) !== String(sourceId))
+        .filter(t => (isTaskLocked(t) || t.fromCalendar) && String(t.id) !== String(sourceId))
         .map(f => ({
           start: f.fixedStartMin || f.startMin || 540,
           end: (f.fixedStartMin || f.startMin || 540) + (f.duration || 30),
@@ -9024,7 +9060,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       // 4. Ripple only SUBSEQUENT flexible tasks that collide if neither allows overlap
       if (!sourceTask.allowOverlap) {
         const otherFlexible = activeTasks
-          .filter(t => String(t.id) !== String(sourceId) && !isTaskLocked(t) && t.startMin != null && !t.completed && !t.allowOverlap)
+          .filter(t => String(t.id) !== String(sourceId) && !isTaskLocked(t) && !t.fromCalendar && t.startMin != null && !t.completed && !t.allowOverlap)
           .sort((a, b) => a.startMin - b.startMin);
 
         let rippleCursor = sourceTask.endMin + bufferMin;
@@ -9042,7 +9078,6 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
                 st.startMin = stCur;
                 st.endMin = stCur + stDur;
                 st.manuallyPositioned = true;
-                st.userShifted = true;
                 rippleCursor = st.endMin + bufferMin;
                 stPlaced = true;
               }
@@ -9079,14 +9114,14 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         const includeBuffers = document.getElementById('bufferToggle')?.checked || false;
         const bufferMin = includeBuffers ? 10 : 0;
         const activeTasks = state.tasks.filter(x => isTaskScheduledForDate(x, today));
-        const lockedIntervals = activeTasks.filter(x => isTaskLocked(x) && x.id !== taskId).map(f => ({
+        const lockedIntervals = activeTasks.filter(x => (isTaskLocked(x) || x.fromCalendar) && x.id !== taskId).map(f => ({
           start: f.fixedStartMin || f.startMin || 540,
           end: (f.fixedStartMin || f.startMin || 540) + (f.duration || 30),
           allowOverlap: !!f.allowOverlap
         }));
 
         const subsequentFlexible = activeTasks
-          .filter(x => !isTaskLocked(x) && x.id !== taskId && x.startMin != null && x.startMin >= newStart && !x.completed && !x.allowOverlap)
+          .filter(x => !isTaskLocked(x) && !x.fromCalendar && x.id !== taskId && x.startMin != null && x.startMin >= newStart && !x.completed && !x.allowOverlap)
           .sort((a, b) => a.startMin - b.startMin);
 
         let cursor = t.endMin + bufferMin;
@@ -10248,33 +10283,27 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
               existing.needsReview = pInfo.needsReview;
             }
 
-            // Preserve user manual shift in Flow App
+            // When syncing calendar, always restore to Google Calendar's true scheduled time
             existing.gcalStartMin = startMin;
             existing.gcalDuration = duration;
-            const isUserShifted = !!(existing.manuallyPositioned || existing.userShifted);
             let changed = false;
 
             if (!existing.completed) {
-              if (existing.startMin == null) {
+              if (existing.startMin !== startMin) {
                 existing.startMin = startMin;
                 existing.endMin = startMin + duration;
+                existing.userShifted = false;
+                existing.manuallyPositioned = false;
                 changed = true;
-              } else if (!isUserShifted) {
-                // Only update start time from Google Calendar if the user hasn't shifted it in Flow App
-                if (existing.startMin !== startMin) {
-                  existing.startMin = startMin;
-                  existing.endMin = startMin + (existing.duration || duration);
-                  changed = true;
-                }
-                if (existing.duration !== duration) {
-                  existing.duration = duration;
-                  existing.endMin = existing.startMin + duration;
-                  changed = true;
-                }
-                if (isTaskLocked(existing) && existing.fixedStartMin !== startMin) {
-                  existing.fixedStartMin = startMin;
-                  changed = true;
-                }
+              }
+              if (existing.duration !== duration) {
+                existing.duration = duration;
+                existing.endMin = existing.startMin + duration;
+                changed = true;
+              }
+              if (isTaskLocked(existing) && existing.fixedStartMin !== startMin) {
+                existing.fixedStartMin = startMin;
+                changed = true;
               }
             } else if (existing.startMin == null) {
               existing.startMin = startMin;
@@ -10328,6 +10357,8 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
               endMin: startMin + duration,
               gcalStartMin: startMin,
               gcalDuration: duration,
+              userShifted: false,
+              manuallyPositioned: false,
               scheduledDate: getLocalDateString(),
               completed: false,
               recurring: false,
