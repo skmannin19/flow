@@ -251,6 +251,7 @@
         <div>
           <div class="flex flex-wrap items-center gap-2">
             <span class="text-[11px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 font-semibold">Zero-Friction Next Action</span>
+            <span id="recTimeBadge" class="text-[10px] font-mono px-2 py-0.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold hidden"></span>
             <span id="recEnergyStatus" class="text-xs dark:text-slate-400 text-slate-500">Matched to your Chronotype & Bandwidth</span>
           </div>
           <h2 id="recTaskTitle" class="text-base font-semibold dark:text-white text-slate-900 mt-1">Ready for your focus block</h2>
@@ -5891,7 +5892,51 @@
       const today = new Date();
       const incomplete = state.tasks.filter(t => !t.completed && t.type !== 'FIXED' && isTaskScheduledForDate(t, today));
       if (incomplete.length === 0) return null;
-      return incomplete.find(t => t.type === 'MIT' && t.energy === state.energy) || incomplete.find(t => t.energy === state.energy) || incomplete.find(t => t.type === 'MIT') || incomplete[0];
+
+      const now = new Date();
+      const nowMin = now.getHours() * 60 + now.getMinutes();
+
+      // 1. Currently active task on today's timeline (in progress right now)
+      const activeCurrent = incomplete.filter(t => t.startMin != null && t.endMin != null && t.startMin <= nowMin && t.endMin > nowMin);
+      if (activeCurrent.length > 0) {
+        return activeCurrent.find(t => t.type === 'MIT' && t.energy === state.energy)
+            || activeCurrent.find(t => t.energy === state.energy)
+            || activeCurrent.find(t => t.type === 'MIT')
+            || activeCurrent[0];
+      }
+
+      // 2. Next upcoming scheduled task today (earliest start time at or after nowMin)
+      const upcoming = incomplete
+        .filter(t => t.startMin != null && t.startMin >= nowMin)
+        .sort((a, b) => a.startMin - b.startMin);
+
+      if (upcoming.length > 0) {
+        const earliestStart = upcoming[0].startMin;
+        // If multiple tasks start at or within 15 mins of the next slot, pick the best energy/MIT match
+        const immediateUpcoming = upcoming.filter(t => t.startMin <= earliestStart + 15);
+        return immediateUpcoming.find(t => t.type === 'MIT' && t.energy === state.energy)
+            || immediateUpcoming.find(t => t.energy === state.energy)
+            || immediateUpcoming.find(t => t.type === 'MIT')
+            || immediateUpcoming[0];
+      }
+
+      // 3. Overdue / in-progress earlier task scheduled earlier today that hasn't been completed
+      const pastScheduled = incomplete
+        .filter(t => t.endMin != null && t.endMin <= nowMin)
+        .sort((a, b) => b.endMin - a.endMin);
+
+      if (pastScheduled.length > 0) {
+        return pastScheduled.find(t => t.type === 'MIT' && t.energy === state.energy)
+            || pastScheduled.find(t => t.energy === state.energy)
+            || pastScheduled.find(t => t.type === 'MIT')
+            || pastScheduled[0];
+      }
+
+      // 4. Fallback for unslotted/flexible tasks (no startMin assigned)
+      return incomplete.find(t => t.type === 'MIT' && t.energy === state.energy)
+          || incomplete.find(t => t.energy === state.energy)
+          || incomplete.find(t => t.type === 'MIT')
+          || incomplete[0];
     }
 
     function updateRecommendationBanner() {
@@ -5916,6 +5961,28 @@
 
       document.getElementById('recIcon').textContent = icons[state.energy] || '🟡';
       document.getElementById('recEnergyStatus').textContent = phaseLabel;
+
+      const timeBadge = document.getElementById('recTimeBadge');
+      if (timeBadge) {
+        if (rec && rec.startMin != null && rec.endMin != null) {
+          if (rec.startMin <= nowMins && rec.endMin > nowMins) {
+            timeBadge.textContent = `⚡ Active Now (${formatMinToTime(rec.startMin)} – ${formatMinToTime(rec.endMin)})`;
+            timeBadge.className = 'text-[10px] font-mono px-2 py-0.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold';
+            timeBadge.classList.remove('hidden');
+          } else if (rec.startMin > nowMins) {
+            timeBadge.textContent = `🕒 Upcoming (${formatMinToTime(rec.startMin)} – ${formatMinToTime(rec.endMin)})`;
+            timeBadge.className = 'text-[10px] font-mono px-2 py-0.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold';
+            timeBadge.classList.remove('hidden');
+          } else {
+            timeBadge.textContent = `⏳ Due (${formatMinToTime(rec.startMin)} – ${formatMinToTime(rec.endMin)})`;
+            timeBadge.className = 'text-[10px] font-mono px-2 py-0.5 rounded-full border border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold';
+            timeBadge.classList.remove('hidden');
+          }
+        } else {
+          timeBadge.classList.add('hidden');
+        }
+      }
+
       if (!rec) {
         document.getElementById('recTaskTitle').textContent = '🎉 All scheduled work blocks complete!';
         document.getElementById('recSubStep').textContent = 'Enjoy your evening wind-down.';
