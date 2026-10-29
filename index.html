@@ -9802,7 +9802,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         }
 
         const t = item.task, p = getCircadianPhaseForMinute(t.startMin);
-        const isPast = t.completed || (t.endMin < nowMin);
+        const isPast = isTomorrowTimeline ? !!t.completed : (t.completed || (t.endMin < nowMin));
         const locked = isTaskLocked(t);
 
         // Find all other scheduled tasks in blocks overlapping in time with t
