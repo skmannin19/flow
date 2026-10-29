@@ -187,6 +187,13 @@
           <span>Sync Mobile</span>
         </button>
 
+        <!-- Plan Tomorrow Trigger -->
+        <button onclick="openPlanTomorrowModal()" id="planTomorrowNavBtn" class="text-xs px-3 py-2 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-700 dark:text-indigo-300 border border-indigo-500/35 transition flex items-center gap-1.5 font-semibold" title="Plan tomorrow's schedule: review calendar events, organize deferred tasks, and add priorities">
+          <span>🌙</span>
+          <span class="hidden sm:inline">Plan Tomorrow</span>
+          <span id="planTomorrowBadge" class="hidden text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-indigo-500 text-white font-bold"></span>
+        </button>
+
         <button onclick="toggleHorizonModal()" class="text-xs px-3 py-2 rounded-lg dark:bg-slate-800 bg-slate-200 hover:dark:bg-slate-700 hover:bg-slate-300 dark:text-slate-200 text-slate-800 dark:border-slate-700 border-slate-300 border transition flex items-center gap-1.5">
           <span>🎯</span> <span class="hidden sm:inline">Horizons</span>
         </button>
@@ -423,29 +430,53 @@
             </h3>
             <p class="text-xs dark:text-slate-400 text-slate-500 mt-0.5">Matches MITs to Peak windows, injects Trough rest breaks, & ripples on overrun.</p>
           </div>
-
-          <div class="flex flex-wrap items-center gap-2">
-            <button onclick="fetchGoogleCalendarLive(true)" class="px-2.5 py-1.5 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 text-xs font-semibold transition flex items-center gap-1.5" title="Pull updates and prune deleted meetings from Google Calendar">
-              <span>🔄</span> <span>Sync Calendar</span>
-            </button>
-            <button onclick="rippleShiftScheduleToNow(true)" class="px-2.5 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-xs font-semibold transition flex items-center gap-1.5" title="Pull upcoming flexible tasks forward to the current time, preserving locked anchors">
-              <span>⚡</span> <span>Ripple Up</span>
-            </button>
-            <label class="flex items-center gap-1.5 text-xs dark:text-slate-300 text-slate-700 dark:bg-slate-950 bg-slate-100 px-2.5 py-1.5 rounded-lg border dark:border-slate-800 border-slate-300 cursor-pointer">
-              <input type="checkbox" id="bufferToggle" checked onchange="recalculateSchedule()" class="accent-indigo-500 rounded" />
-              <span>Circadian Breaks & Buffers</span>
-            </label>
-            <button onclick="optimizeByChronotype()" class="px-3 py-1.5 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 text-xs font-semibold transition">
-              🧬 Align to Wave
-            </button>
-            <button onclick="triggerManualRollover()" class="px-2.5 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 text-xs font-semibold transition flex items-center gap-1" title="Manually roll over incomplete tasks & reset daily routines to today">
-              <span>🌅</span> <span class="hidden sm:inline">New Day</span>
-            </button>
-            <button onclick="resetDefaultData()" class="px-2.5 py-1.5 rounded-lg dark:bg-slate-800 bg-slate-200 hover:dark:bg-slate-700 hover:bg-slate-300 dark:text-slate-400 text-slate-700 text-xs transition" title="Restore default sample tasks">
-              ↺
+          <!-- Day View Switcher (Today vs Tomorrow) -->
+          <div class="inline-flex items-center p-0.5 rounded-xl dark:bg-slate-950 bg-slate-100 border dark:border-slate-800 border-slate-300 text-xs font-semibold">
+            <button id="viewDateTodayBtn" onclick="setTimelineViewDate('today')" class="px-3 py-1 rounded-lg transition bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm">Today</button>
+            <button id="viewDateTomorrowBtn" onclick="setTimelineViewDate('tomorrow')" class="px-3 py-1 rounded-lg transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center gap-1.5" title="Preview tomorrow's scheduled blocks and calendar sessions">
+              <span>🌙 Tomorrow</span>
+              <span id="tomorrowCountPill" class="hidden text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-indigo-500 text-white font-bold"></span>
             </button>
           </div>
         </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <button onclick="openPlanTomorrowModal()" class="px-2.5 py-1.5 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-700 dark:text-indigo-300 border border-indigo-500/35 text-xs font-semibold transition flex items-center gap-1.5" title="Plan tomorrow's schedule: review calendar events, organize deferred tasks, and add priorities">
+            <span>🌙</span> <span>Plan Tomorrow</span>
+          </button>
+          <button onclick="fetchGoogleCalendarLive(true)" class="px-2.5 py-1.5 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 text-xs font-semibold transition flex items-center gap-1.5" title="Pull updates and prune deleted meetings from Google Calendar">
+            <span>🔄</span> <span>Sync Calendar</span>
+          </button>
+          <button onclick="rippleShiftScheduleToNow(true)" class="px-2.5 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-xs font-semibold transition flex items-center gap-1.5" title="Pull upcoming flexible tasks forward to the current time, preserving locked anchors">
+            <span>⚡</span> <span>Ripple Up</span>
+          </button>
+          <label class="flex items-center gap-1.5 text-xs dark:text-slate-300 text-slate-700 dark:bg-slate-950 bg-slate-100 px-2.5 py-1.5 rounded-lg border dark:border-slate-800 border-slate-300 cursor-pointer">
+            <input type="checkbox" id="bufferToggle" checked onchange="recalculateSchedule()" class="accent-indigo-500 rounded" />
+            <span>Circadian Breaks & Buffers</span>
+          </label>
+          <button onclick="optimizeByChronotype()" class="px-3 py-1.5 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 text-xs font-semibold transition">
+            🧬 Align to Wave
+          </button>
+          <button onclick="triggerManualRollover()" class="px-2.5 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 text-xs font-semibold transition flex items-center gap-1" title="Manually roll over incomplete tasks & reset daily routines to today">
+            <span>🌅</span> <span class="hidden sm:inline">New Day</span>
+          </button>
+          <button onclick="resetDefaultData()" class="px-2.5 py-1.5 rounded-lg dark:bg-slate-800 bg-slate-200 hover:dark:bg-slate-700 hover:bg-slate-300 dark:text-slate-400 text-slate-700 text-xs transition" title="Restore default sample tasks">
+            ↺
+          </button>
+        </div>
+      </div>
+
+      <!-- Tomorrow Preview Notice Banner -->
+      <div id="tomorrowPreviewAlert" class="hidden my-3 px-3.5 py-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-700 dark:text-indigo-300 text-xs flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span>🌙</span>
+          <span id="tomorrowPreviewAlertText">Previewing Tomorrow's Planned Schedule</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="openPlanTomorrowModal()" class="px-2 py-1 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-700 dark:text-indigo-300 font-semibold transition">Edit Tomorrow's Plan</button>
+          <button onclick="setTimelineViewDate('today')" class="px-2 py-1 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold transition">Return to Today</button>
+        </div>
+      </div>
 
         <div id="rippleAlert" class="hidden my-3 px-3.5 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs flex items-center justify-between">
           <span id="rippleAlertText">⚡ Schedule dynamically adjusted around your fixed anchors.</span>
@@ -1561,6 +1592,127 @@
         <button type="button" onclick="confirmDeferTomorrow()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition shadow-md shadow-indigo-600/30 flex items-center gap-1.5">
           <span>🌅</span> Confirm for Tomorrow
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PLAN TOMORROW MODAL -->
+  <div id="planTomorrowModal" onclick="if(event.target === this) closePlanTomorrowModal()" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="dark:bg-slate-900 bg-white border dark:border-slate-800 border-slate-200 rounded-3xl p-4 sm:p-6 w-full max-w-2xl max-h-[92vh] flex flex-col shadow-2xl relative">
+      <!-- Header -->
+      <div class="flex items-start justify-between pb-3 border-b dark:border-slate-800 border-slate-200 shrink-0">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-xl">🌙</span>
+            <h3 class="text-base sm:text-lg font-bold dark:text-white text-slate-900">Plan Tomorrow</h3>
+            <span id="planTomorrowDateBadge" class="text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30">Friday, Oct 30</span>
+          </div>
+          <p class="text-xs dark:text-slate-400 text-slate-500 mt-1">Review calendar commitments, organize deferred tasks, and set tomorrow's focus blocks tonight.</p>
+        </div>
+        <button type="button" onclick="closePlanTomorrowModal()" class="text-slate-400 hover:text-white text-sm px-2.5 py-1 rounded-lg bg-slate-200 dark:bg-slate-800 transition" title="Close">✕</button>
+      </div>
+
+      <!-- Scrollable Body -->
+      <div class="overflow-y-auto flex-1 py-4 space-y-5 pr-1 text-xs">
+        <!-- 1. Tomorrow's Google Calendar Events -->
+        <div class="p-3.5 rounded-2xl dark:bg-slate-950/70 bg-slate-50 border dark:border-slate-800 border-slate-200 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1.5 font-bold uppercase tracking-wider text-[11px] text-indigo-600 dark:text-indigo-400 font-mono">
+              <span>🗓️</span> Tomorrow's Google Calendar Events
+            </div>
+            <button type="button" onclick="syncTomorrowGoogleCalendar(true)" class="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1">
+              <span>🔄</span> Sync Tomorrow
+            </button>
+          </div>
+          <div id="tomorrowCalendarEventsList" class="space-y-2">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- 2. Tasks Pushed / Deferred from Today -->
+        <div class="p-3.5 rounded-2xl dark:bg-slate-950/70 bg-slate-50 border dark:border-slate-800 border-slate-200 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1.5 font-bold uppercase tracking-wider text-[11px] text-amber-600 dark:text-amber-400 font-mono">
+              <span>🛡️</span> Deferred & Carried Over from Today
+            </div>
+            <span id="tomorrowDeferredCount" class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 font-bold">0 tasks</span>
+          </div>
+          <div id="tomorrowDeferredTasksList" class="space-y-2">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- 3. Add Top-of-Mind Priority for Tomorrow -->
+        <div class="p-3.5 rounded-2xl dark:bg-slate-950/70 bg-slate-50 border dark:border-slate-800 border-slate-200 space-y-2.5">
+          <div class="flex items-center gap-1.5 font-bold uppercase tracking-wider text-[11px] text-emerald-600 dark:text-emerald-400 font-mono">
+            <span>✨</span> Add Top-of-Mind Priority for Tomorrow
+          </div>
+          <div class="space-y-2">
+            <input type="text" id="newTomorrowTaskInput" placeholder="What priority needs to happen tomorrow?" class="w-full dark:bg-slate-900 bg-white border dark:border-slate-700 border-slate-300 rounded-xl px-3 py-2 text-xs dark:text-slate-100 text-slate-900 focus:outline-none focus:border-indigo-500" onkeydown="if(event.key==='Enter') addTomorrowTaskFromModal()" />
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div>
+                <label class="block text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500 mb-0.5">Priority</label>
+                <select id="newTomorrowTaskType" class="w-full dark:bg-slate-900 bg-white border dark:border-slate-700 border-slate-300 rounded-xl px-2.5 py-1.5 text-xs dark:text-slate-200 text-slate-800">
+                  <option value="MIT">🔥 MIT (High Stakes)</option>
+                  <option value="LIT" selected>📋 LIT (Admin/Batch)</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500 mb-0.5">Duration</label>
+                <select id="newTomorrowTaskDuration" class="w-full dark:bg-slate-900 bg-white border dark:border-slate-700 border-slate-300 rounded-xl px-2.5 py-1.5 text-xs dark:text-slate-200 text-slate-800">
+                  <option value="15">15m (Micro)</option>
+                  <option value="30" selected>30m (Quick)</option>
+                  <option value="45">45m (Focused)</option>
+                  <option value="60">60m (Deep)</option>
+                  <option value="90">90m (Ultra-Deep)</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[10px] font-mono uppercase dark:text-slate-400 text-slate-500 mb-0.5">Preferred Slot</label>
+                <select id="newTomorrowTaskSlot" class="w-full dark:bg-slate-900 bg-white border dark:border-slate-700 border-slate-300 rounded-xl px-2.5 py-1.5 text-xs dark:text-slate-200 text-slate-800">
+                  <option value="" selected>🌊 Auto Peak Wave</option>
+                  <option value="540">9:00 AM (Kickoff)</option>
+                  <option value="660">11:00 AM (Peak)</option>
+                  <option value="840">2:00 PM (Trough)</option>
+                  <option value="990">4:30 PM (Rebound)</option>
+                  <option value="1110">6:30 PM (Evening)</option>
+                </select>
+              </div>
+            </div>
+            <button type="button" onclick="addTomorrowTaskFromModal()" class="w-full py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition flex items-center justify-center gap-1.5">
+              <span>+</span> <span>Add to Tomorrow's Plan</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 4. Tomorrow's Schedule Preview & Focus Load -->
+        <div class="p-3.5 rounded-2xl dark:bg-slate-950/70 bg-slate-50 border dark:border-slate-800 border-slate-200 space-y-2">
+          <div class="flex items-center justify-between text-[11px] font-mono">
+            <span class="font-bold text-slate-700 dark:text-slate-300 uppercase">📊 Tomorrow's Schedule & Focus Load</span>
+            <span id="tomorrowCapacityText" class="text-indigo-600 dark:text-indigo-400 font-semibold">0.0 / 6.0 hrs focus load</span>
+          </div>
+          <div class="w-full h-2 rounded-full dark:bg-slate-800 bg-slate-200 overflow-hidden">
+            <div id="tomorrowCapacityBar" class="h-full bg-indigo-500 rounded-full transition-all duration-300" style="width: 0%"></div>
+          </div>
+          <div id="tomorrowTimelinePreviewList" class="space-y-1.5 pt-1">
+            <!-- Timeline preview list -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer Actions -->
+      <div class="pt-3 border-t dark:border-slate-800 border-slate-200 flex items-center justify-between shrink-0">
+        <button type="button" onclick="viewTomorrowOnTimeline()" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-semibold flex items-center gap-1">
+          <span>🗓️</span> <span>Open Full Tomorrow Timeline</span>
+        </button>
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="closePlanTomorrowModal()" class="px-3.5 py-2 rounded-xl text-xs bg-slate-200 dark:bg-slate-800 dark:text-slate-300 text-slate-700 hover:opacity-80 transition font-medium">
+            Close
+          </button>
+          <button type="button" onclick="confirmSaveTomorrowPlan()" class="px-4 py-2 rounded-xl text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition flex items-center gap-1.5 shadow-md shadow-indigo-600/30">
+            <span>✓</span> <span>Lock In Tomorrow's Plan</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -7338,6 +7490,289 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
     }
 
     // ==========================================
+    // PLAN TOMORROW NIGHT-BEFORE PLANNING ENGINE
+    // ==========================================
+    window.activeTimelineViewDate = 'today';
+
+    function setTimelineViewDate(view) {
+      window.activeTimelineViewDate = view;
+      const todayBtn = document.getElementById('viewDateTodayBtn');
+      const tomorrowBtn = document.getElementById('viewDateTomorrowBtn');
+      if (todayBtn && tomorrowBtn) {
+        if (view === 'tomorrow') {
+          todayBtn.className = 'px-3 py-1 rounded-lg transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white';
+          tomorrowBtn.className = 'px-3 py-1 rounded-lg transition bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm flex items-center gap-1.5 font-bold';
+        } else {
+          todayBtn.className = 'px-3 py-1 rounded-lg transition bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm';
+          tomorrowBtn.className = 'px-3 py-1 rounded-lg transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center gap-1.5';
+        }
+      }
+      recalculateSchedule();
+    }
+
+    function openPlanTomorrowModal() {
+      const tom = new Date(Date.now() + 86400000);
+      const dateOptions = { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' };
+      const dateBadge = document.getElementById('planTomorrowDateBadge');
+      if (dateBadge) {
+        dateBadge.textContent = tom.toLocaleDateString('en-US', dateOptions);
+      }
+
+      renderPlanTomorrowContent();
+
+      const modal = document.getElementById('planTomorrowModal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+
+      // Auto-fetch tomorrow's calendar in background if Google Calendar is authorized
+      if (typeof googleAccessToken !== 'undefined' && googleAccessToken) {
+        syncTomorrowGoogleCalendar(false);
+      }
+    }
+
+    function closePlanTomorrowModal() {
+      const modal = document.getElementById('planTomorrowModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    async function syncTomorrowGoogleCalendar(showFeedback = true) {
+      const tom = new Date(Date.now() + 86400000);
+      try {
+        await fetchGoogleCalendarLive(showFeedback, tom);
+        renderPlanTomorrowContent();
+      } catch (err) {
+        console.warn('Failed syncing tomorrow calendar:', err);
+      }
+    }
+
+    function renderPlanTomorrowContent() {
+      const tomStr = getTomorrowDateString();
+      const todayStr = getLocalDateString();
+      const tomDate = new Date(Date.now() + 86400000);
+
+      // 1. Render Google Calendar Events for Tomorrow
+      const calContainer = document.getElementById('tomorrowCalendarEventsList');
+      const tomorrowCalTasks = state.tasks.filter(t => t.fromCalendar && t.scheduledDate === tomStr);
+
+      if (calContainer) {
+        if (!googleAccessToken) {
+          calContainer.innerHTML = `
+            <div class="flex items-center justify-between p-3 rounded-xl dark:bg-slate-900 bg-white border dark:border-slate-800 border-slate-200">
+              <span class="text-slate-500">Sign in with Google to view tomorrow's meetings and commitments.</span>
+              <button onclick="requestGoogleAuth()" class="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs transition">Sign In</button>
+            </div>
+          `;
+        } else if (tomorrowCalTasks.length === 0) {
+          calContainer.innerHTML = `
+            <div class="p-3 text-center rounded-xl dark:bg-slate-900 bg-white border dark:border-slate-800 border-slate-200 text-slate-400 italic">
+              No calendar events detected for tomorrow. Click "Sync Tomorrow" to pull from Google Calendar.
+            </div>
+          `;
+        } else {
+          calContainer.innerHTML = tomorrowCalTasks.map(t => `
+            <div class="flex items-center justify-between p-2.5 rounded-xl dark:bg-slate-900 bg-white border dark:border-slate-800 border-slate-200 gap-2">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold shrink-0">
+                  ${formatMinToTime(t.startMin)} – ${formatMinToTime(t.endMin)}
+                </span>
+                <span class="font-semibold dark:text-slate-200 text-slate-800 truncate">${t.title}</span>
+                <span class="text-[9px] font-mono px-1 rounded border border-indigo-500/30 text-indigo-500 shrink-0">${t.calendarName || 'Calendar'}</span>
+              </div>
+              <span class="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold shrink-0">✓ Anchored</span>
+            </div>
+          `).join('');
+        }
+      }
+
+      // 2. Render Deferred / Carried-Over Tasks
+      const defContainer = document.getElementById('tomorrowDeferredTasksList');
+      const countEl = document.getElementById('tomorrowDeferredCount');
+      const deferredForTomorrow = state.tasks.filter(t => !t.fromCalendar && !t.completed && (t.scheduledDate === tomStr || t.manuallyDeferred));
+      const todayFlexibleIncomplete = state.tasks.filter(t => !t.fromCalendar && !t.completed && (!t.scheduledDate || t.scheduledDate === todayStr) && !t.manuallyDeferred);
+
+      if (countEl) countEl.textContent = `${deferredForTomorrow.length} planned`;
+
+      if (defContainer) {
+        let html = '';
+        if (deferredForTomorrow.length > 0) {
+          html += deferredForTomorrow.map(t => `
+            <div class="flex items-center justify-between p-2.5 rounded-xl dark:bg-slate-900 bg-white border border-amber-500/30 dark:border-amber-500/30 gap-2">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="text-[10px] font-mono px-1.5 py-0.2 rounded ${t.type === 'MIT' ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 font-bold' : 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 font-semibold'} shrink-0">${t.type || 'LIT'}</span>
+                <span class="font-medium dark:text-slate-200 text-slate-800 truncate">${t.title}</span>
+                <span class="text-[10px] font-mono text-slate-400 shrink-0">(${t.duration || 30}m${t.startMin != null ? ' @ ' + formatMinToTime(t.startMin) : ''})</span>
+              </div>
+              <div class="flex items-center gap-1 shrink-0">
+                <button onclick="removeTaskFromTomorrow('${t.id}')" class="text-[10px] px-2 py-1 rounded-lg hover:bg-rose-500/10 text-rose-500 transition font-medium" title="Remove from tomorrow">✕ Remove</button>
+              </div>
+            </div>
+          `).join('');
+        }
+
+        // Show today's remaining tasks with option to push to tomorrow
+        if (todayFlexibleIncomplete.length > 0) {
+          html += `
+            <div class="pt-2">
+              <span class="text-[10px] font-mono uppercase text-slate-400 font-bold block mb-1">Unfinished tasks from today (Click to push to tomorrow):</span>
+              <div class="space-y-1.5">
+                ${todayFlexibleIncomplete.slice(0, 5).map(t => `
+                  <div class="flex items-center justify-between p-2 rounded-lg dark:bg-slate-950/60 bg-slate-100 border dark:border-slate-800/80 border-slate-200 text-[11px]">
+                    <span class="truncate dark:text-slate-300 text-slate-700 font-medium">${t.title} (${t.duration || 30}m)</span>
+                    <button onclick="pushTaskToTomorrow('${t.id}')" class="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-300 transition flex items-center gap-1 shrink-0">
+                      <span>➡️ Push to Tomorrow</span>
+                    </button>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        }
+
+        if (!html) {
+          html = '<p class="text-slate-400 italic py-1 text-center">No deferred tasks carried over.</p>';
+        }
+        defContainer.innerHTML = html;
+      }
+
+      // 3. Render Tomorrow's Timeline Preview & Capacity Bar
+      const allTomorrowTasks = state.tasks.filter(t => isTaskScheduledForDate(t, tomDate));
+      let totalTomFocus = 0;
+      allTomorrowTasks.forEach(t => {
+        if (!t.completed) totalTomFocus += (t.duration || 30);
+      });
+
+      const maxFocus = state.maxFocusMinutes || 360;
+      const pct = Math.min(100, Math.round((totalTomFocus / maxFocus) * 100));
+      const capText = document.getElementById('tomorrowCapacityText');
+      const capBar = document.getElementById('tomorrowCapacityBar');
+      if (capText) capText.textContent = `${(totalTomFocus / 60).toFixed(1)} / ${(maxFocus / 60).toFixed(1)} hrs planned`;
+      if (capBar) {
+        capBar.style.width = `${pct}%`;
+        capBar.className = pct > 100 ? 'h-full bg-rose-500 rounded-full' : 'h-full bg-indigo-500 rounded-full';
+      }
+
+      const timelinePreview = document.getElementById('tomorrowTimelinePreviewList');
+      if (timelinePreview) {
+        const sorted = [...allTomorrowTasks].sort((a, b) => (a.startMin || 540) - (b.startMin || 540));
+        if (sorted.length === 0) {
+          timelinePreview.innerHTML = '<p class="text-slate-400 italic py-2 text-center">Tomorrow is currently wide open! Add priorities above.</p>';
+        } else {
+          timelinePreview.innerHTML = sorted.map(t => `
+            <div class="flex items-center justify-between p-2 rounded-lg dark:bg-slate-900 bg-white border dark:border-slate-800 border-slate-200">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="font-mono text-[10px] text-slate-400 shrink-0">${t.startMin != null ? formatMinToTime(t.startMin) : 'Auto'}</span>
+                <span class="font-medium truncate dark:text-slate-200 text-slate-800">${t.title}</span>
+              </div>
+              <span class="text-[9px] font-mono px-1.5 py-0.2 rounded border ${t.fromCalendar ? 'border-indigo-400/30 text-indigo-500' : (t.type === 'MIT' ? 'border-rose-400/30 text-rose-500' : 'border-slate-400/30 text-slate-400')} shrink-0">${t.fromCalendar ? 'Calendar' : t.type}</span>
+            </div>
+          `).join('');
+        }
+      }
+
+      // Update badge counts on nav & timeline buttons
+      const badge = document.getElementById('planTomorrowBadge');
+      const countPill = document.getElementById('tomorrowCountPill');
+      const tomCount = allTomorrowTasks.length;
+      if (badge) {
+        if (tomCount > 0) {
+          badge.textContent = tomCount;
+          badge.classList.remove('hidden');
+        } else {
+          badge.classList.add('hidden');
+        }
+      }
+      if (countPill) {
+        if (tomCount > 0) {
+          countPill.textContent = tomCount;
+          countPill.classList.remove('hidden');
+        } else {
+          countPill.classList.add('hidden');
+        }
+      }
+    }
+
+    function addTomorrowTaskFromModal() {
+      const input = document.getElementById('newTomorrowTaskInput');
+      const title = input ? input.value.trim() : '';
+      if (!title) {
+        showRippleNotice('⚠️ Please enter a task title for tomorrow.');
+        return;
+      }
+
+      const type = document.getElementById('newTomorrowTaskType')?.value || 'LIT';
+      const duration = parseInt(document.getElementById('newTomorrowTaskDuration')?.value, 10) || 30;
+      const slotVal = document.getElementById('newTomorrowTaskSlot')?.value;
+      const slotMin = slotVal ? parseInt(slotVal, 10) : null;
+      const tomStr = getTomorrowDateString();
+
+      const newTask = {
+        id: 't_tom_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        title,
+        microStep: generateSmartBreakdown(title, type, 'steady').microStep,
+        type,
+        energy: 'steady',
+        duration,
+        scheduledDate: tomStr,
+        fixedStartMin: slotMin,
+        startMin: slotMin,
+        endMin: slotMin ? slotMin + duration : null,
+        locked: slotMin != null,
+        completed: false,
+        recurring: false,
+        fromCalendar: false,
+        subtasks: []
+      };
+
+      state.tasks.push(newTask);
+      input.value = '';
+      saveState();
+      recalculateSchedule();
+      renderPlanTomorrowContent();
+      showRippleNotice(`🌙 Added "${title}" to tomorrow's plan!`);
+    }
+
+    function pushTaskToTomorrow(taskId) {
+      const t = state.tasks.find(x => String(x.id) === String(taskId));
+      if (!t) return;
+      t.scheduledDate = getTomorrowDateString();
+      t.manuallyDeferred = false;
+      saveState();
+      recalculateSchedule();
+      renderPlanTomorrowContent();
+      showRippleNotice(`🌅 Pushed "${t.title}" to tomorrow.`);
+    }
+
+    function removeTaskFromTomorrow(taskId) {
+      const t = state.tasks.find(x => String(x.id) === String(taskId));
+      if (!t) return;
+      t.scheduledDate = getLocalDateString();
+      saveState();
+      recalculateSchedule();
+      renderPlanTomorrowContent();
+      showRippleNotice(`↺ Moved "${t.title}" back to today.`);
+    }
+
+    function viewTomorrowOnTimeline() {
+      closePlanTomorrowModal();
+      setTimelineViewDate('tomorrow');
+      showRippleNotice(`🌙 Now viewing tomorrow's timeline preview.`);
+    }
+
+    function confirmSaveTomorrowPlan() {
+      saveState();
+      if (typeof triggerLiveCloudSync === 'function') {
+        triggerLiveCloudSync();
+      }
+      closePlanTomorrowModal();
+      showRippleNotice(`🌙 Tomorrow's plan is locked in! Everything will be ready when you wake up.`);
+    }
+
+    // ==========================================
     // PRODUCTIVITY ANALYTICS & CHRONOTYPE ENGINE
     // ==========================================
     function trackTaskLifecycle(task, action) {
@@ -8699,10 +9134,12 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
     function recalculateSchedule() {
       const includeBuffers = document.getElementById('bufferToggle')?.checked || false;
       const c = state.chronotype;
+      const isTomorrowView = (window.activeTimelineViewDate === 'tomorrow');
+      const activeDate = isTomorrowView ? new Date(Date.now() + 86400000) : new Date();
       const today = new Date();
-      const nowMin = today.getHours() * 60 + today.getMinutes();
-      const roundedNowMin = Math.ceil(nowMin / 5) * 5;
-      window._lastRenderedMinute = nowMin;
+      const nowMin = isTomorrowView ? 540 : (today.getHours() * 60 + today.getMinutes());
+      const roundedNowMin = isTomorrowView ? 540 : (Math.ceil(nowMin / 5) * 5);
+      if (!isTomorrowView) window._lastRenderedMinute = nowMin;
 
       // 0. Safety Archive Prune: Ensure non-recurring tasks completed on previous days are archived & excluded from today
       const todayKey = getLocalDateString();
@@ -8807,7 +9244,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         saveState();
       }
 
-      const activeTasks = state.tasks.filter(t => isTaskScheduledForDate(t, today));
+      const activeTasks = state.tasks.filter(t => isTaskScheduledForDate(t, activeDate));
       const isAnchored = (t) => isTaskLocked(t) || t.fromCalendar;
       const lockedAnchors = activeTasks.filter(t => isAnchored(t)).sort((a, b) => (a.fixedStartMin || a.startMin || 540) - (b.fixedStartMin || b.startMin || 540));
       lockedAnchors.forEach(ft => {
@@ -8931,6 +9368,41 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       renderTimeline(blocks, overflow, nowMin, lockedAnchors);
       updateCapacityBar(focusMins);
       updateRecommendationBanner();
+
+      const alertEl = document.getElementById('tomorrowPreviewAlert');
+      if (alertEl) {
+        if (isTomorrowView) {
+          alertEl.classList.remove('hidden');
+          const textEl = document.getElementById('tomorrowPreviewAlertText');
+          if (textEl) {
+            textEl.textContent = `Previewing Tomorrow's Planned Schedule (${activeDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}) • Planned Focus: ${(focusMins/60).toFixed(1)} hrs`;
+          }
+        } else {
+          alertEl.classList.add('hidden');
+        }
+      }
+
+      // Update tomorrow plan badges
+      const tomStr = getTomorrowDateString();
+      const tomTasks = state.tasks.filter(t => t.scheduledDate === tomStr);
+      const planBadge = document.getElementById('planTomorrowBadge');
+      const countPill = document.getElementById('tomorrowCountPill');
+      if (planBadge) {
+        if (tomTasks.length > 0) {
+          planBadge.textContent = tomTasks.length;
+          planBadge.classList.remove('hidden');
+        } else {
+          planBadge.classList.add('hidden');
+        }
+      }
+      if (countPill) {
+        if (tomTasks.length > 0) {
+          countPill.textContent = tomTasks.length;
+          countPill.classList.remove('hidden');
+        } else {
+          countPill.classList.add('hidden');
+        }
+      }
     }
 
     function updateCapacityBar(focusMins) {
@@ -9746,7 +10218,11 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
             t.subtasks.forEach(st => st.done = false);
           }
         } else if (!t.completed) {
-          if (!t.fromCalendar) {
+          // If task was already explicitly scheduled for today or the future (e.g. via Plan Tomorrow),
+          // preserve its planned schedule times rather than clearing them as lingering past tasks.
+          if (t.scheduledDate && t.scheduledDate >= todayKey) {
+            // Pre-planned for today/future: do not reset startMin/endMin
+          } else if (!t.fromCalendar) {
             lingeringCount++;
             t.rolledOver = true;
             if (!t.rolledOverFromDate || t.rolledOverFromDate >= todayKey) {
@@ -10262,7 +10738,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       }
     }
 
-    async function fetchGoogleCalendarLive(showFeedback = true) {
+    async function fetchGoogleCalendarLive(showFeedback = true, targetDate = new Date()) {
       if (!googleAccessToken) {
         googleAccessToken = getStoredGoogleAccessToken();
       }
@@ -10275,12 +10751,19 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       }
 
       try {
-        if (showFeedback) showGoogleFeedback('⏳ Discovering calendars (Personal & A&S Events)...');
-        const today = new Date();
-        const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0).toISOString();
-        const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59).toISOString();
+        const targetDateObj = targetDate instanceof Date ? targetDate : new Date(targetDate);
+        const targetDateISO = getLocalDateString(targetDateObj);
+        const isTomorrow = targetDateISO === getTomorrowDateString();
+        const dayLabel = isTomorrow ? "tomorrow's" : "today's";
 
-        // 1. Discover all active calendars from user's account (Personal + A&S Events + Selected calendars)
+        if (showFeedback) showGoogleFeedback(`⏳ Discovering calendars for ${dayLabel} events...`);
+
+        // Query window: from 00:00:00 of target date to 04:00 AM of the day after,
+        // ensuring evening events (e.g. 6-11pm) are never clipped regardless of UTC offset.
+        const startOfDay = new Date(targetDateObj.getFullYear(), targetDateObj.getMonth(), targetDateObj.getDate(), 0, 0, 0).toISOString();
+        const endOfDay = new Date(targetDateObj.getFullYear(), targetDateObj.getMonth(), targetDateObj.getDate() + 1, 4, 0, 0).toISOString();
+
+        // 1. Discover all active calendars from user's account (Personal + A&S Events + all non-hidden calendars)
         let targetCalendars = [{ id: 'primary', summary: 'Personal', isAsEvents: false }];
         try {
           const listRes = await fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=100', {
@@ -10304,10 +10787,10 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
               const summary = (cal.summary || '').trim();
               const isPrimary = !!cal.primary || cal.id === 'primary';
               const isAsEvents = /a\s*&\s*s/i.test(summary) || summary.toLowerCase().includes('a&s');
-              const isSelected = cal.selected !== false && !cal.hidden;
+              // Include primary, A&S, and any non-hidden calendar (do not skip if selected was false)
+              const isNonHidden = !cal.hidden;
 
-              // Always include Primary and A&S Events, plus any calendars selected in Google Calendar
-              if (isPrimary || isAsEvents || isSelected) {
+              if (isPrimary || isAsEvents || isNonHidden) {
                 if (!seenCalIds.has(cal.id)) {
                   seenCalIds.add(cal.id);
                   foundCals.push({
@@ -10329,7 +10812,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
 
         if (showFeedback) {
           const calNames = targetCalendars.map(c => c.summary).join(', ');
-          showGoogleFeedback(`⏳ Fetching today's events from ${calNames}...`);
+          showGoogleFeedback(`⏳ Fetching ${dayLabel} events from ${calNames}...`);
         }
 
         // 2. Fetch events across all target calendars in parallel
@@ -10371,6 +10854,12 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
           if (ev.status === 'cancelled') return;
 
           const startDt = ev.start.dateTime ? new Date(ev.start.dateTime) : new Date(ev.start.date + 'T09:00:00');
+          if (isNaN(startDt.getTime())) return;
+
+          // Crucial: Only process events that fall on the target date in local time!
+          const eventDateISO = getLocalDateString(startDt);
+          if (eventDateISO !== targetDateISO) return;
+
           const endDt = ev.end && ev.end.dateTime ? new Date(ev.end.dateTime) : new Date(startDt.getTime() + 45 * 60000);
 
           const startMin = startDt.getHours() * 60 + startDt.getMinutes();
@@ -10381,7 +10870,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
           const calName = ev._isAsEvents ? 'A&S Events' : (ev._calendarName || 'Calendar');
 
           // Prevent duplicate cards if the same event was returned on both calendars
-          const fingerprint = `${title.toLowerCase().trim()}_${startMin}_${duration}`;
+          const fingerprint = `${title.toLowerCase().trim()}_${startMin}_${duration}_${eventDateISO}`;
           if (seenFingerprints.has(fingerprint)) return;
           seenFingerprints.add(fingerprint);
 
@@ -10392,11 +10881,12 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
             ? `Join Meet: ${ev.hangoutLink}` 
             : (ev.location ? `Location: ${ev.location}` : `Review agenda for ${calName} & join on time`);
 
-          // Check if already in tasks
+          // Check if already in tasks: ONLY match tasks for this exact targetDateISO!
+          // (Prevents hijacking yesterday's or past tasks of the same name)
           const existing = state.tasks.find(t => 
             t.id === gcalId || 
-            (t.gcalEventId && t.gcalEventId === ev.id) ||
-            (t.fromCalendar && (
+            (t.gcalEventId && t.gcalEventId === ev.id && (!t.scheduledDate || t.scheduledDate === targetDateISO)) ||
+            (t.fromCalendar && t.scheduledDate === targetDateISO && (
               (t.title && t.title.toLowerCase() === title.toLowerCase()) ||
               (t.gcalTitle && t.gcalTitle.toLowerCase() === title.toLowerCase())
             ))
@@ -10407,9 +10897,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
             existing.gcalEventId = ev.id;
             existing.fromCalendar = true;
             existing.calendarName = calName;
-            if (!existing.scheduledDate) {
-              existing.scheduledDate = getLocalDateString();
-            }
+            existing.scheduledDate = targetDateISO;
             if (existing.type === 'FIXED' || !existing.type) {
               const pInfo = classifyTaskPriority(title, duration, 'steady');
               existing.type = pInfo.type;
@@ -10496,7 +10984,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
               gcalDuration: duration,
               userShifted: false,
               manuallyPositioned: false,
-              scheduledDate: getLocalDateString(),
+              scheduledDate: targetDateISO,
               completed: false,
               recurring: false,
               subtasks: []
@@ -10506,10 +10994,15 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         });
 
         // 4. Prune only uncompleted, non-shifted calendar tasks deleted from Google Calendar
+        // ONLY prune tasks for this targetDateISO so we never wipe other dates!
         const prevCount = state.tasks.length;
         if (targetCalendars.length > 0 && allEvents.length > 0) {
           state.tasks = state.tasks.filter(t => {
             if (t.id && t.id.startsWith('gcal_')) {
+              // Only prune for targetDateISO
+              if (t.scheduledDate && t.scheduledDate !== targetDateISO) {
+                return true;
+              }
               // Never prune tasks that were completed, shifted, or renamed by the user
               if (t.completed || t.userShifted || t.userRenamed || t.manuallyPositioned) {
                 return true;
