@@ -2220,14 +2220,10 @@
         });
       }
 
-      // Safety check: prune any past-completed non-recurring tasks that exist in archivedTasks from state.tasks (keeping calendar events safe)
+      // Safety check: prune only completed tasks that are already archived from active state.tasks
       if (state.archivedTasks && state.archivedTasks.length > 0) {
-        const archivedTitles = new Set(
-          state.archivedTasks
-            .filter(at => !at.recurring)
-            .map(at => (at.title || '').trim().toLowerCase())
-        );
-        state.tasks = state.tasks.filter(t => t.recurring || t.fromCalendar || !archivedTitles.has((t.title || '').trim().toLowerCase()));
+        const archivedIds = new Set(state.archivedTasks.map(at => String(at.id)));
+        state.tasks = state.tasks.filter(t => !t.completed || !archivedIds.has(String(t.id)));
       }
 
       // Ensure "Take off nail polish" (completed on 2026-10-20) remains archived and does not appear on today's schedule
@@ -2341,14 +2337,10 @@
         saveState();
       }
 
-      // Ensure any task that already exists in archivedTasks (as non-recurring) is never duplicated in active state.tasks
+      // Ensure completed tasks that already exist in archivedTasks are not duplicated in active state.tasks
       if (state.archivedTasks && state.archivedTasks.length > 0) {
-        const archivedTitles = new Set(
-          state.archivedTasks
-            .filter(at => !at.recurring)
-            .map(at => (at.title || '').trim().toLowerCase())
-        );
-        state.tasks = state.tasks.filter(t => t.recurring || t.fromCalendar || !archivedTitles.has((t.title || '').trim().toLowerCase()));
+        const archivedIds = new Set(state.archivedTasks.map(at => String(at.id)));
+        state.tasks = state.tasks.filter(t => !t.completed || !archivedIds.has(String(t.id)));
       }
 
       // 3. Dynamic Date & Day Rollover Check (Auto-corrects date and rolls over tasks)
@@ -6561,6 +6553,9 @@
       const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
       const roundedNowMin = Math.ceil(nowMin / 5) * 5;
 
+      const isTomorrow = (typeof window !== 'undefined' && window.activeTimelineViewDate === 'tomorrow');
+      const targetScheduledDate = isTomorrow ? getTomorrowDateString() : getLocalDateString();
+
       const smart = generateSmartBreakdown(title, type, energy);
       state.tasks.push({
         id: 't_' + Date.now(),
@@ -6577,6 +6572,7 @@
         completed: false,
         recurring,
         recurrence,
+        scheduledDate: targetScheduledDate,
         subtasks: []
       });
       document.getElementById('taskTitleInput').value = '';
@@ -6587,6 +6583,7 @@
       }
       saveState();
       optimizeByChronotype(false);
+      showRippleNotice(`✨ Added "${title}" to ${isTomorrow ? "tomorrow's" : "today's"} schedule (${type === 'MIT' ? '🔥 MIT' : '📋 LIT'}).`);
     }
 
     function toggleTaskRecurring(taskId) {
@@ -9171,14 +9168,10 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         saveState();
       }
 
-      // Ensure any task that already exists in archivedTasks (as non-recurring) is never duplicated in active state.tasks
+      // Ensure completed tasks that already exist in archivedTasks are not duplicated in active state.tasks
       if (state.archivedTasks && state.archivedTasks.length > 0) {
-        const archivedTitles = new Set(
-          state.archivedTasks
-            .filter(at => !at.recurring)
-            .map(at => (at.title || '').trim().toLowerCase())
-        );
-        state.tasks = state.tasks.filter(t => t.recurring || t.fromCalendar || !archivedTitles.has((t.title || '').trim().toLowerCase()));
+        const archivedIds = new Set(state.archivedTasks.map(at => String(at.id)));
+        state.tasks = state.tasks.filter(t => !t.completed || !archivedIds.has(String(t.id)));
       }
 
       // 1. Deduplicate any identical calendar tasks (same start time & title)
