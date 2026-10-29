@@ -5694,6 +5694,8 @@
       if (t.scheduledDate && t.scheduledDate < dateISO && t.completed) return false;
 
       if (t.scheduledDate && t.scheduledDate !== dateISO) return false;
+      // If task was explicitly assigned, scheduled, or pushed to this exact date, honor it unconditionally!
+      if (t.scheduledDate === dateISO) return true;
       if (!t.recurring) return true;
       if (!t.recurrence) return true; // Legacy daily fallback
       const freq = t.recurrence.freq || 'daily';
@@ -7637,7 +7639,8 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       }
 
       // 3. Render Tomorrow's Timeline Preview & Capacity Bar
-      const allTomorrowTasks = state.tasks.filter(t => isTaskScheduledForDate(t, tomDate));
+      const tomDateStr = getTomorrowDateString();
+      const allTomorrowTasks = state.tasks.filter(t => !t.completed && (t.scheduledDate === tomDateStr || isTaskScheduledForDate(t, tomDate)));
       let totalTomFocus = 0;
       allTomorrowTasks.forEach(t => {
         if (!t.completed) totalTomFocus += (t.duration || 30);
@@ -7736,8 +7739,17 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
     function pushTaskToTomorrow(taskId) {
       const t = state.tasks.find(x => String(x.id) === String(taskId));
       if (!t) return;
-      t.scheduledDate = getTomorrowDateString();
+      const tomorrowStr = getTomorrowDateString();
+      t.scheduledDate = tomorrowStr;
+      t.rolledOver = true;
       t.manuallyDeferred = false;
+      t.overrideEvening = false;
+      t.manuallyPositioned = false;
+      t.startMin = null;
+      t.endMin = null;
+      t.fixedStartMin = null;
+      t.locked = false;
+      trackTaskLifecycle(t, 'deferred');
       saveState();
       recalculateSchedule();
       renderPlanTomorrowContent();
@@ -7748,6 +7760,10 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       const t = state.tasks.find(x => String(x.id) === String(taskId));
       if (!t) return;
       t.scheduledDate = getLocalDateString();
+      t.startMin = null;
+      t.endMin = null;
+      t.fixedStartMin = null;
+      t.locked = false;
       saveState();
       recalculateSchedule();
       renderPlanTomorrowContent();
@@ -7766,7 +7782,8 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         triggerLiveCloudSync();
       }
       closePlanTomorrowModal();
-      showRippleNotice(`🌙 Tomorrow's plan is locked in! Everything will be ready when you wake up.`);
+      setTimelineViewDate('tomorrow');
+      showRippleNotice(`🌙 Tomorrow's plan is locked in! Now previewing tomorrow's timeline.`);
     }
 
     // ==========================================
@@ -9209,11 +9226,16 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       });
 
       // 2. Sanitize any previously overflowed, broken, or historical start times from previous runs
+      const viewDateKey = isTomorrowView ? getTomorrowDateString() : getLocalDateString();
       state.tasks.forEach(t => {
+        // Only sanitize tasks that belong to the currently viewed date
+        const tDate = t.scheduledDate || todayKey;
+        if (tDate !== viewDateKey) return;
+
         // Do NOT wipe out startMin for calendar events (t.fromCalendar), locked tasks, or completed tasks
         if (!t.completed && !isTaskLocked(t) && !t.fromCalendar) {
-          // If in the past (historical time block) and flexible: clear startMin so it is re-slotted into current/future time or deferred
-          if (t.startMin != null && t.startMin < roundedNowMin && !t.overrideEvening) {
+          // If in the past for today's view (and not tomorrow view): clear startMin so it is re-slotted into current/future time or deferred
+          if (!isTomorrowView && t.startMin != null && t.startMin < roundedNowMin && !t.overrideEvening) {
             t.startMin = null;
             t.endMin = null;
           }
@@ -9297,7 +9319,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       let focusMins = 0;
 
       activeTasks.forEach(t => {
-        if (!t.completed && !isTaskLocked(t)) focusMins += (t.duration || 30);
+        if (!t.completed) focusMins += (t.duration || 30);
       });
 
       unassignedTasks.forEach(t => {
@@ -9748,6 +9770,8 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
     }
 
     function renderTimeline(blocks, overflow, nowMin = (new Date().getHours() * 60 + new Date().getMinutes()), fixedList = []) {
+      const isTomorrowTimeline = (typeof window !== 'undefined' && window.activeTimelineViewDate === 'tomorrow');
+      const showNowMarker = !isTomorrowTimeline;
       let nowMarkerInserted = false;
       const htmlItems = [];
 
@@ -9755,8 +9779,8 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         const itemStart = item.kind === 'task' ? item.task.startMin : item.startMin;
         const itemEnd = item.kind === 'task' ? item.task.endMin : item.endMin;
 
-        // Insert Real-Time Current Time line right before the first block that starts at or after now
-        if (!nowMarkerInserted && itemStart >= nowMin) {
+        // Insert Real-Time Current Time line right before the first block that starts at or after now (only for Today view)
+        if (showNowMarker && !nowMarkerInserted && itemStart >= nowMin) {
           htmlItems.push(`
             <div id="currentTimeMarker" class="flex items-center gap-2.5 py-1.5 my-1">
               <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
@@ -9879,8 +9903,8 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         `);
       });
 
-      // If all blocks are in the past, place the NOW marker at the end
-      if (!nowMarkerInserted && blocks.length > 0) {
+      // If all blocks are in the past, place the NOW marker at the end (only for Today view)
+      if (showNowMarker && !nowMarkerInserted && blocks.length > 0) {
         htmlItems.push(`
           <div id="currentTimeMarker" class="flex items-center gap-2.5 py-1.5 my-1">
             <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
@@ -10147,9 +10171,9 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       // Keep top date display and rollover fresh
       updateDateAndRollover(true);
 
-      // Fast in-place DOM update so the schedule marker always matches laptop clock immediately
+      // Fast in-place DOM update so the schedule marker always matches laptop clock immediately (only when viewing today)
       const markerText = document.getElementById('currentTimeMarkerText');
-      if (markerText) {
+      if (markerText && window.activeTimelineViewDate !== 'tomorrow') {
         markerText.textContent = `CURRENT TIME • ${formatMinToTime(nowMin)}`;
       }
 
