@@ -119,6 +119,7 @@
           <div class="flex items-center gap-2">
             <p class="text-xs dark:text-slate-400 text-slate-500" id="currentDateDisplay">Loading today's date...</p>
             <span id="rolloverBadge" class="hidden text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">Auto-Rolled</span>
+            <span id="headerHolidayBadge" class="hidden text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 font-semibold"></span>
           </div>
         </div>
       </div>
@@ -463,6 +464,15 @@
           <button onclick="resetDefaultData()" class="px-2.5 py-1.5 rounded-lg dark:bg-slate-800 bg-slate-200 hover:dark:bg-slate-700 hover:bg-slate-300 dark:text-slate-400 text-slate-700 text-xs transition" title="Restore default sample tasks">
             ↺
           </button>
+        </div>
+
+        <!-- Today Holiday Notice Banner -->
+        <div id="todayHolidayBanner" class="hidden my-2.5 px-3.5 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-base" id="todayHolidayIcon">🎉</span>
+            <span id="todayHolidayText"><strong>Today:</strong> Holiday</span>
+          </div>
+          <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 font-semibold border border-amber-500/30">Calendar Observance</span>
         </div>
 
       <!-- Tomorrow Preview Notice Banner -->
@@ -2000,6 +2010,69 @@
       return DEPRECATED_SAMPLE_TITLES.some(d => lower === d || lower.startsWith(d));
     }
 
+    // --- HOLIDAY & ALL-DAY OBSERVANCE SYSTEM ---
+    function isHolidayTitle(title = '') {
+      if (!title) return false;
+      const lower = title.trim().toLowerCase();
+      const holidays = [
+        'halloween', 'thanksgiving', 'christmas eve', 'christmas day', 'christmas',
+        'new year\'s eve', 'new year\'s day', 'new years eve', 'new years day', 'new year',
+        'martin luther king', 'mlk day', 'presidents\' day', 'presidents day', 'memorial day',
+        'juneteenth', 'independence day', '4th of july', 'fourth of july', 'labor day',
+        'columbus day', 'indigenous peoples\' day', 'indigenous peoples day', 'veterans day',
+        'st. patrick\'s day', 'st patricks day', 'easter', 'good friday', 'valentine\'s day', 'valentines day',
+        'mother\'s day', 'father\'s day', 'earth day', 'groundhog day', 'flag day', 'election day'
+      ];
+      return holidays.some(h => lower === h || lower.startsWith(h + ' ') || lower.endsWith(' ' + h) || lower.includes('holiday'));
+    }
+
+    function getHolidayEmoji(title = '') {
+      const lower = (title || '').toLowerCase();
+      if (lower.includes('halloween')) return '🎃';
+      if (lower.includes('thanksgiving')) return '🦃';
+      if (lower.includes('christmas')) return '🎄';
+      if (lower.includes('new year')) return '🎆';
+      if (lower.includes('valentine')) return '💖';
+      if (lower.includes('patrick')) return '☘️';
+      if (lower.includes('easter')) return '🐰';
+      if (lower.includes('independence') || lower.includes('4th of july') || lower.includes('july 4')) return '🎆';
+      if (lower.includes('earth day')) return '🌍';
+      if (lower.includes('veteran') || lower.includes('memorial') || lower.includes('labor')) return '🎖️';
+      return '🎉';
+    }
+
+    function isHolidayTask(t) {
+      if (!t) return false;
+      if (t.isHoliday) return true;
+      if (t.fromCalendar && (
+        (t.calendarName && /holiday/i.test(t.calendarName)) ||
+        isHolidayTitle(t.title)
+      )) return true;
+      return false;
+    }
+
+    function cleanupHolidaysFromTasks() {
+      state.holidays = state.holidays || {};
+      if (!Array.isArray(state.tasks)) return;
+
+      state.tasks = state.tasks.filter(t => {
+        if (isHolidayTask(t)) {
+          const hDate = t.scheduledDate || getLocalDateString();
+          state.holidays[hDate] = state.holidays[hDate] || [];
+          if (!state.holidays[hDate].some(h => h.summary.toLowerCase() === (t.title || '').toLowerCase())) {
+            state.holidays[hDate].push({
+              id: t.id,
+              summary: t.title,
+              calendarName: t.calendarName || 'Holidays in United States',
+              date: hDate
+            });
+          }
+          return false;
+        }
+        return true;
+      });
+    }
+
     const DEFAULT_TASKS = [
       { id: 't_job_apply', title: 'Find & Apply to one job', microStep: 'Open LinkedIn & submit 1 targeted application', type: 'MIT', energy: 'sharp', duration: 45, fixedStartMin: null, locked: false, completed: false, recurring: false, subtasks: [] },
       { id: 't7', title: 'Inbox Zero & Weekly Sunday Planning Prep', microStep: 'Clear starred emails and archive newsletters', type: 'LIT', energy: 'fried', duration: 25, fixedStartMin: null, locked: false, completed: false, recurring: true, recurrence: { freq: 'weekly', daysOfWeek: [0, 5], interval: 1, unit: 'weeks' }, subtasks: [] },
@@ -2013,6 +2086,7 @@
       theme: 'system', // 'dark', 'light', or 'system'
       soundEnabled: true, // Master auditory switch
       lastActiveDate: null, // Tracks date for auto-rollover
+      holidays: {}, // All-day holidays & observances mapped by date { 'YYYY-MM-DD': [{ summary, calendarName }] }
       archivedTasks: [
         {
           id: 'arch_sample_1',
@@ -2244,6 +2318,9 @@
           archivedAt: '2026-10-21T00:00:00.000Z'
         });
       }
+
+      // Ensure holidays are recorded in state.holidays and never kept as to-do list tasks
+      cleanupHolidaysFromTasks();
 
       // Permanently filter out any deprecated placeholder/sample tasks from tasks, archive, and analytics
       state.tasks = (state.tasks || []).filter(t => !isDeprecatedTask(t.title, t.id));
@@ -5683,6 +5760,7 @@
     // --- GOOGLE CALENDAR-STYLE RECURRENCE ENGINE ---
     function isTaskScheduledForDate(t, date = new Date()) {
       if (t.skipped) return false;
+      if (isHolidayTask(t)) return false; // Safety: Never schedule holidays as to-do list tasks or timeline blocks
       const dateISO = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
       
       // Safety guarantee: If a one-off task was completed on a prior date, it must never appear on today or future dates
@@ -7549,13 +7627,15 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
     }
 
     function renderPlanTomorrowContent() {
+      cleanupHolidaysFromTasks();
       const tomStr = getTomorrowDateString();
       const todayStr = getLocalDateString();
       const tomDate = new Date(Date.now() + 86400000);
 
       // 1. Render Google Calendar Events for Tomorrow
       const calContainer = document.getElementById('tomorrowCalendarEventsList');
-      const tomorrowCalTasks = state.tasks.filter(t => t.fromCalendar && t.scheduledDate === tomStr);
+      const tomorrowCalTasks = state.tasks.filter(t => t.fromCalendar && t.scheduledDate === tomStr && !isHolidayTask(t));
+      const tomorrowHolidays = (state.holidays && state.holidays[tomStr]) || [];
 
       if (calContainer) {
         if (!googleAccessToken) {
@@ -7565,25 +7645,40 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
               <button onclick="requestGoogleAuth()" class="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs transition">Sign In</button>
             </div>
           `;
-        } else if (tomorrowCalTasks.length === 0) {
-          calContainer.innerHTML = `
-            <div class="p-3 text-center rounded-xl dark:bg-slate-900 bg-white border dark:border-slate-800 border-slate-200 text-slate-400 italic">
-              No calendar events detected for tomorrow. Click "Sync Tomorrow" to pull from Google Calendar.
-            </div>
-          `;
         } else {
-          calContainer.innerHTML = tomorrowCalTasks.map(t => `
-            <div class="flex items-center justify-between p-2.5 rounded-xl dark:bg-slate-900 bg-white border dark:border-slate-800 border-slate-200 gap-2">
-              <div class="flex items-center gap-2 min-w-0">
-                <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold shrink-0">
-                  ${formatMinToTime(t.startMin)} – ${formatMinToTime(t.endMin)}
-                </span>
-                <span class="font-semibold dark:text-slate-200 text-slate-800 truncate">${t.title}</span>
-                <span class="text-[9px] font-mono px-1 rounded border border-indigo-500/30 text-indigo-500 shrink-0">${t.calendarName || 'Calendar'}</span>
+          let holidayHtml = '';
+          if (tomorrowHolidays.length > 0) {
+            holidayHtml = tomorrowHolidays.map(h => `
+              <div class="flex items-center justify-between p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs">
+                <div class="flex items-center gap-2 min-w-0">
+                  <span class="text-base shrink-0">${getHolidayEmoji(h.summary)}</span>
+                  <span class="font-medium truncate"><strong class="font-semibold">Holiday Tomorrow:</strong> ${h.summary}</span>
+                </div>
+                <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 font-semibold border border-amber-500/30 shrink-0">Calendar Observance</span>
               </div>
-              <span class="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold shrink-0">✓ Anchored</span>
-            </div>
-          `).join('');
+            `).join('');
+          }
+
+          if (tomorrowCalTasks.length === 0) {
+            calContainer.innerHTML = (holidayHtml ? `<div class="space-y-2 mb-2">${holidayHtml}</div>` : '') + `
+              <div class="p-3 text-center rounded-xl dark:bg-slate-900 bg-white border dark:border-slate-800 border-slate-200 text-slate-400 italic">
+                ${holidayHtml ? 'No timed meetings scheduled for tomorrow.' : 'No calendar events detected for tomorrow. Click "Sync Tomorrow" to pull from Google Calendar.'}
+              </div>
+            `;
+          } else {
+            calContainer.innerHTML = (holidayHtml ? `<div class="space-y-2 mb-2">${holidayHtml}</div>` : '') + tomorrowCalTasks.map(t => `
+              <div class="flex items-center justify-between p-2.5 rounded-xl dark:bg-slate-900 bg-white border dark:border-slate-800 border-slate-200 gap-2">
+                <div class="flex items-center gap-2 min-w-0">
+                  <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold shrink-0">
+                    ${formatMinToTime(t.startMin)} – ${formatMinToTime(t.endMin)}
+                  </span>
+                  <span class="font-semibold dark:text-slate-200 text-slate-800 truncate">${t.title}</span>
+                  <span class="text-[9px] font-mono px-1 rounded border border-indigo-500/30 text-indigo-500 shrink-0">${t.calendarName || 'Calendar'}</span>
+                </div>
+                <span class="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold shrink-0">✓ Anchored</span>
+              </div>
+            `).join('');
+          }
         }
       }
 
@@ -9154,6 +9249,9 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       const roundedNowMin = isTomorrowView ? 540 : (Math.ceil(nowMin / 5) * 5);
       if (!isTomorrowView) window._lastRenderedMinute = nowMin;
 
+      // 0. Clean up holidays so they are never treated as to-do list tasks or timeline blocks
+      cleanupHolidaysFromTasks();
+
       // 0. Safety Archive Prune: Ensure non-recurring tasks completed on previous days are archived & excluded from today
       const todayKey = getLocalDateString();
       const pastCompleted = state.tasks.filter(t => !t.recurring && t.completed && (
@@ -9383,13 +9481,44 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       updateCapacityBar(focusMins);
       updateRecommendationBanner();
 
+      // Update holiday indicators
+      const todayHolidays = (state.holidays && state.holidays[todayKey]) || [];
+      const tomStr = getTomorrowDateString();
+      const tomHolidays = (state.holidays && state.holidays[tomStr]) || [];
+
+      const todayBanner = document.getElementById('todayHolidayBanner');
+      if (todayBanner) {
+        if (!isTomorrowView && todayHolidays.length > 0) {
+          const h = todayHolidays[0];
+          const iconEl = document.getElementById('todayHolidayIcon');
+          const textEl = document.getElementById('todayHolidayText');
+          if (iconEl) iconEl.textContent = getHolidayEmoji(h.summary);
+          if (textEl) textEl.innerHTML = `<strong>Today's Observance:</strong> ${h.summary}`;
+          todayBanner.classList.remove('hidden');
+        } else {
+          todayBanner.classList.add('hidden');
+        }
+      }
+
+      const headerBadge = document.getElementById('headerHolidayBadge');
+      if (headerBadge) {
+        if (todayHolidays.length > 0) {
+          const h = todayHolidays[0];
+          headerBadge.textContent = `${getHolidayEmoji(h.summary)} ${h.summary}`;
+          headerBadge.classList.remove('hidden');
+        } else {
+          headerBadge.classList.add('hidden');
+        }
+      }
+
       const alertEl = document.getElementById('tomorrowPreviewAlert');
       if (alertEl) {
         if (isTomorrowView) {
           alertEl.classList.remove('hidden');
           const textEl = document.getElementById('tomorrowPreviewAlertText');
           if (textEl) {
-            textEl.textContent = `Previewing Tomorrow's Planned Schedule (${activeDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}) • Planned Focus: ${(focusMins/60).toFixed(1)} hrs`;
+            const holidayInfo = tomHolidays.length > 0 ? ` • ${getHolidayEmoji(tomHolidays[0].summary)} ${tomHolidays[0].summary}` : '';
+            textEl.textContent = `Previewing Tomorrow's Planned Schedule (${activeDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })})${holidayInfo} • Planned Focus: ${(focusMins/60).toFixed(1)} hrs`;
           }
         } else {
           alertEl.classList.add('hidden');
@@ -9397,7 +9526,6 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       }
 
       // Update tomorrow plan badges
-      const tomStr = getTomorrowDateString();
       const tomTasks = state.tasks.filter(t => t.scheduledDate === tomStr);
       const planBadge = document.getElementById('planTomorrowBadge');
       const countPill = document.getElementById('tomorrowCountPill');
@@ -10151,6 +10279,17 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       if (dateEl) dateEl.textContent = dateStr;
 
       const todayKey = getLocalDateString();
+      const holidayBadge = document.getElementById('headerHolidayBadge');
+      if (holidayBadge) {
+        const todayHolidays = (state.holidays && state.holidays[todayKey]) || [];
+        if (todayHolidays.length > 0) {
+          const h = todayHolidays[0];
+          holidayBadge.textContent = `${getHolidayEmoji(h.summary)} ${h.summary}`;
+          holidayBadge.classList.remove('hidden');
+        } else {
+          holidayBadge.classList.add('hidden');
+        }
+      }
       
       if (!state.lastActiveDate) {
         state.lastActiveDate = todayKey;
@@ -10803,16 +10942,18 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
               const summary = (cal.summary || '').trim();
               const isPrimary = !!cal.primary || cal.id === 'primary';
               const isAsEvents = /a\s*&\s*s/i.test(summary) || summary.toLowerCase().includes('a&s');
-              // Include primary, A&S, and any non-hidden calendar (do not skip if selected was false)
+              const isHolidayCal = /holiday/i.test(summary) || /holiday/i.test(cal.id || '') || (cal.id && cal.id.includes('holiday@group.v.calendar.google.com'));
+              // Include primary, A&S, holidays, and any non-hidden calendar (do not skip if selected was false)
               const isNonHidden = !cal.hidden;
 
-              if (isPrimary || isAsEvents || isNonHidden) {
+              if (isPrimary || isAsEvents || isHolidayCal || isNonHidden) {
                 if (!seenCalIds.has(cal.id)) {
                   seenCalIds.add(cal.id);
                   foundCals.push({
                     id: cal.id,
                     summary: isAsEvents ? 'A&S Events' : (summary || (isPrimary ? 'Personal' : 'Calendar')),
-                    isAsEvents
+                    isAsEvents,
+                    isHolidayCal
                   });
                 }
               }
@@ -10853,6 +10994,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
               (data.items || []).forEach(ev => {
                 ev._calendarName = cal.summary;
                 ev._isAsEvents = cal.isAsEvents;
+                ev._isHolidayCal = cal.isHolidayCal;
                 allEvents.push(ev);
               });
             }
@@ -10882,8 +11024,32 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
           let duration = Math.round((endDt - startDt) / 60000);
           if (duration <= 0 || duration > 360) duration = 45;
 
-          const title = ev.summary || (ev._isAsEvents ? 'A&S Event' : 'Calendar Event');
+          const title = (ev.summary || (ev._isAsEvents ? 'A&S Event' : 'Calendar Event')).trim();
           const calName = ev._isAsEvents ? 'A&S Events' : (ev._calendarName || 'Calendar');
+
+          // Check if this event is a holiday or holiday calendar event
+          const isHoliday = !!(
+            ev._isHolidayCal || 
+            ev.eventType === 'holiday' || 
+            /holiday/i.test(calName) || 
+            isHolidayTitle(title)
+          );
+
+          if (isHoliday) {
+            state.holidays = state.holidays || {};
+            state.holidays[eventDateISO] = state.holidays[eventDateISO] || [];
+            if (!state.holidays[eventDateISO].some(h => h.summary.toLowerCase() === title.toLowerCase())) {
+              state.holidays[eventDateISO].push({
+                id: 'gcal_' + ev.id,
+                summary: title,
+                calendarName: calName,
+                date: eventDateISO
+              });
+            }
+            // Purge any task previously created from this holiday
+            state.tasks = state.tasks.filter(t => t.id !== ('gcal_' + ev.id) && !(t.fromCalendar && t.scheduledDate === eventDateISO && t.title.toLowerCase() === title.toLowerCase()));
+            return; // Never treat as an actionable task/to-do block!
+          }
 
           // Prevent duplicate cards if the same event was returned on both calendars
           const fingerprint = `${title.toLowerCase().trim()}_${startMin}_${duration}_${eventDateISO}`;
@@ -11014,6 +11180,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         const prevCount = state.tasks.length;
         if (targetCalendars.length > 0 && allEvents.length > 0) {
           state.tasks = state.tasks.filter(t => {
+            if (isHolidayTask(t)) return false; // Always purge any holiday tasks
             if (t.id && t.id.startsWith('gcal_')) {
               // Only prune for targetDateISO
               if (t.scheduledDate && t.scheduledDate !== targetDateISO) {
