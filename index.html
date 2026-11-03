@@ -220,6 +220,14 @@
     </div>
   </header>
 
+  <!-- Global Floating Notice Toast (Visible on all views & modals) -->
+  <div id="globalToast" class="fixed top-16 right-4 sm:right-6 z-50 max-w-md w-auto hidden transform transition-all duration-300 ease-out translate-y-[-10px] opacity-0 pointer-events-auto">
+    <div class="px-4 py-3 rounded-2xl bg-slate-900/95 dark:bg-slate-800/95 text-white border border-indigo-500/30 shadow-2xl backdrop-blur-md text-xs flex items-center justify-between gap-3">
+      <span id="globalToastText" class="font-medium leading-relaxed">Notice message</span>
+      <button type="button" onclick="hideGlobalToast()" class="text-slate-400 hover:text-white font-bold ml-2 text-sm shrink-0">✕</button>
+    </div>
+  </div>
+
   <!-- MAIN SCHEDULE TIMELINE VIEW -->
   <div id="mainScheduleView" class="w-full flex-1 flex flex-col space-y-4">
 
@@ -542,7 +550,7 @@
           <button onclick="setAnalyticsPeriod(90)" id="periodBtn_90" class="period-btn px-2.5 py-1 rounded-lg font-medium transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white" title="Full Quarter (90 Days)">Quarter</button>
         </div>
 
-        <button onclick="checkChronotypeDrift(true)" class="px-3 py-2 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 border border-indigo-500/30 text-xs font-semibold flex items-center gap-1.5 transition" title="Analyze completed task timestamps to detect biological rhythm drift">
+        <button onclick="checkChronotypeDrift(true)" id="checkChronoShiftBtn" class="px-3 py-2 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 border border-indigo-500/30 text-xs font-semibold flex items-center gap-1.5 transition active:scale-95" title="Analyze completed task timestamps to detect biological rhythm drift">
           <span>🧬</span> Check Chronotype Shift
         </button>
 
@@ -550,6 +558,15 @@
           <span>🗓️</span> Back to Schedule
         </button>
       </div>
+    </div>
+
+    <!-- Analytics In-Page Notice Banner -->
+    <div id="analyticsNoticeAlert" class="hidden px-4 py-3 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-800 dark:text-indigo-200 text-xs flex items-center justify-between shadow-sm">
+      <div class="flex items-center gap-2">
+        <span class="text-base shrink-0">🧬</span>
+        <span id="analyticsNoticeText" class="font-medium"></span>
+      </div>
+      <button type="button" onclick="document.getElementById('analyticsNoticeAlert').classList.add('hidden')" class="text-indigo-600 dark:text-indigo-400 font-bold ml-3 text-sm shrink-0">✕</button>
     </div>
 
     <!-- 6 KPI Metric Cards Grid -->
@@ -8653,7 +8670,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
     // ==========================================
     function detectChronotypeShift() {
       if (!state.analytics || !state.analytics.history || state.analytics.history.length === 0) {
-        return { shiftDetected: false };
+        return { shiftDetected: false, reason: 'no_history' };
       }
 
       // Determine the time at which tasks were actually completed, not when marked
@@ -8668,7 +8685,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       );
 
       if (focusCompletions.length < 3) {
-        return { shiftDetected: false };
+        return { shiftDetected: false, reason: 'insufficient_data', count: focusCompletions.length };
       }
 
       const avgMin = focusCompletions.reduce((acc, h) => acc + getActualCompletedMin(h), 0) / focusCompletions.length;
@@ -8693,6 +8710,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       if (bestChronotypeId === current.id || !CHRONOTYPES[bestChronotypeId]) {
         return {
           shiftDetected: false,
+          reason: 'aligned',
           currentProfile: current,
           suggestedId: current.id,
           targetProfile: current,
@@ -8708,6 +8726,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
 
       return {
         shiftDetected,
+        reason: shiftDetected ? 'shift_detected' : 'aligned',
         currentProfile: current,
         suggestedId: bestChronotypeId,
         targetProfile: CHRONOTYPES[bestChronotypeId] || current,
@@ -8719,12 +8738,27 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
     }
 
     function checkChronotypeDrift(userInitiated = false) {
+      const btn = document.getElementById('checkChronoShiftBtn');
+      if (btn && userInitiated) {
+        btn.classList.add('ring-2', 'ring-indigo-500');
+        setTimeout(() => btn.classList.remove('ring-2', 'ring-indigo-500'), 500);
+      }
+
       const result = detectChronotypeShift();
 
       // Guard: Never show modal if shift wasn't detected OR if recommended profile is identical to current
       if (!result.shiftDetected || result.suggestedId === state.chronotype.id) {
         if (userInitiated) {
-          showRippleNotice(`🧬 Your deep focus habits are well-aligned with your ${state.chronotype.name} ${state.chronotype.emoji} peak wave!`);
+          let noticeMsg = '';
+          if (result.reason === 'insufficient_data') {
+            noticeMsg = `🧬 Need at least 3 completed MIT/deep focus tasks to evaluate circadian drift (currently ${result.count || 0}/3 completed).`;
+          } else if (result.reason === 'no_history') {
+            noticeMsg = `🧬 Complete a few deep focus tasks to begin tracking your biological peak.`;
+          } else {
+            const timeInfo = result.avgTimeStr ? ` (observed peak: ${result.avgTimeStr})` : '';
+            noticeMsg = `🧬 Your deep focus habits${timeInfo} are well-aligned with your ${state.chronotype.name} ${state.chronotype.emoji} peak wave (${formatMinToTime(state.chronotype.peakStart)} – ${formatMinToTime(state.chronotype.peakEnd)})!`;
+          }
+          showRippleNotice(noticeMsg);
         }
         return;
       }
@@ -10162,7 +10196,55 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       }
     }
 
-    function showRippleNotice(msg) { const b = document.getElementById('rippleAlert'); document.getElementById('rippleAlertText').textContent = msg; b.classList.remove('hidden'); }
+    let globalToastTimer = null;
+    function showRippleNotice(msg) {
+      // 1. Update schedule view inline ripple alert
+      const b = document.getElementById('rippleAlert');
+      if (b) {
+        const txt = document.getElementById('rippleAlertText');
+        if (txt) txt.textContent = msg;
+        b.classList.remove('hidden');
+      }
+
+      // 2. Update in-page analytics view alert banner if present
+      const anaAlert = document.getElementById('analyticsNoticeAlert');
+      const anaText = document.getElementById('analyticsNoticeText');
+      if (anaAlert && anaText) {
+        anaText.textContent = msg;
+        anaAlert.classList.remove('hidden');
+      }
+
+      // 3. Show floating toast across all views & modals
+      const toast = document.getElementById('globalToast');
+      const toastText = document.getElementById('globalToastText');
+      if (toast && toastText) {
+        toastText.textContent = msg;
+        toast.classList.remove('hidden');
+        const triggerAnim = () => {
+          toast.classList.remove('translate-y-[-10px]', 'opacity-0');
+          toast.classList.add('translate-y-0', 'opacity-100');
+        };
+        if (typeof requestAnimationFrame === 'function') {
+          requestAnimationFrame(triggerAnim);
+        } else {
+          setTimeout(triggerAnim, 16);
+        }
+        if (globalToastTimer) clearTimeout(globalToastTimer);
+        globalToastTimer = setTimeout(() => {
+          hideGlobalToast();
+        }, 5000);
+      }
+    }
+
+    function hideGlobalToast() {
+      const toast = document.getElementById('globalToast');
+      if (!toast) return;
+      toast.classList.remove('translate-y-0', 'opacity-100');
+      toast.classList.add('translate-y-[-10px]', 'opacity-0');
+      setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 300);
+    }
     function toggleHorizonModal() { document.getElementById('horizonBar').classList.toggle('hidden'); }
 
     // Focus Timer
