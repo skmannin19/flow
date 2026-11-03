@@ -528,7 +528,7 @@
         <div class="flex items-center gap-2">
           <span class="text-2xl">📊</span>
           <h2 class="text-xl font-bold dark:text-white text-slate-900">Productivity Health & Circadian Analytics</h2>
-          <span id="analyticsPeriodBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">Telemetry Engine</span>
+          <span id="analyticsPeriodBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">Focus Insights</span>
         </div>
         <p class="text-xs dark:text-slate-400 text-slate-500 mt-1">Diagnostic intelligence on your completion pacing, schedule drift, cognitive friction, and biological wave velocity.</p>
       </div>
@@ -1793,7 +1793,7 @@
           <div>
             <div class="flex items-center gap-2">
               <h3 class="text-base font-bold dark:text-white text-slate-900">Chronotype Shift Detected</h3>
-              <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30">Habit Telemetry</span>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30">Habit Insights</span>
             </div>
             <p class="text-xs dark:text-slate-400 text-slate-500 mt-0.5">Your biological peak has naturally evolved.</p>
           </div>
@@ -2376,7 +2376,7 @@
       document.getElementById('mGoal').value = state.goals?.mGoal || '';
       document.getElementById('wGoal').value = state.goals?.wGoal || '';
 
-      // Initialize Analytics Telemetry
+      // Initialize Analytics & Habit History
       if (!state.analytics || !state.analytics.history || state.analytics.history.length === 0) {
         state.analytics = seedInitialAnalyticsHistory(state.analytics);
       }
@@ -8197,11 +8197,11 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         } else if (currentAnalyticsPeriod === 90) {
           periodBadge.textContent = 'Quarterly Trajectory';
         } else {
-          periodBadge.textContent = `${currentAnalyticsPeriod}-Day Telemetry`;
+          periodBadge.textContent = `${currentAnalyticsPeriod}-Day Insights`;
         }
       }
 
-      // Ensure any tasks completed today from state.tasks are synchronized to telemetry history
+      // Ensure any tasks completed today from state.tasks are synchronized to habit history
       const todayStr = getLocalDateString();
       if (state.tasks && Array.isArray(state.tasks)) {
         state.tasks.forEach(t => {
