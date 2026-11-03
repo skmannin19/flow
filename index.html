@@ -2336,6 +2336,24 @@
       }
       if (state.analytics && Array.isArray(state.analytics.history)) {
         state.analytics.history = state.analytics.history.filter(h => !isDeprecatedTask(h.title, h.taskId));
+        // Ensure historical completions reflect actual task completion time, not click/mark time
+        state.analytics.history.forEach(h => {
+          if (h.status === 'completed' && h.scheduledEndMin != null) {
+            if (h.completedAtMin == null || (h.onTime && h.completedAtMin !== h.scheduledEndMin)) {
+              h.completedAtMin = h.scheduledEndMin;
+              h.hourOfDay = Math.max(0, Math.min(23, Math.floor(h.scheduledEndMin / 60)));
+            }
+          }
+        });
+      }
+
+      // Ensure completed tasks in active list have completedAtMin recorded
+      if (Array.isArray(state.tasks)) {
+        state.tasks.forEach(t => {
+          if (t.completed && t.completedAtMin == null) {
+            t.completedAtMin = t.endMin != null ? t.endMin : (t.startMin != null ? t.startMin + (t.duration || 30) : 600);
+          }
+        });
       }
 
       // Ensure any tasks with outdated generic 'Draft rough framework' microStep are updated, without auto-generating subtasks
@@ -6913,6 +6931,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         t.startMin = Math.max(0, roundedNowMin - (t.duration || 30));
         t.manuallyPositioned = true;
         t.completed = true;
+        t.completedAtMin = roundedNowMin;
         t.completedAtISO = now.toISOString();
         t.completedDate = getLocalDateString();
         trackTaskLifecycle(t, 'completed');
@@ -6926,6 +6945,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       // Case 1: Task completed right around its scheduled end time (within ±15 minutes of scheduled end)
       if (Math.abs(nowMin - t.endMin) <= 15 && t.startMin <= nowMin + 15) {
         t.completed = true;
+        t.completedAtMin = t.endMin;
         t.completedAtISO = now.toISOString();
         t.completedDate = getLocalDateString();
         trackTaskLifecycle(t, 'completed');
@@ -6950,6 +6970,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
 
       // General fallback
       t.completed = true;
+      t.completedAtMin = t.endMin != null ? t.endMin : roundedNowMin;
       t.completedAtISO = now.toISOString();
       t.completedDate = getLocalDateString();
       trackTaskLifecycle(t, 'completed');
@@ -7179,6 +7200,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         t.completed = true;
         t.completedDate = prevDateKey;
         t.completedAtISO = completedISO;
+        t.completedAtMin = histEnd;
         t.startMin = histStart;
         t.endMin = histEnd;
 
@@ -7196,6 +7218,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
           completed: true,
           completedDate: prevDateKey,
           completedAtISO: completedISO,
+          completedAtMin: histEnd,
           recurring: !!t.recurring,
           fromCalendar: !!t.fromCalendar,
           archivedAt: new Date().toISOString()
@@ -7223,6 +7246,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         t.completed = true;
         t.completedDate = customDate;
         t.completedAtISO = completedISO;
+        t.completedAtMin = histEnd;
         t.startMin = histStart;
         t.endMin = histEnd;
 
@@ -7240,6 +7264,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
           completed: true,
           completedDate: customDate,
           completedAtISO: completedISO,
+          completedAtMin: histEnd,
           recurring: !!t.recurring,
           fromCalendar: !!t.fromCalendar,
           archivedAt: new Date().toISOString()
@@ -7261,12 +7286,15 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
 
       // Normal completion on today
       t.completed = true;
-      t.completedAtISO = now.toISOString();
       t.completedDate = todayKey;
       t.rolledOver = false;
 
       if (mode === 'scheduled') {
         // Keep in original time block as completed earlier in the day prior to current time
+        t.completedAtMin = t.endMin;
+        const d = new Date(todayKey + 'T12:00:00');
+        d.setHours(Math.floor(t.endMin / 60), t.endMin % 60, 0, 0);
+        t.completedAtISO = d.toISOString();
         trackTaskLifecycle(t, 'completed');
         saveState();
         recalculateSchedule();
@@ -7286,6 +7314,8 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         if (t.locked) {
           t.locked = false;
         }
+        t.completedAtMin = nowMinRounded;
+        t.completedAtISO = now.toISOString();
         trackTaskLifecycle(t, 'completed');
         saveState();
         recalculateSchedule();
@@ -7301,6 +7331,11 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
           t.locked = false;
           t.fixedStartMin = null;
         }
+        t.completedAtMin = customEndMin;
+        const d = new Date((customDate || todayKey) + 'T12:00:00');
+        d.setHours(Math.floor(customEndMin / 60), customEndMin % 60, 0, 0);
+        t.completedAtISO = d.toISOString();
+        t.completedDate = customDate || todayKey;
         trackTaskLifecycle(t, 'completed');
         saveState();
         recalculateSchedule();
@@ -7914,7 +7949,25 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
           durationMin: task.duration || 30
         });
       } else if (action === 'completed') {
-        const onTime = task.endMin ? (nowMin <= task.endMin + 5) : true;
+        // Use the time at which the task was actually completed, not when it was marked
+        const actualCompletedMin = task.completedAtMin != null 
+          ? task.completedAtMin 
+          : (task.endMin != null ? task.endMin : nowMin);
+        const completedHour = Math.max(0, Math.min(23, Math.floor(actualCompletedMin / 60)));
+        const onTime = task.endMin ? (actualCompletedMin <= task.endMin + 15) : true;
+        
+        task.completedAtMin = actualCompletedMin;
+
+        // Build timestamp reflecting when the task was actually completed
+        let completionISO = task.completedAtISO;
+        if (!completionISO) {
+          const compDate = task.completedDate || dateStr;
+          const d = new Date(compDate + 'T12:00:00');
+          d.setHours(completedHour, actualCompletedMin % 60, 0, 0);
+          completionISO = d.toISOString();
+          task.completedAtISO = completionISO;
+        }
+
         state.analytics.history.push({
           id: 'an_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
           taskId: task.id,
@@ -7924,11 +7977,11 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
           status: 'completed',
           scheduledStartMin: task.startMin,
           scheduledEndMin: task.endMin,
-          completedAtISO: today.toISOString(),
-          completedAtMin: nowMin,
-          date: dateStr,
+          completedAtISO: completionISO,
+          completedAtMin: actualCompletedMin,
+          date: task.completedDate || dateStr,
           dayOfWeek: today.getDay(),
-          hourOfDay: today.getHours(),
+          hourOfDay: completedHour,
           onTime: onTime,
           durationMin: task.duration || 30
         });
@@ -8603,15 +8656,22 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         return { shiftDetected: false };
       }
 
+      // Determine the time at which tasks were actually completed, not when marked
+      const getActualCompletedMin = (h) => {
+        if (h.scheduledEndMin != null) return h.scheduledEndMin;
+        if (h.completedAtMin != null) return h.completedAtMin;
+        return null;
+      };
+
       const focusCompletions = state.analytics.history.filter(h => 
-        h.status === 'completed' && (h.type === 'MIT' || h.energy === 'sharp') && h.completedAtMin != null
+        h.status === 'completed' && (h.type === 'MIT' || h.energy === 'sharp') && getActualCompletedMin(h) != null
       );
 
       if (focusCompletions.length < 3) {
         return { shiftDetected: false };
       }
 
-      const avgMin = focusCompletions.reduce((acc, h) => acc + h.completedAtMin, 0) / focusCompletions.length;
+      const avgMin = focusCompletions.reduce((acc, h) => acc + getActualCompletedMin(h), 0) / focusCompletions.length;
       const current = state.chronotype;
       const currentMidpoint = (current.peakStart + current.peakEnd) / 2;
       const diffMin = Math.round(avgMin - currentMidpoint);
@@ -8629,7 +8689,22 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         }
       });
 
-      const shiftDetected = (bestChronotypeId !== current.id && Math.abs(diffMin) >= 60) || Math.abs(diffMin) >= 90;
+      // Crucial: never offer to recalibrate if it's the exact same chronotype
+      if (bestChronotypeId === current.id || !CHRONOTYPES[bestChronotypeId]) {
+        return {
+          shiftDetected: false,
+          currentProfile: current,
+          suggestedId: current.id,
+          targetProfile: current,
+          avgMin: Math.round(avgMin),
+          avgTimeStr: formatMinToTime(Math.round(avgMin)),
+          diffMin: diffMin,
+          diffHours: (diffMin / 60).toFixed(1)
+        };
+      }
+
+      // Only detect a shift when a different chronotype is recommended and distance diff is meaningful (>= 60 min)
+      const shiftDetected = (bestChronotypeId !== current.id) && Math.abs(diffMin) >= 60;
 
       return {
         shiftDetected,
@@ -8646,7 +8721,8 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
     function checkChronotypeDrift(userInitiated = false) {
       const result = detectChronotypeShift();
 
-      if (!result.shiftDetected) {
+      // Guard: Never show modal if shift wasn't detected OR if recommended profile is identical to current
+      if (!result.shiftDetected || result.suggestedId === state.chronotype.id) {
         if (userInitiated) {
           showRippleNotice(`🧬 Your deep focus habits are well-aligned with your ${state.chronotype.name} ${state.chronotype.emoji} peak wave!`);
         }
