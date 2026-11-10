@@ -2090,9 +2090,109 @@
       });
     }
 
+    // Permanent completion registry & verification engine
+    function markTaskAsCompletedPermanently(task, compDate) {
+      if (!task) return;
+      state.completedTaskSignatures = state.completedTaskSignatures || {};
+      const idStr = task.id ? String(task.id) : (task.gcalEventId ? String(task.gcalEventId) : '');
+      const cleanTitle = (task.title || task.gcalTitle || '').trim().toLowerCase();
+      const dateStr = compDate || task.completedDate || (task.completedAtISO ? task.completedAtISO.slice(0, 10) : getLocalDateString());
+
+      if (idStr) {
+        state.completedTaskSignatures[idStr] = true;
+        if (dateStr) state.completedTaskSignatures[`${dateStr}_${idStr}`] = true;
+      }
+      if (cleanTitle) {
+        if (dateStr) state.completedTaskSignatures[`${dateStr}_${cleanTitle}`] = true;
+        if (!task.recurring) {
+          state.completedTaskSignatures[cleanTitle] = true;
+        }
+      }
+    }
+
+    function isTaskMarkedCompleted(taskId, title, date = null) {
+      const idStr = taskId ? String(taskId) : '';
+      const cleanTitle = (title || '').trim().toLowerCase();
+
+      // 1. Check permanent completedTaskSignatures registry
+      if (state.completedTaskSignatures) {
+        if (idStr && state.completedTaskSignatures[idStr]) return true;
+        if (idStr && date && state.completedTaskSignatures[`${date}_${idStr}`]) return true;
+        if (cleanTitle && date && state.completedTaskSignatures[`${date}_${cleanTitle}`]) return true;
+        if (cleanTitle && state.completedTaskSignatures[cleanTitle]) return true;
+      }
+
+      // 2. Check state.archivedTasks
+      if (state.archivedTasks && Array.isArray(state.archivedTasks)) {
+        const found = state.archivedTasks.some(at => {
+          if (!at || !at.completed) return false;
+          const atId = at.id ? String(at.id) : '';
+          const atGcalId = at.gcalEventId ? String(at.gcalEventId) : '';
+          const atTitle = (at.title || at.gcalTitle || '').trim().toLowerCase();
+          const atDate = at.completedDate || at.scheduledDate || (at.completedAtISO ? at.completedAtISO.slice(0, 10) : '');
+
+          const idMatch = idStr && (atId === idStr || atGcalId === idStr);
+          const titleMatch = cleanTitle && atTitle === cleanTitle;
+
+          if (idMatch || titleMatch) {
+            if (!date || atDate === date) return true;
+            if (!at.recurring) return true;
+          }
+          return false;
+        });
+        if (found) return true;
+      }
+
+      // 3. Check state.tasks for completed active tasks
+      if (state.tasks && Array.isArray(state.tasks)) {
+        const foundActive = state.tasks.some(t => {
+          if (!t || !t.completed) return false;
+          const tId = t.id ? String(t.id) : '';
+          const tTitle = (t.title || t.gcalTitle || '').trim().toLowerCase();
+          const tDate = t.completedDate || t.scheduledDate || (t.completedAtISO ? t.completedAtISO.slice(0, 10) : '');
+
+          const idMatch = idStr && tId === idStr;
+          const titleMatch = cleanTitle && tTitle === cleanTitle;
+
+          if (idMatch || titleMatch) {
+            if (!date || tDate === date) return true;
+            if (!t.recurring) return true;
+          }
+          return false;
+        });
+        if (foundActive) return true;
+      }
+
+      // 4. Check state.analytics.history for recorded completions
+      if (state.analytics && Array.isArray(state.analytics.history)) {
+        const foundHist = state.analytics.history.some(h => {
+          if (h.status !== 'completed') return false;
+          const hId = h.taskId ? String(h.taskId) : '';
+          const hTitle = (h.title || '').trim().toLowerCase();
+          const hDate = h.date || (h.completedAtISO ? h.completedAtISO.slice(0, 10) : '');
+
+          const idMatch = idStr && hId === idStr;
+          const titleMatch = cleanTitle && hTitle === cleanTitle;
+
+          if (idMatch || titleMatch) {
+            if (!date || hDate === date) return true;
+            if (h.recurring === false) return true;
+          }
+          return false;
+        });
+        if (foundHist) return true;
+      }
+
+      return false;
+    }
+
     function isCompletedToday(t, todayKey = getLocalDateString()) {
       if (!t || !t.completed) return false;
-      if (t.completedDate === todayKey) return true;
+      // If task has an explicit completedDate, respect it strictly!
+      // A task completed for a past date (e.g. 2026-11-08) was NOT completed today.
+      if (t.completedDate) {
+        return t.completedDate === todayKey;
+      }
       if (t.completedAtISO && t.completedAtISO.slice(0, 10) === todayKey) return true;
       return false;
     }
@@ -2112,23 +2212,31 @@
         const id = String(inTask.id);
         seenIds.add(id);
         const local = localMap.get(id);
+
+        const checkDate = inTask.scheduledDate || inTask.completedDate;
+        const isLocallyArchivedDone = isTaskMarkedCompleted(inTask.id, inTask.title, checkDate);
+
+        // If task was completed locally and archived, never allow remote sync to resurrect it as uncompleted
+        if (!local && isLocallyArchivedDone) {
+          return;
+        }
+
         if (!local) {
           merged.push(inTask);
           return;
         }
 
-        // If local task was completed today, preserve its completed status & timing
-        const localDoneToday = isCompletedToday(local, todayKey);
         const mergedTask = { ...inTask, ...local };
 
-        if (localDoneToday) {
+        // If local task was completed (either today or earlier), ALWAYS preserve completed status!
+        if (local.completed || isLocallyArchivedDone) {
           mergedTask.completed = true;
-          mergedTask.completedDate = local.completedDate || todayKey;
-          mergedTask.completedAtISO = local.completedAtISO;
-          mergedTask.completedAtMin = local.completedAtMin;
-          mergedTask.scheduledDate = todayKey;
-          mergedTask.startMin = local.startMin;
-          mergedTask.endMin = local.endMin;
+          mergedTask.completedDate = local.completedDate || (isLocallyArchivedDone ? checkDate : todayKey);
+          mergedTask.completedAtISO = local.completedAtISO || inTask.completedAtISO || new Date().toISOString();
+          mergedTask.completedAtMin = local.completedAtMin != null ? local.completedAtMin : inTask.completedAtMin;
+          mergedTask.scheduledDate = local.scheduledDate || local.completedDate || inTask.scheduledDate || todayKey;
+          mergedTask.startMin = local.startMin != null ? local.startMin : inTask.startMin;
+          mergedTask.endMin = local.endMin != null ? local.endMin : inTask.endMin;
         }
 
         if (local.rolledOver) {
@@ -2183,6 +2291,7 @@
       soundEnabled: true, // Master auditory switch
       lastActiveDate: null, // Tracks date for auto-rollover
       holidays: {}, // All-day holidays & observances mapped by date { 'YYYY-MM-DD': [{ summary, calendarName }] }
+      completedTaskSignatures: {}, // Permanent registry of completed tasks to prevent repopulation
       archivedTasks: [
         {
           id: 'arch_sample_1',
@@ -2531,6 +2640,42 @@
 
       // Safety check: sanitize and recover rollover dates on active tasks from past dates (Saturday 2026-11-07 forward)
       const todayKey = getLocalDateString();
+
+      // Seed permanent completed task signatures from archived tasks and analytics history
+      state.completedTaskSignatures = state.completedTaskSignatures || {};
+      if (state.archivedTasks && Array.isArray(state.archivedTasks)) {
+        state.archivedTasks.forEach(at => {
+          if (at.completed) {
+            markTaskAsCompletedPermanently(at, at.completedDate || at.scheduledDate);
+          }
+        });
+      }
+      if (state.analytics && Array.isArray(state.analytics.history)) {
+        state.analytics.history.forEach(h => {
+          if (h.status === 'completed') {
+            markTaskAsCompletedPermanently({ id: h.taskId, title: h.title }, h.date);
+          }
+        });
+      }
+
+      // Cleanup: ensure tasks completed on previous days (like Brunch from earlier weekend day)
+      // do not linger or repopulate in state.tasks as active tasks
+      state.tasks = (state.tasks || []).filter(t => {
+        if (t.completed && t.completedDate && t.completedDate < todayKey) {
+          return false;
+        }
+        if (!t.completed) {
+          const checkDate = t.scheduledDate || t.rolledOverFromDate;
+          if (isTaskMarkedCompleted(t.id, t.title, checkDate)) {
+            return false;
+          }
+          if (!t.recurring && isTaskMarkedCompleted(t.id, t.title)) {
+            return false;
+          }
+        }
+        return true;
+      });
+
       state.tasks.forEach(t => {
         if (!t.completed) {
           // Auto-carryover any lingering incomplete tasks from past days
@@ -2564,8 +2709,13 @@
           const days = rec.daysOfWeek || [1, 2, 3, 4, 5];
           const nowDay = new Date().getDay();
           if (!days.includes(nowDay) && (days.includes(0) || days.includes(6))) {
+            const checkDate = days.includes(0) ? '2026-11-08' : '2026-11-07';
+            // CRITICAL: If this recurring task was already completed for that date, DO NOT roll it over!
+            if (isTaskMarkedCompleted(t.id, t.title, checkDate)) {
+              return;
+            }
             t.rolledOver = true;
-            t.rolledOverFromDate = days.includes(0) ? '2026-11-08' : '2026-11-07';
+            t.rolledOverFromDate = checkDate;
             t.scheduledDate = todayKey;
           }
         }
@@ -2595,6 +2745,10 @@
       if (state.analytics && Array.isArray(state.analytics.history)) {
         state.analytics.history.forEach(h => {
           if ((h.status === 'deferred' || h.status === 'skipped') && h.date >= '2026-11-07') {
+            // CRITICAL: If this task was completed or archived, NEVER restore it as incomplete!
+            if (isTaskMarkedCompleted(h.taskId, h.title, h.date)) return;
+            if (state.analytics.history.some(x => x.status === 'completed' && x.title && x.title.toLowerCase() === (h.title || '').toLowerCase())) return;
+
             const inTasks = state.tasks.some(t => String(t.id) === String(h.taskId) || (t.title && t.title.toLowerCase() === (h.title || '').toLowerCase()));
             const inArchive = (state.archivedTasks || []).some(at => (String(at.id) === String(h.taskId) || (at.title && at.title.toLowerCase() === (h.title || '').toLowerCase())) && at.completed);
             if (!inTasks && !inArchive && h.title) {
@@ -7147,6 +7301,11 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         t.completed = false;
         t.completedAtISO = null;
         t.completedDate = null;
+        if (state.completedTaskSignatures) {
+          delete state.completedTaskSignatures[String(t.id)];
+          const cleanTitle = (t.title || '').trim().toLowerCase();
+          delete state.completedTaskSignatures[cleanTitle];
+        }
         saveState(); 
         recalculateSchedule(); 
         updateRecommendationBanner(); 
@@ -7183,6 +7342,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         t.completedDate = todayKey;
         t.scheduledDate = todayKey;
         t.rolledOver = false;
+        markTaskAsCompletedPermanently(t, todayKey);
         trackTaskLifecycle(t, 'completed');
         saveState();
         recalculateSchedule();
@@ -7199,6 +7359,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         t.completedDate = todayKey;
         t.scheduledDate = todayKey;
         t.rolledOver = false;
+        markTaskAsCompletedPermanently(t, todayKey);
         trackTaskLifecycle(t, 'completed');
         saveState();
         recalculateSchedule();
@@ -7226,6 +7387,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       t.completedDate = todayKey;
       t.scheduledDate = todayKey;
       t.rolledOver = false;
+      markTaskAsCompletedPermanently(t, todayKey);
       trackTaskLifecycle(t, 'completed');
       saveState();
       recalculateSchedule();
@@ -7479,9 +7641,10 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
 
         // Record historical analytics event & clear from pushCounts
         recordHistoricalAnalyticsEvent(t, prevDateKey, histStart, histEnd, true);
+        markTaskAsCompletedPermanently(t, prevDateKey);
 
         // Remove from active tasks
-        state.tasks = state.tasks.filter(x => String(x.id) !== String(t.id));
+        state.tasks = state.tasks.filter(x => String(x.id) !== String(t.id) && (!x.title || x.title.toLowerCase().trim() !== t.title.toLowerCase().trim()));
 
         saveState();
         recalculateSchedule();
@@ -7525,9 +7688,10 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
 
         // Record historical analytics event & clear from pushCounts
         recordHistoricalAnalyticsEvent(t, customDate, histStart, histEnd, true);
+        markTaskAsCompletedPermanently(t, customDate);
 
         // Remove from active tasks
-        state.tasks = state.tasks.filter(x => String(x.id) !== String(t.id));
+        state.tasks = state.tasks.filter(x => String(x.id) !== String(t.id) && (!x.title || x.title.toLowerCase().trim() !== t.title.toLowerCase().trim()));
 
         saveState();
         recalculateSchedule();
@@ -7542,6 +7706,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       t.completedDate = todayKey;
       t.scheduledDate = todayKey;
       t.rolledOver = false;
+      markTaskAsCompletedPermanently(t, todayKey);
 
       if (mode === 'scheduled') {
         // Keep in original time block as completed earlier in the day prior to current time
@@ -11531,6 +11696,11 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
               state.tasks.push(arch);
               existing = arch;
             }
+          }
+
+          if (!existing && isTaskMarkedCompleted(gcalId, title, eventDateISO)) {
+            // Task has already been completed: do not re-add as an uncompleted task!
+            return;
           }
 
           if (existing) {
