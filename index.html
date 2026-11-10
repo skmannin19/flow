@@ -2131,6 +2131,12 @@
           mergedTask.endMin = local.endMin;
         }
 
+        if (local.rolledOver) {
+          mergedTask.rolledOver = true;
+          mergedTask.rolledOverFromDate = local.rolledOverFromDate;
+          mergedTask.scheduledDate = local.scheduledDate || todayKey;
+        }
+
         if (local.userPriorityEdited) {
           mergedTask.type = local.type;
           mergedTask.userPriorityEdited = true;
@@ -2523,15 +2529,99 @@
         }
       });
 
-      // Safety check: sanitize rollover dates on active tasks
+      // Safety check: sanitize and recover rollover dates on active tasks from past dates (Saturday 2026-11-07 forward)
       const todayKey = getLocalDateString();
       state.tasks.forEach(t => {
+        if (!t.completed) {
+          // Auto-carryover any lingering incomplete tasks from past days
+          if ((t.scheduledDate && t.scheduledDate < todayKey) || (t.rolledOver && t.scheduledDate !== todayKey)) {
+            t.rolledOver = true;
+            if (!t.rolledOverFromDate || t.rolledOverFromDate >= todayKey) {
+              t.rolledOverFromDate = (t.scheduledDate && t.scheduledDate < todayKey) ? t.scheduledDate : getYesterdayDateString();
+            }
+            if (t.startMin != null && t.originalHistoricalStartMin == null) {
+              t.originalHistoricalStartMin = t.startMin;
+              t.originalHistoricalEndMin = t.endMin;
+            }
+            if (!isTaskLocked(t)) {
+              t.startMin = null;
+              t.endMin = null;
+            }
+            t.scheduledDate = todayKey;
+          }
+        }
         if (t.rolledOver) {
           if (!t.rolledOverFromDate || t.rolledOverFromDate >= todayKey) {
             t.rolledOverFromDate = getYesterdayDateString();
           }
         }
       });
+
+      // Recover recurring tasks that were incomplete on Sunday (2026-11-08) or Saturday (2026-11-07)
+      state.tasks.forEach(t => {
+        if (t.recurring && !t.completed && !t.rolledOver) {
+          const rec = t.recurrence || {};
+          const days = rec.daysOfWeek || [1, 2, 3, 4, 5];
+          const nowDay = new Date().getDay();
+          if (!days.includes(nowDay) && (days.includes(0) || days.includes(6))) {
+            t.rolledOver = true;
+            t.rolledOverFromDate = days.includes(0) ? '2026-11-08' : '2026-11-07';
+            t.scheduledDate = todayKey;
+          }
+        }
+      });
+
+      // Restore any incomplete tasks that may have been accidentally placed in archivedTasks
+      if (state.archivedTasks && state.archivedTasks.length > 0) {
+        const uncompletedInArchive = state.archivedTasks.filter(at => !at.completed);
+        if (uncompletedInArchive.length > 0) {
+          const uncompletedIds = new Set(uncompletedInArchive.map(at => String(at.id)));
+          uncompletedInArchive.forEach(rt => {
+            rt.completed = false;
+            rt.rolledOver = true;
+            rt.rolledOverFromDate = rt.scheduledDate || rt.completedDate || getYesterdayDateString();
+            rt.scheduledDate = todayKey;
+            rt.startMin = null;
+            rt.endMin = null;
+            if (!state.tasks.some(t => String(t.id) === String(rt.id))) {
+              state.tasks.push(rt);
+            }
+          });
+          state.archivedTasks = state.archivedTasks.filter(at => !uncompletedIds.has(String(at.id)));
+        }
+      }
+
+      // Restore any deferred/skipped tasks from analytics history (from 2026-11-07 onwards) that are missing from tasks
+      if (state.analytics && Array.isArray(state.analytics.history)) {
+        state.analytics.history.forEach(h => {
+          if ((h.status === 'deferred' || h.status === 'skipped') && h.date >= '2026-11-07') {
+            const inTasks = state.tasks.some(t => String(t.id) === String(h.taskId) || (t.title && t.title.toLowerCase() === (h.title || '').toLowerCase()));
+            const inArchive = (state.archivedTasks || []).some(at => (String(at.id) === String(h.taskId) || (at.title && at.title.toLowerCase() === (h.title || '').toLowerCase())) && at.completed);
+            if (!inTasks && !inArchive && h.title) {
+              const pInfo = classifyTaskPriority(h.title, h.durationMin || 30, h.energy || 'steady');
+              state.tasks.push({
+                id: h.taskId || ('t_restored_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4)),
+                title: h.title,
+                microStep: generateSmartBreakdown(h.title, pInfo.type, h.energy || 'steady').microStep,
+                type: h.type || pInfo.type,
+                needsReview: false,
+                energy: h.energy || 'steady',
+                duration: h.durationMin || 30,
+                fixedStartMin: null,
+                startMin: null,
+                endMin: null,
+                locked: false,
+                completed: false,
+                recurring: false,
+                rolledOver: true,
+                rolledOverFromDate: h.date || getYesterdayDateString(),
+                scheduledDate: todayKey,
+                subtasks: []
+              });
+            }
+          }
+        });
+      }
 
       // Safety check: prune only tasks completed on past days into archivedTasks
       const pastCompleted = state.tasks.filter(t => !t.recurring && t.completed && !isCompletedToday(t, todayKey) && (
@@ -5930,6 +6020,20 @@
         if (t.scheduledDate && t.scheduledDate < dateISO) return false;
       }
 
+      // INCOMPLETE TASKS CARRY-OVER GUARANTEE:
+      // If a task is incomplete and was scheduled for a past date, or has been rolled over,
+      // it must automatically carry over and display on today's schedule and priority lists!
+      const todayISO = getLocalDateString();
+      if (!t.completed) {
+        if (t.rolledOver && dateISO === todayISO) return true;
+        if (t.scheduledDate && t.scheduledDate < dateISO) {
+          // If viewing today, past incomplete tasks carry over directly
+          if (dateISO === todayISO) return true;
+          // If viewing a future date (e.g. tomorrow), do not show past tasks unless viewing today
+          return false;
+        }
+      }
+
       if (t.scheduledDate && t.scheduledDate !== dateISO) return false;
       // If task was explicitly assigned, scheduled, or pushed to this exact date, honor it unconditionally!
       if (t.scheduledDate === dateISO) return true;
@@ -7874,7 +7978,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       const defContainer = document.getElementById('tomorrowDeferredTasksList');
       const countEl = document.getElementById('tomorrowDeferredCount');
       const deferredForTomorrow = state.tasks.filter(t => !t.fromCalendar && !t.completed && (t.scheduledDate === tomStr || t.manuallyDeferred));
-      const todayFlexibleIncomplete = state.tasks.filter(t => !t.fromCalendar && !t.completed && (!t.scheduledDate || t.scheduledDate === todayStr) && !t.manuallyDeferred);
+      const todayFlexibleIncomplete = state.tasks.filter(t => !t.fromCalendar && !t.completed && (!t.scheduledDate || t.scheduledDate <= todayStr) && !t.manuallyDeferred);
 
       if (countEl) countEl.textContent = `${deferredForTomorrow.length} planned`;
 
@@ -9546,11 +9650,11 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         state.tasks = state.tasks.filter(t => !t.completed || isCompletedToday(t, todayKey) || !pastArchivedIds.has(String(t.id)));
       }
 
-      // 1. Deduplicate any identical calendar tasks (same start time & title)
+      // 1. Deduplicate any identical calendar tasks (same date, start time & title)
       const seenFixed = new Set();
       state.tasks = state.tasks.filter(t => {
         if (!t.fromCalendar) return true;
-        const key = `${t.fixedStartMin || t.startMin}_${(t.title || '').trim().toLowerCase()}`;
+        const key = `${t.scheduledDate || ''}_${t.fixedStartMin || t.startMin}_${(t.title || '').trim().toLowerCase()}`;
         if (seenFixed.has(key)) return false;
         seenFixed.add(key);
         return true;
@@ -10674,8 +10778,23 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
             t.completed = false;
             t.completedAtISO = null;
             t.completedDate = null;
+            t.rolledOver = false;
+            t.rolledOverFromDate = null;
+            t.scheduledDate = null;
             recurringResetCount++;
             archivedCount++;
+          } else {
+            // Recurring task was NOT completed: carry it over as lingering to today!
+            lingeringCount++;
+            t.rolledOver = true;
+            if (!t.rolledOverFromDate || t.rolledOverFromDate >= todayKey) {
+              t.rolledOverFromDate = (lastDate && lastDate !== 'prior' && lastDate < todayKey) ? lastDate : getYesterdayDateString();
+            }
+            t.scheduledDate = todayKey;
+            if (!isTaskLocked(t)) {
+              t.startMin = null;
+              t.endMin = null;
+            }
           }
           if (t.subtasks && t.subtasks.length > 0) {
             t.subtasks.forEach(st => st.done = false);
@@ -10685,11 +10804,13 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
           // preserve its planned schedule times rather than clearing them as lingering past tasks.
           if (t.scheduledDate && t.scheduledDate >= todayKey) {
             // Pre-planned for today/future: do not reset startMin/endMin
-          } else if (!t.fromCalendar) {
+          } else {
             lingeringCount++;
             t.rolledOver = true;
             if (!t.rolledOverFromDate || t.rolledOverFromDate >= todayKey) {
-              t.rolledOverFromDate = (lastDate && lastDate !== 'prior' && lastDate < todayKey) ? lastDate : getYesterdayDateString();
+              t.rolledOverFromDate = (t.scheduledDate && t.scheduledDate < todayKey) 
+                ? t.scheduledDate 
+                : ((lastDate && lastDate !== 'prior' && lastDate < todayKey) ? lastDate : getYesterdayDateString());
             }
             if (t.startMin != null && t.originalHistoricalStartMin == null) {
               t.originalHistoricalStartMin = t.startMin;
@@ -10699,6 +10820,8 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
               t.startMin = null;
               t.endMin = null;
             }
+            // Advance scheduledDate to todayKey so the task belongs to today's active schedule
+            t.scheduledDate = todayKey;
           }
         }
       });
@@ -10726,8 +10849,8 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         state.tasks = state.tasks.filter(t => !t.completed || t.recurring || isCompletedToday(t, todayKey));
       }
 
-      // 3. Clear past-day Google Calendar events, keeping today's events, user-shifted, and renamed events safe
-      state.tasks = state.tasks.filter(t => !t.fromCalendar || t.completed || t.userShifted || t.userRenamed || (t.scheduledDate && t.scheduledDate >= todayKey));
+      // 3. Clear past-day Google Calendar events, keeping today's events, uncompleted tasks, user-shifted, and renamed events safe
+      state.tasks = state.tasks.filter(t => !t.fromCalendar || !t.completed || t.rolledOver || t.userShifted || t.userRenamed || (t.scheduledDate && t.scheduledDate >= todayKey));
 
       state.lastActiveDate = todayKey;
       saveState();
@@ -11523,8 +11646,8 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
               if (t.scheduledDate && t.scheduledDate !== targetDateISO) {
                 return true;
               }
-              // Never prune tasks that were completed, shifted, or renamed by the user
-              if (t.completed || t.userShifted || t.userRenamed || t.manuallyPositioned) {
+              // Never prune tasks that were completed, shifted, renamed, manually positioned, or rolled over
+              if (t.completed || t.userShifted || t.userRenamed || t.manuallyPositioned || t.rolledOver) {
                 return true;
               }
               return activeGcalIds.has(t.id);
