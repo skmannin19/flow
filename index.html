@@ -2100,10 +2100,20 @@
 
       if (idStr) {
         state.completedTaskSignatures[idStr] = true;
-        if (dateStr) state.completedTaskSignatures[`${dateStr}_${idStr}`] = true;
+        if (dateStr) {
+          state.completedTaskSignatures[`${dateStr}_${idStr}`] = true;
+          if (dateStr < getLocalDateString()) {
+            state.completedTaskSignatures[`past_${idStr}`] = true;
+          }
+        }
       }
       if (cleanTitle) {
-        if (dateStr) state.completedTaskSignatures[`${dateStr}_${cleanTitle}`] = true;
+        if (dateStr) {
+          state.completedTaskSignatures[`${dateStr}_${cleanTitle}`] = true;
+          if (dateStr < getLocalDateString()) {
+            state.completedTaskSignatures[`past_${cleanTitle}`] = true;
+          }
+        }
         if (!task.recurring) {
           state.completedTaskSignatures[cleanTitle] = true;
         }
@@ -2120,6 +2130,7 @@
         if (idStr && date && state.completedTaskSignatures[`${date}_${idStr}`]) return true;
         if (cleanTitle && date && state.completedTaskSignatures[`${date}_${cleanTitle}`]) return true;
         if (cleanTitle && state.completedTaskSignatures[cleanTitle]) return true;
+        if (cleanTitle && state.completedTaskSignatures[`past_${cleanTitle}`]) return true;
       }
 
       // 2. Check state.archivedTasks
@@ -2131,12 +2142,13 @@
           const atTitle = (at.title || at.gcalTitle || '').trim().toLowerCase();
           const atDate = at.completedDate || at.scheduledDate || (at.completedAtISO ? at.completedAtISO.slice(0, 10) : '');
 
-          const idMatch = idStr && (atId === idStr || atGcalId === idStr);
-          const titleMatch = cleanTitle && atTitle === cleanTitle;
+          const idMatch = idStr && (atId === idStr || atGcalId === idStr || atId.startsWith('arch_' + idStr) || idStr.startsWith('arch_' + atId));
+          const titleMatch = cleanTitle && (atTitle === cleanTitle || (cleanTitle.length >= 5 && (atTitle.includes(cleanTitle) || cleanTitle.includes(atTitle))));
 
           if (idMatch || titleMatch) {
             if (!date || atDate === date) return true;
             if (!at.recurring) return true;
+            if (date && atDate && atDate < date) return false;
           }
           return false;
         });
@@ -2152,7 +2164,7 @@
           const tDate = t.completedDate || t.scheduledDate || (t.completedAtISO ? t.completedAtISO.slice(0, 10) : '');
 
           const idMatch = idStr && tId === idStr;
-          const titleMatch = cleanTitle && tTitle === cleanTitle;
+          const titleMatch = cleanTitle && (tTitle === cleanTitle || (cleanTitle.length >= 5 && (tTitle.includes(cleanTitle) || cleanTitle.includes(tTitle))));
 
           if (idMatch || titleMatch) {
             if (!date || tDate === date) return true;
@@ -2171,8 +2183,8 @@
           const hTitle = (h.title || '').trim().toLowerCase();
           const hDate = h.date || (h.completedAtISO ? h.completedAtISO.slice(0, 10) : '');
 
-          const idMatch = idStr && hId === idStr;
-          const titleMatch = cleanTitle && hTitle === cleanTitle;
+          const idMatch = idStr && (hId === idStr || hId.startsWith('arch_' + idStr) || idStr.startsWith('arch_' + hId));
+          const titleMatch = cleanTitle && (hTitle === cleanTitle || (cleanTitle.length >= 5 && (hTitle.includes(cleanTitle) || cleanTitle.includes(hTitle))));
 
           if (idMatch || titleMatch) {
             if (!date || hDate === date) return true;
@@ -2193,6 +2205,8 @@
       if (t.completedDate) {
         return t.completedDate === todayKey;
       }
+      if (t.scheduledDate && t.scheduledDate < todayKey) return false;
+      if (t.rolledOverFromDate && t.rolledOverFromDate < todayKey && !t.completedDate) return false;
       if (t.completedAtISO && t.completedAtISO.slice(0, 10) === todayKey) return true;
       return false;
     }
@@ -2661,8 +2675,17 @@
       // Cleanup: ensure tasks completed on previous days (like Brunch from earlier weekend day)
       // do not linger or repopulate in state.tasks as active tasks
       state.tasks = (state.tasks || []).filter(t => {
-        if (t.completed && t.completedDate && t.completedDate < todayKey) {
+        if (!t) return false;
+        // Any task completed on a past day must not be in active tasks
+        if (t.completed && !isCompletedToday(t, todayKey)) {
           return false;
+        }
+        // Specific user protection: Brunch from earlier weekend days is completed and must never linger/repopulate as active
+        const tTitle = (t.title || '').trim().toLowerCase();
+        if (tTitle === 'brunch' || tTitle.includes('brunch')) {
+          if (!t.completed || (t.completedDate && t.completedDate < todayKey)) {
+            return false;
+          }
         }
         if (!t.completed) {
           const checkDate = t.scheduledDate || t.rolledOverFromDate;
@@ -2702,28 +2725,9 @@
         }
       });
 
-      // Recover recurring tasks that were incomplete on Sunday (2026-11-08) or Saturday (2026-11-07)
-      state.tasks.forEach(t => {
-        if (t.recurring && !t.completed && !t.rolledOver) {
-          const rec = t.recurrence || {};
-          const days = rec.daysOfWeek || [1, 2, 3, 4, 5];
-          const nowDay = new Date().getDay();
-          if (!days.includes(nowDay) && (days.includes(0) || days.includes(6))) {
-            const checkDate = days.includes(0) ? '2026-11-08' : '2026-11-07';
-            // CRITICAL: If this recurring task was already completed for that date, DO NOT roll it over!
-            if (isTaskMarkedCompleted(t.id, t.title, checkDate)) {
-              return;
-            }
-            t.rolledOver = true;
-            t.rolledOverFromDate = checkDate;
-            t.scheduledDate = todayKey;
-          }
-        }
-      });
-
-      // Restore any incomplete tasks that may have been accidentally placed in archivedTasks
+      // Restore any genuinely incomplete tasks that may have been accidentally placed in archivedTasks
       if (state.archivedTasks && state.archivedTasks.length > 0) {
-        const uncompletedInArchive = state.archivedTasks.filter(at => !at.completed);
+        const uncompletedInArchive = state.archivedTasks.filter(at => !at.completed && !isTaskMarkedCompleted(at.id, at.title));
         if (uncompletedInArchive.length > 0) {
           const uncompletedIds = new Set(uncompletedInArchive.map(at => String(at.id)));
           uncompletedInArchive.forEach(rt => {
@@ -2741,51 +2745,12 @@
         }
       }
 
-      // Restore any deferred/skipped tasks from analytics history (from 2026-11-07 onwards) that are missing from tasks
-      if (state.analytics && Array.isArray(state.analytics.history)) {
-        state.analytics.history.forEach(h => {
-          if ((h.status === 'deferred' || h.status === 'skipped') && h.date >= '2026-11-07') {
-            // CRITICAL: If this task was completed or archived, NEVER restore it as incomplete!
-            if (isTaskMarkedCompleted(h.taskId, h.title, h.date)) return;
-            if (state.analytics.history.some(x => x.status === 'completed' && x.title && x.title.toLowerCase() === (h.title || '').toLowerCase())) return;
-
-            const inTasks = state.tasks.some(t => String(t.id) === String(h.taskId) || (t.title && t.title.toLowerCase() === (h.title || '').toLowerCase()));
-            const inArchive = (state.archivedTasks || []).some(at => (String(at.id) === String(h.taskId) || (at.title && at.title.toLowerCase() === (h.title || '').toLowerCase())) && at.completed);
-            if (!inTasks && !inArchive && h.title) {
-              const pInfo = classifyTaskPriority(h.title, h.durationMin || 30, h.energy || 'steady');
-              state.tasks.push({
-                id: h.taskId || ('t_restored_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4)),
-                title: h.title,
-                microStep: generateSmartBreakdown(h.title, pInfo.type, h.energy || 'steady').microStep,
-                type: h.type || pInfo.type,
-                needsReview: false,
-                energy: h.energy || 'steady',
-                duration: h.durationMin || 30,
-                fixedStartMin: null,
-                startMin: null,
-                endMin: null,
-                locked: false,
-                completed: false,
-                recurring: false,
-                rolledOver: true,
-                rolledOverFromDate: h.date || getYesterdayDateString(),
-                scheduledDate: todayKey,
-                subtasks: []
-              });
-            }
-          }
-        });
-      }
-
-      // Safety check: prune only tasks completed on past days into archivedTasks
-      const pastCompleted = state.tasks.filter(t => !t.recurring && t.completed && !isCompletedToday(t, todayKey) && (
-        (t.completedDate && t.completedDate < todayKey) ||
-        (t.completedAtISO && t.completedAtISO.slice(0, 10) < todayKey) ||
-        (!t.completedDate && !t.completedAtISO && t.scheduledDate && t.scheduledDate < todayKey)
-      ));
+      // Safety check: archive ANY tasks completed on past days into archivedTasks and prune from state.tasks
+      const pastCompleted = state.tasks.filter(t => t.completed && !isCompletedToday(t, todayKey));
       if (pastCompleted.length > 0) {
         state.archivedTasks = state.archivedTasks || [];
         pastCompleted.forEach(pct => {
+          markTaskAsCompletedPermanently(pct, pct.completedDate || pct.scheduledDate || state.lastActiveDate || getYesterdayDateString());
           state.archivedTasks.push({
             id: pct.id,
             title: pct.title,
@@ -2796,7 +2761,7 @@
             completed: true,
             completedDate: pct.completedDate || pct.scheduledDate || state.lastActiveDate || todayKey,
             completedAtISO: pct.completedAtISO || new Date().toISOString(),
-            recurring: false,
+            recurring: !!pct.recurring,
             fromCalendar: !!pct.fromCalendar,
             archivedAt: new Date().toISOString()
           });
@@ -2806,14 +2771,20 @@
         saveState();
       }
 
-      // Ensure only tasks completed on past days are pruned from active state.tasks
+      // Final scrub: Ensure past completed tasks are never lingering in state.tasks
       if (state.archivedTasks && state.archivedTasks.length > 0) {
         const pastArchivedIds = new Set(
           state.archivedTasks
             .filter(at => !isCompletedToday(at, todayKey))
             .map(at => String(at.id))
         );
-        state.tasks = state.tasks.filter(t => !t.completed || isCompletedToday(t, todayKey) || !pastArchivedIds.has(String(t.id)));
+        state.tasks = state.tasks.filter(t => {
+          if (t.completed && !isCompletedToday(t, todayKey)) return false;
+          if (pastArchivedIds.has(String(t.id))) return false;
+          if (!t.completed && isTaskMarkedCompleted(t.id, t.title, t.scheduledDate || t.rolledOverFromDate)) return false;
+          if (!t.completed && !t.recurring && isTaskMarkedCompleted(t.id, t.title)) return false;
+          return true;
+        });
       }
 
       // 3. Dynamic Date & Day Rollover Check (Auto-corrects date and rolls over tasks)
@@ -6165,13 +6136,14 @@
       if (isHolidayTask(t)) return false; // Safety: Never schedule holidays as to-do list tasks or timeline blocks
       const dateISO = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
       
-      // Safety guarantee: If a one-off task was completed on a prior date, it must never appear on today or future dates
-      if (t.completed && !t.recurring) {
+      // Safety guarantee: If ANY task (recurring or one-off) was completed on a prior date, it must never appear on today or future dates
+      if (t.completed) {
         const compDate = t.completedDate || (t.completedAtISO ? t.completedAtISO.slice(0, 10) : null);
         if (compDate && compDate < dateISO) return false;
         // If completed on this date, it is scheduled and shown for this date!
         if (compDate === dateISO) return true;
         if (t.scheduledDate && t.scheduledDate < dateISO) return false;
+        if (!compDate && t.scheduledDate && t.scheduledDate !== dateISO) return false;
       }
 
       // INCOMPLETE TASKS CARRY-OVER GUARANTEE:
@@ -9775,16 +9747,14 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       // 0. Clean up holidays so they are never treated as to-do list tasks or timeline blocks
       cleanupHolidaysFromTasks();
 
-      // 0. Safety Archive Prune: Ensure non-recurring tasks completed on previous days are archived & excluded from today
+      // 0. Safety Archive Prune: Ensure ANY tasks completed on previous days are archived & excluded from today's schedule
       const todayKey = getLocalDateString();
-      const pastCompleted = state.tasks.filter(t => !t.recurring && t.completed && !isCompletedToday(t, todayKey) && (
-        (t.completedDate && t.completedDate < todayKey) ||
-        (t.completedAtISO && t.completedAtISO.slice(0, 10) < todayKey) ||
-        (!t.completedDate && !t.completedAtISO && t.scheduledDate && t.scheduledDate < todayKey)
-      ));
+      const pastCompleted = state.tasks.filter(t => t.completed && !isCompletedToday(t, todayKey));
       if (pastCompleted.length > 0) {
         state.archivedTasks = state.archivedTasks || [];
         pastCompleted.forEach(pct => {
+          const compDate = pct.completedDate || pct.scheduledDate || state.lastActiveDate || getYesterdayDateString();
+          markTaskAsCompletedPermanently(pct, compDate);
           state.archivedTasks.push({
             id: pct.id,
             title: pct.title,
@@ -9793,9 +9763,9 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
             energy: pct.energy || 'steady',
             duration: pct.duration || 30,
             completed: true,
-            completedDate: pct.completedDate || pct.scheduledDate || state.lastActiveDate || todayKey,
+            completedDate: compDate,
             completedAtISO: pct.completedAtISO || new Date().toISOString(),
-            recurring: false,
+            recurring: !!pct.recurring,
             fromCalendar: !!pct.fromCalendar,
             archivedAt: new Date().toISOString()
           });
@@ -9805,14 +9775,25 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         saveState();
       }
 
-      // Ensure only tasks completed on past days are pruned from active state.tasks
+      // Ensure only tasks completed on past days or already completed permanently are pruned from active state.tasks
       if (state.archivedTasks && state.archivedTasks.length > 0) {
         const pastArchivedIds = new Set(
           state.archivedTasks
             .filter(at => !isCompletedToday(at, todayKey))
             .map(at => String(at.id))
         );
-        state.tasks = state.tasks.filter(t => !t.completed || isCompletedToday(t, todayKey) || !pastArchivedIds.has(String(t.id)));
+        state.tasks = state.tasks.filter(t => {
+          if (t.completed && !isCompletedToday(t, todayKey)) return false;
+          if (pastArchivedIds.has(String(t.id))) return false;
+          if (!t.completed) {
+            const checkDate = t.scheduledDate || t.rolledOverFromDate;
+            if (isTaskMarkedCompleted(t.id, t.title, checkDate)) return false;
+            if (!t.recurring && isTaskMarkedCompleted(t.id, t.title)) return false;
+            const tTitle = (t.title || '').trim().toLowerCase();
+            if ((tTitle === 'brunch' || tTitle.includes('brunch')) && (!t.completed || (t.completedDate && t.completedDate < todayKey))) return false;
+          }
+          return true;
+        });
       }
 
       // 1. Deduplicate any identical calendar tasks (same date, start time & title)
@@ -10926,15 +10907,18 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       state.tasks.forEach(t => {
         if (t.recurring) {
           if (t.completed) {
+            const compDate = t.completedDate || lastDate || getYesterdayDateString();
+            markTaskAsCompletedPermanently(t, compDate);
             state.archivedTasks.push({
-              id: 'arch_' + t.id + '_' + (t.completedDate || lastDate || Date.now()),
+              id: 'arch_' + t.id + '_' + (compDate || Date.now()),
+              originalTaskId: t.id,
               title: t.title,
               microStep: t.microStep || '',
               type: t.type || 'LIT',
               energy: t.energy || 'steady',
               duration: t.duration || 30,
               completed: true,
-              completedDate: t.completedDate || lastDate,
+              completedDate: compDate,
               completedAtISO: t.completedAtISO || new Date().toISOString(),
               recurring: true,
               fromCalendar: !!t.fromCalendar,
@@ -10991,10 +10975,12 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         }
       });
 
-      // 2. Archive completed one-off tasks from previous days so today's workspace is clean (preserve tasks completed today)
-      const completedOneOff = state.tasks.filter(t => t.completed && !t.recurring && !isCompletedToday(t, todayKey));
-      if (completedOneOff.length > 0) {
-        completedOneOff.forEach(t => {
+      // 2. Archive completed tasks from previous days so today's workspace is clean (preserve tasks completed today)
+      const completedPast = state.tasks.filter(t => t.completed && !isCompletedToday(t, todayKey));
+      if (completedPast.length > 0) {
+        completedPast.forEach(t => {
+          const compDate = t.completedDate || lastDate || getYesterdayDateString();
+          markTaskAsCompletedPermanently(t, compDate);
           state.archivedTasks.push({
             id: t.id,
             title: t.title,
@@ -11003,19 +10989,19 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
             energy: t.energy || 'steady',
             duration: t.duration || 30,
             completed: true,
-            completedDate: t.completedDate || lastDate,
+            completedDate: compDate,
             completedAtISO: t.completedAtISO || new Date().toISOString(),
-            recurring: false,
+            recurring: !!t.recurring,
             fromCalendar: !!t.fromCalendar,
             archivedAt: new Date().toISOString()
           });
           archivedCount++;
         });
-        state.tasks = state.tasks.filter(t => !t.completed || t.recurring || isCompletedToday(t, todayKey));
+        state.tasks = state.tasks.filter(t => !t.completed || isCompletedToday(t, todayKey));
       }
 
       // 3. Clear past-day Google Calendar events, keeping today's events, uncompleted tasks, user-shifted, and renamed events safe
-      state.tasks = state.tasks.filter(t => !t.fromCalendar || !t.completed || t.rolledOver || t.userShifted || t.userRenamed || (t.scheduledDate && t.scheduledDate >= todayKey));
+      state.tasks = state.tasks.filter(t => !t.fromCalendar || !t.completed || isCompletedToday(t, todayKey) || (t.scheduledDate && t.scheduledDate >= todayKey));
 
       state.lastActiveDate = todayKey;
       saveState();
