@@ -7154,16 +7154,16 @@
       const isAnchored = (t) => isTaskLocked(t) || t.fromCalendar;
 
       const lockedIntervals = activeTasks
-        .filter(t => isAnchored(t))
+        .filter(t => isAnchored(t) || t.manuallyPositioned)
         .map(f => ({
           start: f.startMin != null ? f.startMin : (f.fixedStartMin || 540),
           end: (f.startMin != null ? f.startMin : (f.fixedStartMin || 540)) + (f.duration || 30)
         }))
         .sort((a, b) => a.start - b.start);
 
-      // Incomplete flexible tasks currently on today's schedule (never auto-ripple Google Calendar events!)
+      // Incomplete flexible tasks currently on today's schedule (never auto-ripple Google Calendar events or user manually-positioned tasks!)
       const flexibleTasks = activeTasks
-        .filter(t => !isAnchored(t) && !t.completed && t.startMin != null)
+        .filter(t => !isAnchored(t) && !t.manuallyPositioned && !t.completed && t.startMin != null)
         .sort((a, b) => a.startMin - b.startMin);
 
       if (flexibleTasks.length === 0) {
@@ -9691,7 +9691,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
           .sort((a, b) => a.start - b.start);
 
         const subsequentFlexible = activeTasks
-          .filter(x => !isTaskLocked(x) && !x.fromCalendar && x.id !== t.id && x.startMin != null && x.startMin >= t.startMin && !x.completed && !x.allowOverlap)
+          .filter(x => !isTaskLocked(x) && !x.fromCalendar && x.id !== t.id && x.startMin != null && (x.startMin >= t.startMin || (x.endMin != null && x.endMin > t.startMin)) && !x.completed && !x.allowOverlap)
           .sort((a, b) => a.startMin - b.startMin);
 
         let cursor = t.endMin + bufferMin;
@@ -9855,10 +9855,11 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         const tDate = t.scheduledDate || todayKey;
         if (tDate !== viewDateKey) return;
 
-        // Do NOT wipe out startMin for calendar events (t.fromCalendar), locked tasks, or completed tasks
-        if (!t.completed && !isTaskLocked(t) && !t.fromCalendar) {
+        // Do NOT wipe out startMin for calendar events (t.fromCalendar), locked tasks, completed tasks, or manually positioned / user shifted tasks
+        if (!t.completed && !isTaskLocked(t) && !t.fromCalendar && !t.manuallyPositioned && !t.userShifted) {
           // If in the past for today's view (and not tomorrow view): clear startMin so it is re-slotted into current/future time or deferred
-          if (!isTomorrowView && t.startMin != null && t.startMin < roundedNowMin && !t.overrideEvening) {
+          // Only clear if the task is completely in the past (endMin <= nowMin) and was never manually positioned
+          if (!isTomorrowView && t.startMin != null && (t.endMin != null ? t.endMin <= nowMin : t.startMin < roundedNowMin) && !t.overrideEvening) {
             t.startMin = null;
             t.endMin = null;
           }
@@ -9907,7 +9908,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         } else if (t.fromCalendar && t.startMin != null) {
           // Always preserve today's Google Calendar events in their original scheduled slots, even if earlier in the day
           preservedTasks.push(t);
-        } else if (!t.completed && t.startMin != null && t.startMin >= roundedNowMin && (t.startMin < 1350 || t.overrideEvening)) {
+        } else if (!t.completed && t.startMin != null && (t.manuallyPositioned || t.userShifted || t.startMin >= roundedNowMin || (t.endMin != null && t.endMin > nowMin)) && (t.startMin < 1350 || t.overrideEvening)) {
           preservedTasks.push(t);
         } else {
           t.startMin = null;
@@ -9928,6 +9929,10 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         ].find(other => !other.allowOverlap && Math.max(cur.startMin, other.startMin) < Math.min(cur.endMin, other.endMin));
 
         if (conflict) {
+          if (cur.manuallyPositioned && !isAnchored(conflict) && !conflict.manuallyPositioned) {
+            // Flexible un-manually-positioned tasks must not push a manually positioned task
+            continue;
+          }
           const shiftStart = conflict.endMin + (includeBuffers ? 10 : 0);
           const dur = cur.duration || 30;
           if (shiftStart + dur <= (cur.overrideEvening ? 1435 : 1350)) {
@@ -10367,9 +10372,9 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
       if (!t) return;
       const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
       const roundedNowMin = Math.ceil(nowMin / 5) * 5;
-      if (t.startMin == null || (!isTaskLocked(t) && !t.completed && t.startMin < roundedNowMin)) t.startMin = roundedNowMin;
-      const minBound = (isTaskLocked(t) || t.completed) ? 0 : roundedNowMin;
-      const newStart = Math.max(minBound, Math.min(1440 - (t.duration || 30), (t.startMin ?? roundedNowMin) + deltaMin));
+      const currentStart = t.startMin != null ? t.startMin : roundedNowMin;
+      const minBound = 0;
+      const newStart = Math.max(minBound, Math.min(1440 - (t.duration || 30), currentStart + deltaMin));
       t.startMin = newStart;
       t.endMin = newStart + (t.duration || 30);
       t.manuallyPositioned = true;
