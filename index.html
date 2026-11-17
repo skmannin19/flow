@@ -2126,11 +2126,14 @@
 
       // 1. Check permanent completedTaskSignatures registry
       if (state.completedTaskSignatures) {
-        if (idStr && state.completedTaskSignatures[idStr]) return true;
-        if (idStr && date && state.completedTaskSignatures[`${date}_${idStr}`]) return true;
-        if (cleanTitle && date && state.completedTaskSignatures[`${date}_${cleanTitle}`]) return true;
-        if (cleanTitle && state.completedTaskSignatures[cleanTitle]) return true;
-        if (cleanTitle && state.completedTaskSignatures[`past_${cleanTitle}`]) return true;
+        if (date) {
+          if (idStr && state.completedTaskSignatures[`${date}_${idStr}`]) return true;
+          if (cleanTitle && state.completedTaskSignatures[`${date}_${cleanTitle}`]) return true;
+        } else {
+          if (idStr && state.completedTaskSignatures[idStr]) return true;
+          if (cleanTitle && state.completedTaskSignatures[cleanTitle]) return true;
+          if (cleanTitle && state.completedTaskSignatures[`past_${cleanTitle}`]) return true;
+        }
       }
 
       // 2. Check state.archivedTasks
@@ -2146,9 +2149,12 @@
           const titleMatch = cleanTitle && (atTitle === cleanTitle || (cleanTitle.length >= 5 && (atTitle.includes(cleanTitle) || cleanTitle.includes(atTitle))));
 
           if (idMatch || titleMatch) {
-            if (!date || atDate === date) return true;
-            if (!at.recurring) return true;
-            if (date && atDate && atDate < date) return false;
+            if (date) {
+              return atDate === date;
+            } else {
+              if (!at.recurring) return true;
+              return false;
+            }
           }
           return false;
         });
@@ -2167,8 +2173,12 @@
           const titleMatch = cleanTitle && (tTitle === cleanTitle || (cleanTitle.length >= 5 && (tTitle.includes(cleanTitle) || cleanTitle.includes(tTitle))));
 
           if (idMatch || titleMatch) {
-            if (!date || tDate === date) return true;
-            if (!t.recurring) return true;
+            if (date) {
+              return tDate === date;
+            } else {
+              if (!t.recurring) return true;
+              return false;
+            }
           }
           return false;
         });
@@ -2187,8 +2197,12 @@
           const titleMatch = cleanTitle && (hTitle === cleanTitle || (cleanTitle.length >= 5 && (hTitle.includes(cleanTitle) || cleanTitle.includes(hTitle))));
 
           if (idMatch || titleMatch) {
-            if (!date || hDate === date) return true;
-            if (h.recurring === false) return true;
+            if (date) {
+              return hDate === date;
+            } else {
+              if (h.recurring === false) return true;
+              return false;
+            }
           }
           return false;
         });
@@ -2692,7 +2706,7 @@
           if (isTaskMarkedCompleted(t.id, t.title, checkDate)) {
             return false;
           }
-          if (!t.recurring && isTaskMarkedCompleted(t.id, t.title)) {
+          if (!t.recurring && !t.fromCalendar && isTaskMarkedCompleted(t.id, t.title)) {
             return false;
           }
         }
@@ -9788,7 +9802,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
           if (!t.completed) {
             const checkDate = t.scheduledDate || t.rolledOverFromDate;
             if (isTaskMarkedCompleted(t.id, t.title, checkDate)) return false;
-            if (!t.recurring && isTaskMarkedCompleted(t.id, t.title)) return false;
+            if (!t.recurring && !t.fromCalendar && isTaskMarkedCompleted(t.id, t.title)) return false;
             const tTitle = (t.title || '').trim().toLowerCase();
             if ((tTitle === 'brunch' || tTitle.includes('brunch')) && (!t.completed || (t.completedDate && t.completedDate < todayKey))) return false;
           }
@@ -11495,12 +11509,11 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
 
         if (showFeedback) showGoogleFeedback(`⏳ Discovering calendars for ${dayLabel} events...`);
 
-        // Query window: from 00:00:00 of target date to 04:00 AM of the day after,
-        // ensuring evening events (e.g. 6-11pm) are never clipped regardless of UTC offset.
+        // Query window: from 00:00:00 of target date to end of 3 days forward (to pull today + upcoming events)
         const startOfDay = new Date(targetDateObj.getFullYear(), targetDateObj.getMonth(), targetDateObj.getDate(), 0, 0, 0).toISOString();
-        const endOfDay = new Date(targetDateObj.getFullYear(), targetDateObj.getMonth(), targetDateObj.getDate() + 1, 4, 0, 0).toISOString();
+        const endOfDay = new Date(targetDateObj.getFullYear(), targetDateObj.getMonth(), targetDateObj.getDate() + 3, 23, 59, 59).toISOString();
 
-        // 1. Discover all active calendars from user's account (Personal + A&S Events + all non-hidden calendars)
+        // 1. Discover all active calendars from user's account
         let targetCalendars = [{ id: 'primary', summary: 'Personal', isAsEvents: false }];
         try {
           const listRes = await fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=100', {
@@ -11525,10 +11538,9 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
               const isPrimary = !!cal.primary || cal.id === 'primary';
               const isAsEvents = /a\s*&\s*s/i.test(summary) || summary.toLowerCase().includes('a&s');
               const isHolidayCal = /holiday/i.test(summary) || /holiday/i.test(cal.id || '') || (cal.id && cal.id.includes('holiday@group.v.calendar.google.com'));
-              // Include primary, A&S, holidays, and any non-hidden calendar (do not skip if selected was false)
-              const isNonHidden = !cal.hidden;
+              const isContactCal = /#contacts@/i.test(cal.id || '') || /birthday/i.test(summary);
 
-              if (isPrimary || isAsEvents || isHolidayCal || isNonHidden) {
+              if (!isContactCal) {
                 if (!seenCalIds.has(cal.id)) {
                   seenCalIds.add(cal.id);
                   foundCals.push({
@@ -11588,6 +11600,8 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
 
         // 3. Process and deduplicate events across calendars
         const seenFingerprints = new Set();
+        const maxFutureDate = new Date(targetDateObj.getFullYear(), targetDateObj.getMonth(), targetDateObj.getDate() + 3);
+        const maxFutureISO = getLocalDateString(maxFutureDate);
 
         allEvents.forEach(ev => {
           if (!ev.start || (!ev.start.dateTime && !ev.start.date)) return;
@@ -11596,11 +11610,17 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
           const startDt = ev.start.dateTime ? new Date(ev.start.dateTime) : new Date(ev.start.date + 'T09:00:00');
           if (isNaN(startDt.getTime())) return;
 
-          // Crucial: Only process events that fall on the target date in local time!
-          const eventDateISO = getLocalDateString(startDt);
-          if (eventDateISO !== targetDateISO) return;
+          let eventDateISO = getLocalDateString(startDt);
+          const endDt = ev.end && ev.end.dateTime ? new Date(ev.end.dateTime) : (ev.end && ev.end.date ? new Date(ev.end.date + 'T23:59:59') : new Date(startDt.getTime() + 45 * 60000));
+          const endISO = getLocalDateString(endDt);
 
-          const endDt = ev.end && ev.end.dateTime ? new Date(ev.end.dateTime) : new Date(startDt.getTime() + 45 * 60000);
+          // If multi-day event spans targetDateISO, schedule on targetDateISO
+          if (eventDateISO < targetDateISO && endISO >= targetDateISO) {
+            eventDateISO = targetDateISO;
+          }
+
+          // Keep events for targetDateISO and upcoming days in the window
+          if (eventDateISO < targetDateISO || eventDateISO > maxFutureISO) return;
 
           const startMin = startDt.getHours() * 60 + startDt.getMinutes();
           let duration = Math.round((endDt - startDt) / 60000);
@@ -11645,12 +11665,11 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
             ? `Join Meet: ${ev.hangoutLink}` 
             : (ev.location ? `Location: ${ev.location}` : `Review agenda for ${calName} & join on time`);
 
-          // Check if already in tasks: ONLY match tasks for this exact targetDateISO!
-          // (Prevents hijacking yesterday's or past tasks of the same name)
+          // Check if already in tasks: match tasks for this exact eventDateISO!
           let existing = state.tasks.find(t => 
             t.id === gcalId || 
             (t.gcalEventId && t.gcalEventId === ev.id) ||
-            (t.fromCalendar && (!t.scheduledDate || t.scheduledDate === targetDateISO) && (
+            (t.fromCalendar && (!t.scheduledDate || t.scheduledDate === eventDateISO) && (
               (t.title && t.title.toLowerCase() === title.toLowerCase()) ||
               (t.gcalTitle && t.gcalTitle.toLowerCase() === title.toLowerCase())
             ))
@@ -11661,7 +11680,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
             const archIdx = state.archivedTasks.findIndex(t => 
               t.id === gcalId || 
               (t.gcalEventId && t.gcalEventId === ev.id) ||
-              (t.fromCalendar && (t.completedDate === targetDateISO || t.scheduledDate === targetDateISO) && (
+              (t.fromCalendar && (t.completedDate === eventDateISO || t.scheduledDate === eventDateISO) && (
                 (t.title && t.title.toLowerCase() === title.toLowerCase()) ||
                 (t.gcalTitle && t.gcalTitle.toLowerCase() === title.toLowerCase())
               ))
@@ -11672,9 +11691,9 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
               arch.gcalEventId = ev.id;
               arch.fromCalendar = true;
               arch.calendarName = calName;
-              arch.scheduledDate = targetDateISO;
+              arch.scheduledDate = eventDateISO;
               arch.completed = true;
-              arch.completedDate = targetDateISO;
+              arch.completedDate = eventDateISO;
               arch.startMin = arch.startMin != null ? arch.startMin : startMin;
               arch.endMin = arch.endMin != null ? arch.endMin : (startMin + duration);
               arch.gcalStartMin = startMin;
@@ -11694,7 +11713,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
             existing.gcalEventId = ev.id;
             existing.fromCalendar = true;
             existing.calendarName = calName;
-            existing.scheduledDate = targetDateISO;
+            existing.scheduledDate = eventDateISO;
             // CRITICAL: NEVER overwrite user-selected priority (e.g. LIT) or auto-classify if already set
             if (!existing.userPriorityEdited && (existing.type === 'FIXED' || !existing.type)) {
               const pInfo = classifyTaskPriority(title, duration, 'steady');
@@ -11782,7 +11801,7 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
               gcalDuration: duration,
               userShifted: false,
               manuallyPositioned: false,
-              scheduledDate: targetDateISO,
+              scheduledDate: eventDateISO,
               completed: false,
               recurring: false,
               subtasks: []
@@ -11792,14 +11811,13 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         });
 
         // 4. Prune only uncompleted, non-shifted calendar tasks deleted from Google Calendar
-        // ONLY prune tasks for this targetDateISO so we never wipe other dates!
+        // Only prune tasks within the queried window [targetDateISO, maxFutureISO]
         const prevCount = state.tasks.length;
         if (targetCalendars.length > 0 && allEvents.length > 0) {
           state.tasks = state.tasks.filter(t => {
             if (isHolidayTask(t)) return false; // Always purge any holiday tasks
             if (t.id && t.id.startsWith('gcal_')) {
-              // Only prune for targetDateISO
-              if (t.scheduledDate && t.scheduledDate !== targetDateISO) {
+              if (t.scheduledDate && (t.scheduledDate < targetDateISO || t.scheduledDate > maxFutureISO)) {
                 return true;
               }
               // Never prune tasks that were completed, shifted, renamed, manually positioned, or rolled over
@@ -11816,14 +11834,16 @@ Output strict JSON with format: {"microStep": "string", "subtasks": ["step 1", "
         saveState();
         recalculateSchedule();
         if (showFeedback) {
+          const todayCount = state.tasks.filter(t => t.fromCalendar && t.scheduledDate === targetDateISO && !isHolidayTask(t)).length;
+          const upcomingCount = state.tasks.filter(t => t.fromCalendar && t.scheduledDate > targetDateISO && !isHolidayTask(t)).length;
           const detailMsg = [
             addedCount > 0 ? `${addedCount} added` : null,
             updatedCount > 0 ? `${updatedCount} updated` : null,
             deletedCount > 0 ? `${deletedCount} pruned` : null
           ].filter(Boolean).join(', ');
           const calSummary = targetCalendars.map(c => c.summary).join(', ');
-          showGoogleFeedback(`✓ Synced ${allEvents.length} events across ${calSummary}${detailMsg ? ` (${detailMsg})` : ''}.`, false);
-          showRippleNotice(`🗓️ Calendar synced (${calSummary})${detailMsg ? `: ${detailMsg}` : ''}.`);
+          showGoogleFeedback(`✓ Synced ${allEvents.length} events across ${calSummary} (${todayCount} for today${upcomingCount > 0 ? `, ${upcomingCount} upcoming` : ''})${detailMsg ? ` • ${detailMsg}` : ''}.`, false);
+          showRippleNotice(`🗓️ Calendar synced (${calSummary}): ${todayCount} events for today${upcomingCount > 0 ? `, ${upcomingCount} upcoming` : ''}.`);
         }
       } catch (err) {
         if (err.message === '401_EXPIRED') {
