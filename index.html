@@ -2017,9 +2017,11 @@
       'review west denver / lakewood real estate comps & inspection notes',
       'follow up with livewell animal hospital on leo radiographs',
       'midday reset, lunch & quick mobility break',
-      'morning routine, meditation & leo park walk'
+      'morning routine, meditation & leo park walk',
+      'late afternoon workout / pickleball court session',
+      'late afternoon workout'
     ];
-    const DEPRECATED_SAMPLE_IDS = new Set(['t1', 't2', 't3', 't4', 't5', 't6', 't8']);
+    const DEPRECATED_SAMPLE_IDS = new Set(['t1', 't2', 't3', 't4', 't5', 't6', 't8', 't9']);
 
     function isDeprecatedTask(title, id) {
       if (id && DEPRECATED_SAMPLE_IDS.has(String(id))) return true;
@@ -2307,8 +2309,7 @@
 
     const DEFAULT_TASKS = [
       { id: 't_job_apply', title: 'Find & Apply to one job', microStep: 'Open LinkedIn & submit 1 targeted application', type: 'MIT', energy: 'sharp', duration: 45, fixedStartMin: null, locked: false, completed: false, recurring: false, subtasks: [] },
-      { id: 't7', title: 'Inbox Zero & Weekly Sunday Planning Prep', microStep: 'Clear starred emails and archive newsletters', type: 'LIT', energy: 'fried', duration: 25, fixedStartMin: null, locked: false, completed: false, recurring: true, recurrence: { freq: 'weekly', daysOfWeek: [0, 5], interval: 1, unit: 'weeks' }, subtasks: [] },
-      { id: 't9', title: 'Late Afternoon Workout / Pickleball Court Session', microStep: 'Change gear & head out on time', type: 'LIT', energy: 'steady', duration: 60, fixedStartMin: 1020, locked: false, completed: false, recurring: true, recurrence: { freq: 'weekly', daysOfWeek: [1, 2, 3, 4, 5], interval: 1, unit: 'days' }, subtasks: [] }
+      { id: 't7', title: 'Inbox Zero & Weekly Sunday Planning Prep', microStep: 'Clear starred emails and archive newsletters', type: 'LIT', energy: 'fried', duration: 25, fixedStartMin: null, locked: false, completed: false, recurring: true, recurrence: { freq: 'weekly', daysOfWeek: [0, 5], interval: 1, unit: 'weeks' }, subtasks: [] }
     ];
 
     let state = {
@@ -2485,6 +2486,9 @@
           }
         }
       }
+
+      // Automatically purge any deprecated sample tasks (such as t9 / Pickleball) from loaded state
+      state.tasks = (state.tasks || []).filter(t => !isDeprecatedTask(t.title, t.id));
 
       // Keep whatever Chronotype the user calibrated/set in the app or received via cloud sync.
       // Do not force an artificial fallback or reset their selected chronotype.
